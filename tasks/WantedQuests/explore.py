@@ -1,9 +1,12 @@
 from cached_property import cached_property
+from time import sleep
 
 from module.atom.animate import RuleAnimate
 from module.atom.image import RuleImage
 from module.base.timer import Timer
 from module.logger import logger
+from module.exception import GameStuckError
+from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Exploration.base import BaseExploration, Scene
 from tasks.Exploration.version import HighLight
 
@@ -15,6 +18,29 @@ class ExploreWantedBoss(Exception):
 
 class WQExplore(BaseExploration, HighLight):
     _cnt_exploration: int = 0
+
+    def battle_before(self, buff, config, timeout: float = 5) -> bool:
+        if not getattr(config, 'lock_team_enable', False):
+            return GeneralBattle.battle_before(self, buff, config, timeout)
+
+        # 探索的锁阵容只保留队伍；部分战斗仍会停在准备界面。
+        # 必须确认进入战斗，不能将战前超时交给只处理结算的等待循环。
+        prepare_timer = Timer(max(timeout, 20)).start()
+        while not prepare_timer.reached():
+            self.screenshot()
+            if self.appear_then_click(self.I_DISABLE_7DAYS_DIFF_SOUL, interval=0.6):
+                continue
+            if self.appear_then_click(self.I_CONFIRM_CLOSE_DIFF_SOUL, interval=0.6):
+                continue
+            if not self.is_in_prepare(False):
+                if self.is_in_real_battle(False) or any(self.appear(marker) for marker in (
+                        self.I_WIN, self.I_DE_WIN, self.I_FALSE, self.I_REWARD, self.I_REWARD_GOLD)):
+                    return True
+            if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
+                continue
+            sleep(0.3)
+
+        raise GameStuckError('Wanted quests did not leave the preparation stage')
 
     @cached_property
     def _match_end(self):
@@ -29,7 +55,7 @@ class WQExplore(BaseExploration, HighLight):
         search_fail_timer = Timer(3.2)  # 这里设置的时间一定要大于S_SWIPE_BACKGROUND_RIGHT滑动的时间
         # https://github.com/runhey/OnmyojiAutoScript/pull/1697 云景阆苑 皮肤
         from tasks.Component.Costume.config import MainType
-        if self.config.model.global_game.costume_config.costume_main_type == MainType.COSTUME_MAIN_13:
+        if self.current_main_type == MainType.COSTUME_MAIN_13:
             self.TEMPLATE_GIF.match = self.TEMPLATE_GIF.match_with_multi_scale
             logger.info("Costume '云景阆苑' detected, enable multi-scale matching for highlight")
         else:

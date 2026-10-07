@@ -18,6 +18,7 @@ from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.DemonRetreat.assets import DemonRetreatAssets
 from tasks.AbyssShadows.assets import AbyssShadowsAssets
 from tasks.DemonRetreat.config import DemonRetreat
+from tasks.Component.guild_retry_schedule import plan_opening_check
 
 class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssShadowsAssets):
 
@@ -25,27 +26,14 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
         """
         首领退治主函数
         """
+        from tasks.Component.daily_closeout import report_closeout_outcome
+        self._retreat_closeout_date = datetime.now().date()
 
         cfg: DemonRetreat = self.config.demon_retreat
 
-        # 判断是否为周六，只有周六才可以进行退治
-        current_date = datetime.now()
-        current_day_of_week = current_date.weekday()  # Monday is 0 and Sunday is 6
-
-        if current_day_of_week == 5:
-            # 是周六，继续运行写好的任务代码
-            pass
-        else:
-            # 不是周六
-            if current_day_of_week < 5:
-                # 周一至周五
-                days_until_saturday = 5 - current_day_of_week
-            else:
-                # 周日
-                days_until_saturday = 5 - current_day_of_week + 7
-
-                # 设置下次运行时间
-            self.custom_next_run(task='DemonRetreat', custom_time=cfg.demon_retreat_time.custom_run_time, time_delta=days_until_saturday)
+        opening = self._opening_plan()
+        if not opening.in_window:
+            self._schedule_opening_check(plan=opening)
             raise TaskEnd
 
         if cfg.switch_soul_config.enable:
@@ -56,12 +44,12 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
             self.run_switch_soul_by_name(cfg.switch_soul_config.group_name, cfg.switch_soul_config.team_name)
 
         # 进入妖怪退治
-        if not self.goto_demon_retreat():
+        if not self.goto_demon_retreat(opening_deadline=opening.deadline):
             logger.warning("Failed to enter demon retreat")
             if self.appear_then_click(self.I_DEMON_BACK_CHECK, interval=1):
                 pass
             self.goto_main()
-            self.set_next_run(task='DemonRetreat', finish=False, server=True, success=False)
+            self._schedule_opening_check()
             raise TaskEnd
 
         # 首领退治战斗
@@ -87,28 +75,42 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
         # 保持好习惯，一个任务结束了就返回到庭院，方便下一任务的开始
         self.goto_main()
 
-        # 设置下次运行时间
-        if success:
-            logger.info(f"The next time the demon retreat is next Saturday")
-            self.custom_next_run(task='DemonRetreat', custom_time=cfg.demon_retreat_time.custom_run_time, time_delta=7)
-        else:
-            self.set_next_run(task="DemonRetreat", finish=True, server=True, success=False)
+        self._schedule_opening_check(completed=success)
+        if success and self._retreat_closeout_date == datetime.now().date():
+            report_closeout_outcome(self.config, 'DemonRetreat', 'completed',
+                                    detail='battle_win_confirmed')
 
         raise TaskEnd
 
 
 
-    def goto_demon_retreat(self) -> bool:
+    def goto_demon_retreat(self, opening_deadline=None) -> bool:
         """
         进入首领退治
         """
         cfg: DemonRetreat = self.config.demon_retreat
         logger.info("Entering demon_retreat")
+        if opening_deadline is None:
+            opening = self._opening_plan()
+            # A direct caller outside the window may only resume an already
+            # entered activity, not use the next event's deadline to navigate.
+            opening_deadline = opening.deadline if opening.in_window else datetime.now()
         self.goto_page(page_guild)
 
         goto_demon_retreat_num = 0
         while 1:
             self.screenshot()
+            # An entered gathering/preparation may finish after the opening window.
+            if (self.appear(self.I_HUNT_CHECK)
+                    or self.appear(self.I_DEMON_GATHER)
+                    or self.is_in_prepare(False)):
+                if self.appear_then_click(self.I_QUIT_BACK, interval=1):
+                    pass
+                logger.info("Enter demon_retreat success")
+                return True
+            if datetime.now() >= opening_deadline:
+                logger.warning('Demon retreat did not open before the check deadline')
+                return False
             # 进入神社
             if self.appear_then_click(self.I_SHRINE, interval=1):
                 logger.info("Enter I_SHRINE")
@@ -120,23 +122,18 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
             # 确保不离开退治
             if self.appear_then_click(self.I_QUIT_BACK, interval=1):
                 pass
-            if (self.appear(self.I_HUNT_CHECK)
-                    or self.appear(self.I_DEMON_GATHER)
-                    or self.is_in_prepare(False)):
-                if self.appear_then_click(self.I_QUIT_BACK, interval=1):
-                    pass
-                logger.info("Enter demon_retreat success")
-                return True
-
             # 周六打完了，但是迟到了只能领取奖励
             if self.appear_then_click(self.I_REWARD_ALL, interval=1):
                 logger.info("Already challenged demon_retreat")
                 sleep(1)
                 if self.appear_then_click(self.I_DEMON_BACK_CHECK, interval=1):
                     pass
-                logger.info(f"The next time the demon retreat is next Saturday")
-                self.custom_next_run(task='DemonRetreat', custom_time=cfg.demon_retreat_time.custom_run_time,
-                                     time_delta=7)
+                self._schedule_opening_check(completed=True)
+                from tasks.Component.daily_closeout import report_closeout_outcome
+                now = datetime.now()
+                if getattr(self, '_retreat_closeout_date', now.date()) == now.date():
+                    report_closeout_outcome(self.config, 'DemonRetreat', 'skipped', now=now,
+                                            detail='existing_reward_claimed_without_new_battle')
                 raise TaskEnd
 
             if self.appear(self.I_RANK_LSIT):
@@ -149,6 +146,35 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
             if goto_demon_retreat_num >= 5:
                 break
         return False
+
+    def _opening_plan(self, now=None, completed=False):
+        cfg = self.config.demon_retreat
+        return plan_opening_check(
+            now or datetime.now(), [(5, cfg.demon_retreat_time.custom_run_time)],
+            getattr(cfg.demon_retreat_time, 'opening_retry_interval', cfg.scheduler.failure_interval),
+            completed=completed,
+            window=timedelta(minutes=getattr(cfg.demon_retreat_time, 'opening_wait_minutes', 60)),
+        )
+
+    def _schedule_opening_check(self, completed=False, now=None, plan=None):
+        from tasks.Component.daily_closeout import report_closeout_outcome
+
+        plan = plan or self._opening_plan(now=now, completed=completed)
+        if plan.status == 'retry':
+            logger.info(f'Demon retreat not open or not completed; retry at {plan.target}, deadline {plan.deadline}')
+        elif plan.status == 'window_expired':
+            logger.warning('Demon retreat opening window expired without confirmed completion; wait for the next configured opening')
+        elif plan.status == 'completed':
+            logger.info('Demon retreat completed; wait for the next configured opening')
+        else:
+            logger.info(f'Demon retreat opening has not started; next check at {plan.target}')
+        self.set_next_run(task='DemonRetreat', server=False, target=plan.target)
+        event_now = now or datetime.now()
+        if (plan.status == 'window_expired'
+                and getattr(self, '_retreat_closeout_date', event_now.date()) == event_now.date()):
+            report_closeout_outcome(self.config, 'DemonRetreat', 'expired', now=now,
+                                    detail='opening_window_expired')
+        return plan
 
     def demon_retreat(self):
         cfg: DemonRetreat = self.config.demon_retreat

@@ -125,7 +125,12 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
 
     @cached_property
     def notifier(self):
-        notifier = Notifier(self.model.script.error.notify_config, enable=self.model.script.error.notify_enable)
+        latest = self.model.read_json(self.config_name)
+        error = latest.get('script', {}).get('error', {})
+        notifier = Notifier(
+            error.get('notify_config', self.model.script.error.notify_config),
+            enable=error.get('notify_enable', self.model.script.error.notify_enable),
+        )
         notifier.config_name = self.config_name.upper()
         logger.info(f'Notifier: {notifier.config_name}')
         return notifier
@@ -166,13 +171,14 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
 
     def reload(self):
         self.model = ConfigModel(config_name=self.config_name)
+        self.__dict__.pop('notifier', None)
 
     def save(self) -> None:
         """
         保存配置文件
         :return:
         """
-        self.model.write_json(self.config_name, self.model.dict())
+        self.model.save()
 
     def update_scheduler(self) -> None:
         """

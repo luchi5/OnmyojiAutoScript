@@ -85,6 +85,10 @@ class ScriptTask(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, SwitchSoul, 
         while 1:
             self.screenshot()
             if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1):
+                # Device clicks clear wait markers. Preparation can still be
+                # visible on entering battle_wait, so restore only the long
+                # battle marker after an actual click; keep its 300s timeout.
+                self.device.stuck_record_add('BATTLE_STATUS_S')
                 logger.info('click prepare')
             if self.appear(self.I_DE_WIN):
                 logger.info('Win battle')

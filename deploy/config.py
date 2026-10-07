@@ -13,8 +13,8 @@ class ExecutionError(Exception):
 
 class ConfigModel:
     # Git
-    Repository: str = "https://gitcode.com/OnmyojiAutoScript/OnmyojiAutoScript.git"
-    Branch: str = "master"
+    Repository: str = "https://github.com/luchi5/OnmyojiAutoScript.git"
+    Branch: str = "luchi"
     GitExecutable: str = "./toolkit/Git/mingw64/bin/git.exe"
     GitProxy: Optional[str] = None
     SSLVerify: bool = False
@@ -92,10 +92,7 @@ class DeployConfig(ConfigModel):
         self.config = copy.deepcopy(self.config_template)
         self.config.update(poor_yaml_read(self.file))
 
-        # https://e.coding.net/onmyojiautoscript/oas/OnmyojiAutoScript.git
-        # 2025.09.01 腾讯coding跑路了
-        if self.config["Repository"].startswith("https://e.coding.net/"):
-            self.config["Repository"] = "https://gitcode.com/OnmyojiAutoScript/OnmyojiAutoScript.git"
+        # Preserve repositories explicitly selected by the operator.
 
         for key, value in self.config.items():
             if hasattr(self, key):

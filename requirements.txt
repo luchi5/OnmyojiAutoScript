@@ -24,6 +24,7 @@ deprecated==1.2.14        # via uiautomator2
 deprecation==2.1.0        # via adbutils
 exceptiongroup==1.2.0     # via anyio
 fastapi==0.104.1          # via -r requirements-in.txt
+python-multipart==0.0.32  # via -r requirements-in.txt
 filelock==3.13.1          # via uiautomator2
 flatbuffers==23.5.26      # via onnxruntime
 frida==17.6.2             # via -r requirements-in.txt, frida-tools

@@ -2,6 +2,8 @@
 # @author runhey
 # github https://github.com/runhey
 
+import cv2
+
 from module.atom.image import RuleImage
 from module.atom.gif import RuleGif
 from module.logger import logger
@@ -17,6 +19,7 @@ from tasks.Component.CostumeBattle.assets import CostumeBattleAssets
 from tasks.Component.CostumeShikigami.assets import CostumeShikigamiAssets
 from tasks.Component.CostumeCarpBanner.assets import CostumeCarpBannerAssets
 from tasks.Component.CostumeBattleScene.assets import CostumeBattleSceneAssets
+from tasks.Component.Costume.image_replacement import replace_image_asset
 
 # 庭院皮肤
 # 主界面皮肤（使用字典推导式动态生成）
@@ -101,6 +104,16 @@ shikigami_costume_model = {
     for i in range(1, 13)  # 目前支持 COSTUME_SHIKIGAMI_1 到 COSTUME_SHIKIGAMI_12
 }
 
+# RuleImage objects are also held by navigation pages. Restore them in place,
+# including any methods attached by RuleGif, rather than replacing references.
+_default_main_assets = {}
+_main_asset_names = tuple(main_costume_model[MainType.COSTUME_MAIN_1])
+
+
+def _clone_image(rule):
+    return RuleImage(tuple(rule.roi_front), tuple(rule.roi_back),
+                     rule.method, rule.threshold, rule.file)
+
 class CostumeBase:
     def check_costume(self, config: CostumeConfig=None):
         if config is None:
@@ -117,30 +130,98 @@ class CostumeBase:
                     asset_before: str,
                     asset_after: RuleImage,
                     rp_roi_back: bool = True):
-        if not hasattr(self, asset_before):
-            return
-        # setattr(self, asset_before, asset_after)
-        asset_before_object: RuleImage = getattr(self, asset_before)
-        asset_before_object.roi_front = asset_after.roi_front
-        if rp_roi_back:
-            asset_before_object.roi_back = asset_after.roi_back
-        asset_before_object.threshold = asset_after.threshold
-        asset_before_object.file = asset_after.file
+        replace_image_asset(self, asset_before, asset_after, rp_roi_back)
 
-    def check_costume_main(self, main_type: MainType):
-        if main_type == MainType.COSTUME_MAIN:
-            return
-        logger.info(f'Switch main costume to {main_type} ({I18n.trans_zh_cn(main_type)})')
-        costume_assets = CostumeAssets()
-        for key, value in main_costume_model[main_type].items():
+    def check_costume_main(self, main_types):
+        selected = CostumeConfig(costume_main_type=main_types).costume_main_type
+        for key in _main_asset_names:
+            if key not in _default_main_assets and hasattr(self, key):
+                _default_main_assets[key] = _clone_image(getattr(self, key))
+        self.main_costume_candidates = selected
+        self._main_candidate_checks = {}
+        self._activate_main_costume(selected[0])
+        if len(selected) > 1:
+            logger.info('Auto-detect main costume from: ' + ', '.join(item.value for item in selected))
+
+    def _activate_main_costume(self, main_type):
+        self._main_detection_cache = None
+        for key, original in _default_main_assets.items():
+            if not hasattr(self, key):
+                continue
+            target = getattr(self, key)
+            target.__dict__.clear()
+            target.__dict__.update(_clone_image(original).__dict__)
+            # Keep identity/hash and interval timer keys stable across skins.
+            target.name = original.name
+        for key, value in main_costume_model.get(main_type, {}).items():
+            if not hasattr(self, key):
+                continue
+            target = getattr(self, key)
+            stable_name = target.name
             if isinstance(value, list):
-                if not hasattr(self, key):
-                    continue
-                rules: list[RuleImage] = [getattr(costume_assets, item) for item in value]
-                RuleGif.attach_to(getattr(self, key), rules)
+                rules = [_clone_image(getattr(CostumeAssets, item)) for item in value]
+                RuleGif.attach_to(target, rules)
             else:
-                assert_value: RuleImage = getattr(costume_assets, value)
-                self.replace_img(key, assert_value)
+                rule = _clone_image(getattr(CostumeAssets, value))
+                target.__dict__.update(rule.__dict__)
+            target.name = stable_name
+        self.current_main_type = main_type
+        logger.info(f'Switch main costume to {main_type.value} ({I18n.trans_zh_cn(main_type)})')
+
+    def _main_candidate_score(self, rule, image, threshold=None):
+        """Compare courtyard templates without lowering their recognition thresholds."""
+        best_score = None
+        frames = rule.targets if isinstance(rule, RuleGif) else (rule,)
+        for frame in frames:
+            if not frame.is_template_match:
+                score = 1.0 if frame.match(image, threshold=threshold) else None
+            else:
+                source, template = frame.corp(image), frame.image
+                if (source.shape[0] < template.shape[0]
+                        or source.shape[1] < template.shape[1]):
+                    continue
+                result = cv2.matchTemplate(source, template, cv2.TM_CCOEFF_NORMED)
+                score = cv2.minMaxLoc(result)[1]
+                limit = frame.threshold if threshold is None else threshold
+                if not score > limit:
+                    continue
+            if score is not None and (best_score is None or score > best_score):
+                best_score = score
+        return best_score
+
+    def detect_random_main_costume(self, threshold=None):
+        candidates = tuple(getattr(self, 'main_costume_candidates', ()))
+        if len(candidates) < 2:
+            return False
+        image = self.device.image
+        cached = getattr(self, '_main_detection_cache', None)
+        if (cached is not None and cached[0] is image
+                and cached[1] == threshold and cached[2] == candidates):
+            return cached[3]
+        best_type, best_score = None, None
+        for main_type in candidates:
+            if main_type not in self._main_candidate_checks:
+                if main_type == MainType.COSTUME_MAIN:
+                    rule = _clone_image(_default_main_assets['I_CHECK_MAIN'])
+                else:
+                    asset = main_costume_model[main_type]['I_CHECK_MAIN']
+                    rule = (RuleGif([_clone_image(getattr(CostumeAssets, name)) for name in asset])
+                            if isinstance(asset, list) else _clone_image(getattr(CostumeAssets, asset)))
+                self._main_candidate_checks[main_type] = rule
+            score = self._main_candidate_score(self._main_candidate_checks[main_type], image, threshold)
+            if score is not None and (best_score is None or score > best_score
+                                      or (score == best_score and main_type == self.current_main_type)):
+                best_type, best_score = main_type, score
+        matched = False
+        if best_type is not None:
+            if best_type != self.current_main_type:
+                self._activate_main_costume(best_type)
+                logger.info(f'Main costume best match: {best_type.value}, score={best_score:.4f}')
+            # Populate the active rule's matched coordinates on this frame.
+            matched = self.I_CHECK_MAIN.match(image, threshold=threshold)
+        # Keep the image reference so a recycled Python id cannot reuse stale results.
+        self._main_detection_cache = (image, threshold, candidates, matched)
+        return matched
 
     def check_costume_carpbanner(self, carpbanner_type: CarpBannerType):
         if carpbanner_type == CarpBannerType.COSTUME_CARPBANNER_DEFAULT:

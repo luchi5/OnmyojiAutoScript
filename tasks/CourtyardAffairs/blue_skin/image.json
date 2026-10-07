@@ -1,0 +1,65 @@
+[
+  {
+    "itemName": "page",
+    "imageName": "blue_page.png",
+    "roiFront": "735,75,245,64",
+    "roiBack": "690,48,360,112",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "蓝色庭院事务标题"
+  },
+  {
+    "itemName": "daily_selected",
+    "imageName": "blue_daily_selected.png",
+    "roiFront": "1160,170,43,70",
+    "roiBack": "1138,125,88,210",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "蓝色皮肤日常页签已选中"
+  },
+  {
+    "itemName": "complete_tasks",
+    "imageName": "blue_complete_tasks.png",
+    "roiFront": "1124,599,77,75",
+    "roiBack": "1100,570,142,128",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "蓝色皮肤一键完成"
+  },
+  {
+    "itemName": "daily_inactive",
+    "imageName": "blue_daily_inactive.png",
+    "roiFront": "1160,153,48,90",
+    "roiBack": "1138,123,92,253",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "未选中的日常页签"
+  },
+  {
+    "itemName": "disabled_complete",
+    "imageName": "blue_disabled_complete.png",
+    "roiFront": "1124,599,77,75",
+    "roiBack": "1100,570,142,128",
+    "threshold": 0.85,
+    "method": "Template matching",
+    "description": "已领取后灰色禁用一键完成"
+  },
+  {
+    "itemName": "completed_stamp",
+    "imageName": "blue_completed_stamp.png",
+    "roiFront": "1025,180,90,56",
+    "roiBack": "1000,165,145,88",
+    "threshold": 0.85,
+    "method": "Template matching",
+    "description": "日常任务已完成红戳"
+  },
+  {
+    "itemName": "success_claimed",
+    "imageName": "blue_success_claimed.png",
+    "roiFront": "772,81,267,62",
+    "roiBack": "730,50,350,112",
+    "threshold": 0.9,
+    "method": "Template matching",
+    "description": "蓝色书卷款领取成功页；确认后点击底部空白关闭，再核验日常完成状态"
+  }
+]

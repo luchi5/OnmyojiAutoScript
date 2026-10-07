@@ -1,7 +1,8 @@
 # This Python file uses the following encoding: utf-8
 # @author runhey
 # github https://github.com/runhey
-from pydantic import BaseModel, Field, field_validator
+import json
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from enum import Enum
 
 # 庭院皮肤
@@ -86,8 +87,9 @@ class BattleSceneType(str, Enum):
 
 
 class CostumeConfig(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
     # 皮肤配置
-    costume_main_type: MainType = Field(default=MainType.COSTUME_MAIN, description='costume_main_type_help')
+    costume_main_type: list[MainType] = Field(default=[MainType.COSTUME_MAIN], min_length=1, description='costume_main_type_help')
     costume_realm_type: RealmType = Field(default=RealmType.COSTUME_REALM_DEFAULT, description='costume_realm_type_help')
     costume_carpbanner_type: CarpBannerType = Field(default=CarpBannerType.COSTUME_CARPBANNER_DEFAULT,description='costume_carpbanner_type_help')
     costume_theme_type: ThemeType = Field(default=ThemeType.COSTUME_THEME_DEFAULT, description='costume_theme_type_help')
@@ -95,6 +97,18 @@ class CostumeConfig(BaseModel):
     costume_sign_type: SignType = Field(default=SignType.COSTUME_SIGN_DEFAULT, description='costume_sign_type_help')
     costume_battle_type: BattleType = Field(default=BattleType.COSTUME_BATTLE_DEFAULT, description='costume_battle_type_help')
     costume_battle_scene_type: BattleSceneType = Field(default=BattleSceneType.COSTUME_BATTLE_SCENE_DEFAULT, description='costume_battle_scene_type_help')
+
+    @field_validator('costume_main_type', mode='before')
+    @classmethod
+    def validate_main_types(cls, value):
+        # Accept existing mainline single-value configs and JSON query values.
+        if isinstance(value, str) and value.strip().startswith('['):
+            value = json.loads(value)
+        if isinstance(value, (str, MainType)):
+            value = [value]
+        if not isinstance(value, (list, tuple)):
+            raise ValueError('请选择至少一个庭院皮肤')
+        return list(dict.fromkeys(MainType(item.strip() if isinstance(item, str) else item) for item in value))
 
     @field_validator('costume_realm_type', mode='before')
     @classmethod

@@ -12,13 +12,31 @@ from requests import Response
 from smtplib import SMTPResponseException
 
 from module.logger import logger
-onepush.core.log = logger
+
+
+class _SafeProviderLogger:
+    """OnePush logs raw responses and request exceptions containing credentials."""
+
+    def debug(self, *args, **kwargs):
+        # A response may contain private message content or access credentials.
+        pass
+
+    def error(self, message, *args, **kwargs):
+        kind = type(message).__name__ if isinstance(message, BaseException) else 'ProviderError'
+        logger.warning(f'OnePush request error: {kind}')
+
+
+onepush.core.log = _SafeProviderLogger()
 
 
 class Notifier:
     def __init__(self, _config: str, enable: bool=False) -> None:
         self.config_name: str = ""
         self.enable: bool = enable
+        self.config = {}
+        self.provider_name = None
+        self.notifier = None
+        self.required = []
 
         if not self.enable:
             return
@@ -26,7 +44,7 @@ class Notifier:
         try:
             for item in yaml.safe_load_all(_config):
                 config.update(item)
-        except Exception as e:
+        except Exception:
             logger.error("Fail to load onepush config, skip sending")
             return
         self.config = config
@@ -41,14 +59,17 @@ class Notifier:
             # 获取notifier的必填参数
             self.required: list[str] = self.notifier.params["required"]
         except OnePushException:
-            logger.exception("Init notifier failed")
+            logger.warning("Init notifier failed: OnePushException")
             return
         except Exception as e:
-            logger.exception(e)
+            logger.warning(f'Init notifier failed: {type(e).__name__}')
             return
 
     def push(self, **kwargs) -> bool:
         if not self.enable:
+            return False
+        if self.notifier is None:
+            logger.warning('Push notify failed: notifier unavailable')
             return False
         # 更新配置
         kwargs["title"] = f"{self.config_name} {kwargs['title']}"
@@ -57,7 +78,7 @@ class Notifier:
         for key in self.required:
             if key not in self.config:
                 logger.warning(
-                    f"Notifier {self.notifier} require param '{key}' but not provided"
+                    f"Notifier {type(self.notifier).__name__} require param '{key}' but not provided"
                 )
 
 
@@ -79,27 +100,48 @@ class Notifier:
 
         try:
             resp = self.notifier.notify(**self.config)
+            if resp is None:
+                logger.warning(f'Push notify failed: no response ({type(self.notifier).__name__})')
+                return False
             if isinstance(resp, Response):
                 if resp.status_code != 200:
                     logger.warning("Push notify failed!")
                     logger.warning(f"HTTP Code:{resp.status_code}")
                     return False
-                else:
-                    if self.provider_name.lower() == "gocqhttp":
-                        return_data: dict = resp.json()
-                        if return_data["status"] == "failed":
-                            logger.warning("Push notify failed!")
-                            logger.warning(
-                                f"Return message:{return_data['wording']}")
-                            return False
-        except SMTPResponseException:
-            logger.warning("Appear SMTPResponseException")
-            pass
-        except OnePushException:
-            logger.exception("Push notify failed")
+                if self.provider_name.lower() in ('pushplus', 'bark'):
+                    receipt_provider = {'pushplus': 'PushPlus', 'bark': 'Bark'}[self.provider_name.lower()]
+                    return_data = resp.json()
+                    if not isinstance(return_data, dict):
+                        logger.warning(f'{receipt_provider} request rejected: invalid response object')
+                        return False
+                    code = return_data.get('code')
+                    if type(code) is not int:
+                        logger.warning(f'{receipt_provider} request rejected: invalid code type ({type(code).__name__})')
+                        return False
+                    if code != 200:
+                        reasons = {900: '请求受限', 903: '令牌无效', 905: '未实名'} if receipt_provider == 'PushPlus' else {}
+                        reason = reasons.get(code, '业务拒绝')
+                        logger.warning(f'{receipt_provider} request rejected: code={code}, reason={reason}')
+                        return False
+                    logger.info(f'{receipt_provider} 请求已受理，最终送达未确认')
+                    return True
+                if self.provider_name.lower() == "gocqhttp":
+                    return_data: dict = resp.json()
+                    if return_data["status"] == "failed":
+                        logger.warning('Push notify failed: gocqhttp status=failed')
+                        return False
+            elif self.provider_name.lower() in ('pushplus', 'bark'):
+                receipt_provider = {'pushplus': 'PushPlus', 'bark': 'Bark'}[self.provider_name.lower()]
+                logger.warning(f'{receipt_provider} request rejected: response is not HTTP')
+                return False
+        except SMTPResponseException as e:
+            logger.warning(f'Push notify failed: {type(e).__name__}')
+            return False
+        except OnePushException as e:
+            logger.warning(f'Push notify failed: {type(e).__name__}')
             return False
         except Exception as e:
-            logger.exception(e)
+            logger.warning(f'Push notify failed: {type(e).__name__}')
             return False
 
         logger.info("Push notify success")

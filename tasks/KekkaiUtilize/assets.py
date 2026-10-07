@@ -9,6 +9,11 @@ from module.atom.list import RuleList
 # Don't modify it manually.
 class KekkaiUtilizeAssets: 
 
+	# Optional smart-fill and lazy-scan assets, adapted to the mainline RuleImage API.
+	I_AUTO_FILL = RuleImage(roi_front=(1146,505,47,51), roi_back=(1114,478,115,107), threshold=0.8, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_auto_fill.png")
+	I_REMOVE_ALL = RuleImage(roi_front=(1146,505,47,51), roi_back=(1114,478,115,107), threshold=0.8, method="Template matching", file="./tasks/KekkaiUtilize/realm/realm_remove_all.png")
+	I_U_EMPTY_CARD = RuleImage(roi_front=(540,197,67,62), roi_back=(536,164,75,442), threshold=0.8, method="Template matching", file="./tasks/KekkaiUtilize/utilize/utilize_u_empty_card.png")
+
 
 	# Image Rule Assets
 	# 寮信息 

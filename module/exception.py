@@ -58,5 +58,10 @@ class RequestHumanTakeover(Exception):
     # Alas is unable to handle such error, probably because of wrong settings.
     pass
 
+
+class AccountLoggedInElsewhere(RequestHumanTakeover):
+    """A specific other-device login event handled by the scheduler's recovery policy."""
+    pass
+
 class TaskEnd(Exception):
     pass

@@ -9,7 +9,7 @@ from datetime import timedelta, datetime
 from module.base.timer import Timer
 from module.atom.image_grid import ImageGrid
 from module.logger import logger
-from module.exception import TaskEnd
+from module.exception import TaskEnd, GameStuckError
 
 from tasks.GameUi.game_ui import GameUi
 from tasks.Utils.config_enum import ShikigamiClass
@@ -33,6 +33,12 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
     def run(self):
         con = self.config.kekkai_utilize.utilize_config
+        self.utilize_lazy_mode_active = bool(
+            con.utilize_enable and getattr(con, 'lazy_mode', False)
+            and random.random() < self._lazy_mode_weight()
+        )
+        if self.utilize_lazy_mode_active:
+            logger.info('Lazy utilize enabled for this run; scan the configured friend group only')
         self.goto_page(page_guild)
 
         # 进入寮结界
@@ -42,9 +48,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.check_utilize_add()
 
         # 查看育成满级
-        self.check_max_lv(con.shikigami_class)
+        self.check_max_lv(con.shikigami_class, getattr(con, 'auto_fill', False))
         # 检查蹭卡收获
-        self.check_utilize_harvest()
+        if getattr(con, 'utilize_harvest', True):
+            self.check_utilize_harvest()
         # 收体力盒子或者是经验盒子
         self.check_box_ap_or_exp(con.box_ap_enable, con.box_exp_enable, con.box_exp_waste)
 
@@ -106,14 +113,17 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             else:
                 self.back_realm()
 
-    def check_max_lv(self, shikigami_class: ShikigamiClass = ShikigamiClass.N):
+    def check_max_lv(self, shikigami_class: ShikigamiClass = ShikigamiClass.N, auto_fill: bool = False):
         """
         在结界界面，进入式神育成，检查是否有满级的，如果有就换下一个
         退出的时候还是结界界面
         :return:
         """
         self.realm_goto_grown()
-        if self.appear(self.I_RS_LEVEL_MAX):
+        if auto_fill:
+            if not self.ui_click(self.I_AUTO_FILL, self.I_REMOVE_ALL, interval=1.5, timeout=20):
+                raise GameStuckError('Smart shikigami fill was not confirmed within 20 seconds')
+        elif self.appear(self.I_RS_LEVEL_MAX):
             # 存在满级的式神
             logger.info('Exist max level shikigami and replace it')
             self.unset_shikigami_max_lv()
@@ -121,7 +131,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.set_shikigami(shikigami_order=7, stop_image=self.I_RS_NO_ADD)
         else:
             logger.info('No max level shikigami')
-        if self.detect_no_shikigami():
+        if not auto_fill and self.detect_no_shikigami():
             logger.warning('There are no any shikigami grow room')
             self.switch_shikigami_class(shikigami_class)
             self.set_shikigami(shikigami_order=7, stop_image=self.I_RS_NO_ADD)
@@ -146,13 +156,18 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         """
         timer_check = Timer(2)
         timer_check.start()
+        timer_total = Timer(30).start()
         click_ap = False
         while 1:
             self.screenshot()
 
-            # 获得奖励
-            if self.ui_reward_appear_click():
-                timer_check.reset()
+            if timer_total.reached():
+                raise GameStuckError('Guild harvest did not settle within 30 seconds')
+
+            # 点击冷却不代表奖励已关闭，弹窗内的体力图标会误匹配寮体力入口。
+            if self.appear(self.I_UI_REWARD, threshold=0.6):
+                if self.ui_reward_appear_click():
+                    timer_check.reset()
                 continue
 
             if timer_check.reached():
@@ -442,7 +457,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.switch_friend_list(friend)
 
         # --------------- 结界卡选择 ---------------
-        if not self._select_optimal_resource_card():
+        selected = (self._select_lazy_resource_card(friend)
+                    if getattr(self, 'utilize_lazy_mode_active', False)
+                    else self._select_optimal_resource_card())
+        if not selected:
             return False
 
         # 找到卡,重置次数
@@ -504,6 +522,11 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
     def _select_optimal_resource_card(self):
         """整合后的智能选卡主逻辑（无嵌套函数版）"""
+        # A setting changed between retries must not reselect an old, now rejected value.
+        if not self._card_meets_threshold('斗鱼', self.ap_max_num):
+            self.ap_max_num = 0
+        if not self._card_meets_threshold('太鼓', self.jade_max_num):
+            self.jade_max_num = 0
         # 类常量声明（需在类中定义）
         RESOURCE_PRESETS = {
             '斗鱼': [151, 143, 134, 126, 101, 84],
@@ -558,6 +581,117 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 logger.warning(f'❌ {res_type}卡确认失败，重置状态')
                 self.ap_max_num, self.jade_max_num = 0, 0
                 return False
+
+    def _card_meets_threshold(self, card_type: str, value: int) -> bool:
+        con = self.config.kekkai_utilize.utilize_config
+        minimum = {'太鼓': getattr(con, 'min_taiko_value', 0),
+                   '斗鱼': getattr(con, 'min_fish_value', 0)}.get(card_type)
+        if minimum is None:
+            return False
+        try:
+            minimum = float(minimum)
+        except (TypeError, ValueError, OverflowError):
+            logger.warning('Invalid minimum card reward; skip selection until the setting is corrected')
+            return False
+        if not 0 <= minimum <= 200 or not minimum.is_integer():
+            logger.warning('Minimum card reward must be an integer between 0 and 200')
+            return False
+        return value > 0 and value >= minimum
+
+    def _lazy_mode_weight(self) -> float:
+        """Validate again because assignment through an older UI may bypass Pydantic."""
+        try:
+            weight = float(getattr(self.config.kekkai_utilize.utilize_config, 'lazy_mode_weight', 1.0))
+        except (TypeError, ValueError, OverflowError):
+            weight = 0.0
+        if not 0 <= weight <= 1:
+            logger.warning('Invalid lazy probability; use normal selection for this run')
+            return 0.0
+        return weight
+
+    @cached_property
+    def lazy_scan_targets(self) -> ImageGrid:
+        # All resource types are needed to distinguish overlapping star templates.
+        return ImageGrid([self.I_U_FISH_6, self.I_U_TAIKO_6,
+                          self.I_U_FISH_5, self.I_U_TAIKO_5,
+                          self.I_U_FISH_4, self.I_U_TAIKO_4])
+
+    def _lazy_card_matches_rule(self, card_class: CardClass, minimum_star: int,
+                               maximum_star: int = 6) -> bool:
+        family, separator, star_text = card_class.value.rpartition('_')
+        if not separator or not star_text.isdigit() or family not in ('taiko', 'fish'):
+            return False
+        if not minimum_star <= int(star_text) <= maximum_star:
+            return False
+        rule = self.config.kekkai_utilize.utilize_config.utilize_rule
+        return (rule == UtilizeRule.DEFAULT
+                or rule == UtilizeRule.TAIKO and family == 'taiko'
+                or rule == UtilizeRule.FISH and family == 'fish')
+
+    @staticmethod
+    def _deduplicate_card_matches(cards: list) -> list:
+        groups = []
+        for match in sorted(cards or [], key=lambda item: item[2][1]):
+            x, y, w, h = match[2]
+            for group in groups:
+                gx, gy, gw, gh = group[0][2]
+                if abs(x + w / 2 - gx - gw / 2) <= 35 and abs(y + h / 2 - gy - gh / 2) <= 25:
+                    group.append(match)
+                    break
+            else:
+                groups.append([match])
+        return [max(group, key=lambda item: item[1]) for group in groups]
+
+    def _reset_utilize_friend_list(self, friend: SelectFriendList):
+        self.switch_friend_list(friend)
+        self.swipe(self.S_U_END, interval=3)
+        other = (SelectFriendList.DIFFERENT_SERVER if friend == SelectFriendList.SAME_SERVER
+                 else SelectFriendList.SAME_SERVER)
+        self.switch_friend_list(other)
+        self.switch_friend_list(friend)
+
+    def _scan_lazy_resource_cards(self, minimum_star: int, maximum_star: int = 6):
+        """True selects a card, None exhausts the list, False is an incomplete scan."""
+        timeout = Timer(120).start()
+        misses = 0
+        for _ in range(21):
+            if timeout.reached():
+                logger.warning('Lazy card scan timed out; do not assume higher star cards are absent')
+                return False
+            self.screenshot()
+            cards = self._deduplicate_card_matches(
+                self.lazy_scan_targets.find_everyone(self.device.image))
+            for target, _, area in cards:
+                card_class = target_to_card_class(target)
+                if not self._lazy_card_matches_rule(card_class, minimum_star, maximum_star):
+                    continue
+                self.C_SELECT_CARD.roi_front = area
+                if not self.click(self.C_SELECT_CARD, interval=1.5):
+                    # Never skip a target while its click is still throttled.
+                    self.device.sleep(1.5)
+                    if not self.click(self.C_SELECT_CARD, interval=1.5):
+                        return False
+                self.device.sleep(2)
+                card_type, value = self.check_card_num()
+                expected_type = '太鼓' if card_class.value.startswith('taiko_') else '斗鱼'
+                if card_type == expected_type and self._card_meets_threshold(card_type, value):
+                    logger.info(f'Lazy utilize selected {card_class.value}: {card_type}@{value}')
+                    return True
+            misses = 0 if cards else misses + 1
+            if self.appear(self.I_U_EMPTY_CARD) or misses > 3:
+                return None
+            self.perform_swipe_action()
+        logger.warning('Lazy card scan reached its swipe limit; do not assume higher star cards are absent')
+        return False
+
+    def _select_lazy_resource_card(self, friend: SelectFriendList) -> bool:
+        self._reset_utilize_friend_list(friend)
+        result = self._scan_lazy_resource_cards(5)
+        if result is not None:
+            return result
+        logger.info('No eligible five-star resource card; retry four-star cards in the same group')
+        self._reset_utilize_friend_list(friend)
+        return self._scan_lazy_resource_cards(4, 4) is True
 
     def _current_select_best(self, best_card_type=None, best_card_num=0, selected_card=False):
         """结界卡选择核心逻辑（集成版）
@@ -626,6 +760,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 # 跳过无效结界卡（类型未知或数值异常）
                 if card_type == 'unknown' or card_value <= 0 or card_type not in RESOURCE_CONFIG:
                     logger.info(f'⏭️ 跳过无效卡: {card_type}@{card_value}')
+                    continue
+
+                if not self._card_meets_threshold(card_type, card_value):
+                    logger.info(f'Skip {card_type}@{card_value}: below configured minimum reward')
                     continue
 
                 # ====== 模式分支处理 ======#

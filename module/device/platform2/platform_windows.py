@@ -179,9 +179,13 @@ class PlatformWindows(PlatformBase, EmulatorManager):
         elif instance == Emulator.MuMuPlayer12:
             # MuMuPlayer.exe -v 0
             if instance.MuMuPlayer12_id is None:
-                logger.warning(f'Cannot get MuMu instance index from name {instance.name}')
-            if re.search(r'MuMuPlayer(?:Global)?-15\.0-\d+', instance.name):
-                self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version 15 launch', show_window=show_window)
+                raise EmulatorUnknown(f'Cannot get MuMu instance index from name {instance.name}')
+            engine15 = bool(re.search(r'MuMuPlayer(?:Global)?-15\.0-\d+', instance.name))
+            modern_cli = bool(re.search(r'(?:^|[/\\])MuMuNxMain\.exe$', exe, re.IGNORECASE))
+            if engine15 or modern_cli:
+                # The Nx launcher no longer accepts the legacy -v switch.
+                engine = 15 if engine15 else 12
+                self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version {engine} launch', show_window=False)
             else:
                 self.execute(f'"{exe}" -v {instance.MuMuPlayer12_id}', show_window=show_window)
         elif instance == Emulator.LDPlayerFamily:
@@ -238,10 +242,13 @@ class PlatformWindows(PlatformBase, EmulatorManager):
         elif instance == Emulator.MuMuPlayer12:
             # MuMuManager.exe api -v 1 shutdown_player
             if instance.MuMuPlayer12_id is None:
-                logger.warning(f'Cannot get MuMu instance index from name {instance.name}')
-            if re.search(r'MuMuPlayer(?:Global)?-15\.0-\d+', instance.name):
+                raise EmulatorUnknown(f'Cannot get MuMu instance index from name {instance.name}')
+            engine15 = bool(re.search(r'MuMuPlayer(?:Global)?-15\.0-\d+', instance.name))
+            modern_cli = bool(re.search(r'(?:^|[/\\])MuMuNxMain\.exe$', exe, re.IGNORECASE))
+            if engine15 or modern_cli:
                 # Finish shutdown before emulator_start() launches the same instance.
-                self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version 15 shutdown').wait(timeout=30)
+                engine = 15 if engine15 else 12
+                self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version {engine} shutdown', show_window=False).wait(timeout=30)
             else:
                 self.execute(f'"{Emulator.single_to_console(exe)}" api -v {instance.MuMuPlayer12_id} shutdown_player')
         elif instance == Emulator.LDPlayerFamily:

@@ -9,7 +9,7 @@ from cached_property import cached_property
 from datetime import datetime, timedelta
 
 from module.logger import logger
-from module.exception import TaskEnd
+from module.exception import GameStuckError, TaskEnd
 from module.base.timer import Timer
 
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
@@ -41,11 +41,10 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             logger.warning('Time is not right')
             raise TaskEnd('DemonEncounter')
         # 切换御魂
-        soul_config = self.config.demon_encounter.demon_soul_config
-        best_soul_config = self.config.demon_encounter.best_demon_soul_config
-        if soul_config.enable or best_soul_config.enable:
+        soul_target = self.resolve_soul_target()
+        if soul_target is not None:
             self.goto_page(page_shikigami_records)
-            self.checkout_soul()
+            self.checkout_soul(soul_target)
         self.goto_page(page_demon_encounter_realworld)
         # 顶部"今日挑战次数:X/1"检测, 0/1表示今日已打过, 直接结束
         if self.check_challenge_done():
@@ -71,19 +70,40 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         logger.warning('Challenge count not recognized, assume attempts remain')
         return False
 
-    def checkout_soul(self):
-        """
-        切换御魂
-        """
-        select_best_demon = getattr(self.conf.best_demon_boss_config, f'{self.boss_type}_select', False)
-        if select_best_demon:
-            group, team = getattr(self.conf.best_demon_soul_config, self.boss_type).split(",")
+    def resolve_soul_target(self):
+        """Respect separate boss selection and soul-switching enable flags."""
+        boss_key = self.boss_type
+        normal_key = boss_key.removeprefix('best_')
+        normal = self.conf.demon_soul_config
+        best = self.conf.best_demon_soul_config
+        if boss_key.startswith('best_') and best.enable:
+            selected, key = best, boss_key
+        elif normal.enable:
+            selected, key = normal, normal_key
+            if boss_key.startswith('best_'):
+                logger.info('Extreme demon soul switching disabled; use enabled normal soul config')
         else:
-            group, team = getattr(self.conf.demon_soul_config, self.boss_type).split(",")
-        if group and team:
-            self.run_switch_soul_by_name(group, team)
-            return
-        logger.error(f'Unknown switch soul conf: group[{group}], team[{team}]')
+            logger.info('Soul switching is disabled for this demon encounter; keep current souls')
+            return None
+        preset = getattr(selected, key, None)
+        # Preserve the upstream historical trailing-u field in old backups.
+        if preset is None and key == 'best_demon_nightly_aramitama':
+            preset = getattr(selected, 'best_demon_nightly_aramitamau', None)
+        parts = [part.strip() for part in preset.replace('，', ',').split(',')] if isinstance(preset, str) else []
+        if (len(parts) != 2 or not all(parts)
+                or tuple(part.casefold() for part in parts) == ('group', 'team')):
+            logger.warning(f'Invalid demon soul preset for {key}; keep task unfinished and recheck in 3 minutes')
+            self.set_next_run(task='DemonEncounter', finish=False, success=None, server=False,
+                              target=datetime.now() + timedelta(minutes=3))
+            raise TaskEnd('DemonEncounter soul preset is not configured')
+        logger.info(f'Demon soul preset: {parts[0]} / {parts[1]} ({key})')
+        return tuple(parts)
+
+    def checkout_soul(self, target=None):
+        """Switch only to a validated, enabled preset for today's boss."""
+        target = self.resolve_soul_target() if target is None else target
+        if target is not None:
+            self.run_switch_soul_by_name(*target)
 
     def execute_boss(self):
         """
@@ -453,6 +473,10 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                         # 等待动画结束
                         if not self.appear(self.I_UI_REWARD, threshold=0.6):
                             logger.info('Get reward success')
+                            # A completed answer is real progress. Keep the guard
+                            # within one question, but do not accumulate clicks
+                            # from earlier questions or another letter lantern.
+                            self.device.click_record_clear()
                             break
                         # 一直点击
                         if self.ui_reward_appear_click():

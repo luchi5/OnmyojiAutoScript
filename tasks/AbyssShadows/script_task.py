@@ -93,7 +93,14 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
 
         :return:
         """
+        from tasks.Component.daily_closeout import report_closeout_outcome
+
         cfg: AbyssShadows = self.config.abyss_shadows
+        self._abyss_closeout_date = datetime.now().date()
+        # Keep closeout proof separate from the legacy smart-mode counters,
+        # which can advance when an enemy list contains no attackable target.
+        # Every invocation must obtain new battle proof, even on reused tasks.
+        self._closeout_fight_counts = {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0}
 
         if cfg.switch_soul_config.enable:
             self.goto_page(page_shikigami_records)
@@ -213,6 +220,20 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
                 self.custom_next_run(task='AbyssShadows', custom_time=cfg.abyss_shadows_time.custom_run_time_friday, time_delta=5)
         else:
             self.set_next_run(task='AbyssShadows', finish=True, server=True, success=False)
+        if success and self._abyss_closeout_date == datetime.now().date():
+            actual = self._closeout_fight_counts
+            quota_confirmed = (
+                self.boss_fight_count >= 2 and self.general_fight_count >= 4
+                and self.elite_fight_count >= 6 and actual['BOSS'] >= 2
+                and actual['GENERAL'] >= 4 and actual['ELITE'] >= 6
+            )
+            report_closeout_outcome(
+                self.config, 'AbyssShadows', 'completed' if quota_confirmed else 'skipped',
+                detail=('actual_battle_quota_confirmed' if quota_confirmed else
+                        'targets_exhausted_before_quota: '
+                        f"boss={actual['BOSS']}/2, general={actual['GENERAL']}/4, "
+                        f"elite={actual['ELITE']}/6"),
+            )
         raise TaskEnd
 
 
@@ -540,6 +561,9 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
             self.device.stuck_record_clear()
         # 战斗提前结束这时没有返回按钮
         if self.appear_then_click(self.I_WIN, interval=1.5):
+            counts = getattr(self, '_closeout_fight_counts', None)
+            if isinstance(counts, dict) and Monster_type in counts:
+                counts[Monster_type] += 1
             return True
 
         # 点击返回
@@ -555,6 +579,9 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
                 break
         logger.info(f"Click {self.I_EXIT_ENSURE.name}")
 
+        counts = getattr(self, '_closeout_fight_counts', None)
+        if isinstance(counts, dict) and Monster_type in counts:
+            counts[Monster_type] += 1
         return True
 
 

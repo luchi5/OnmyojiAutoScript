@@ -6,6 +6,9 @@ config/*.ini
 config/*.yaml
 !config/deploy.*.yaml
 config/*.json
+config/daily_closeout/
+config/daily_feedback/
+log/daily_feedback_debug/
 config/tmp*
 !config/template*.json
 config/*.crt
@@ -275,3 +278,21 @@ oas.bat
 
 # Per-instance FrogBoss prediction and result history
 data/frog_oas/
+
+# Local account state and private deployment material
+config/**
+!config/
+!config/template*.json
+!config/findjade/
+!config/findjade/find_jade.json
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.db
+*.sqlite*
+migration-records/
+local-backups/
+start-*.cmd

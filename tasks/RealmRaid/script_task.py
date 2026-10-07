@@ -13,6 +13,7 @@ from tasks.RealmRaid.assets import RealmRaidAssets
 from tasks.RealmRaid.config import RealmRaid, RaidMode, AttackNumber, WhenAttackFail
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.Component.GeneralBattle.battle_wait import battle_wait_strategy
+from tasks.Component.Costume.image_replacement import replace_image_asset
 
 
 from module.logger import logger
@@ -24,6 +25,14 @@ from module.atom.click import RuleClick
 
 class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
     medal_grid: ImageGrid = None
+
+    def replace_img(self, asset_before: str, asset_after: RuleImage,
+                    rp_roi_back: bool = True):
+        # This task class is freshly loaded for each execution. Its override
+        # also repairs caches whose filename was already changed by an older
+        # CostumeBase while their pixels still contain the previous skin.
+        replace_image_asset(self, asset_before, asset_after, rp_roi_back,
+                            force_reload=True)
 
     def run(self):
         self.run_2()

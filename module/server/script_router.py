@@ -13,6 +13,7 @@ from module.server.main_manager import mm
 from module.server.script_process import ScriptProcess, ScriptState
 
 from tasks.Component.config_base import TimeDelta
+from tasks.Component.daily_closeout import closeout_enabled
 
 
 script_app = APIRouter()
@@ -161,7 +162,12 @@ async def sync_next_run(script_name: str, task: str, target_dt: str):
         return False
     config = mm.config_cache(script_name)
     target = datetime.strptime(target_dt, '%Y-%m-%d %H:%M:%S') if target_dt else None
-    config.task_delay(task=task, success=True, target=target)
+    if (convert_to_underscore(task) == 'talisman_pass' and closeout_enabled(config)
+            and target is not None and target <= datetime.now()):
+        # Preserve explicit immediate-run intent for dynamic closeout as well.
+        config.model.script_set_arg(task, 'scheduler', 'next_run', target)
+    else:
+        config.task_delay(task=task, success=True, target=target)
     script_process = mm.script_process[script_name]
     config.get_next()
     await script_process.broadcast_state({"schedule": config.get_schedule_data()})

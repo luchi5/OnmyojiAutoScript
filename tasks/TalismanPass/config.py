@@ -6,7 +6,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from tasks.Component.config_scheduler import Scheduler as BaseScheduler
-from tasks.Component.config_base import ConfigBase, TimeDelta
+from tasks.Component.config_base import ConfigBase, TimeDelta, Time
 
 class Scheduler(BaseScheduler):
     success_interval: TimeDelta = Field(default=TimeDelta(hours=6), description='success_interval_help')
@@ -21,7 +21,14 @@ class TalismanConfig(BaseModel):
     level_reward: LevelReward = Field(default=LevelReward.TWO)
     harvest_soul: bool = Field(default=False, description='收获1500签御魂')
 
+
+class DailyCloseoutConfig(BaseModel):
+    enable: bool = Field(default=False, title='daily_closeout_enable', description='daily_closeout_enable_help')
+    fallback_time: Time = Field(default=Time(hour=23), title='daily_closeout_fallback_time', description='daily_closeout_fallback_time_help')
+    earliest_time: Time = Field(default=Time(hour=18), title='daily_closeout_earliest_time', description='daily_closeout_earliest_time_help')
+
 class TalismanPass(ConfigBase):
     scheduler: Scheduler = Field(default_factory=Scheduler)
     talisman: TalismanConfig = Field(default_factory=TalismanConfig)
+    closeout_config: DailyCloseoutConfig = Field(default_factory=DailyCloseoutConfig)
 

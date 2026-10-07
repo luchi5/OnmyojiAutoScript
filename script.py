@@ -27,7 +27,7 @@ from multiprocessing.queues import Queue
 
 
 from module.config.utils import convert_to_underscore
-from module.config.config import Config
+from module.config.config import Config, Function
 from module.config.config_model import ConfigModel
 from module.config.instance_guard import InstanceGuard
 from module.config.anti_ban import AntiBanGuard
@@ -58,6 +58,7 @@ class Script:
         # Failure count of tasks
         # Key: str, task name, value: int, failure count
         self.failure_record = {}
+        self._account_session_restart_pending = False
         # 运行loop的线程
         self.loop_thread: Thread = None
         # 跨进程排队管理器（仅在 queue_mode=True 时初始化）
@@ -115,6 +116,16 @@ class Script:
             logger.info('保存详细错误的日志和截图到路径:')
             logger.info(f'{str( Path.cwd() / "log" / "error" / folder_name)}')
             os.mkdir(folder)
+            metadata = {
+                'version': 1,
+                'config_name': self.config_name,
+                'task': getattr(getattr(self.config, 'task', None), 'command', None),
+                'timestamp_ms': int(folder_name),
+            }
+            metadata_path = Path(folder) / 'metadata.json'
+            pending_metadata = metadata_path.with_suffix('.json.tmp')
+            pending_metadata.write_text(json.dumps(metadata, ensure_ascii=False), encoding='utf-8')
+            os.replace(pending_metadata, metadata_path)
             for data in self.device.screenshot_deque:
                 image_time = datetime.strftime(data['time'], '%Y-%m-%d_%H-%M-%S-%f')
                 image = handle_sensitive_image(data['image'])
@@ -307,6 +318,15 @@ class Script:
         future = future + timedelta(seconds=1)
         self.config.start_watching()
         while 1:
+            if getattr(self, '_account_session_restart_pending', False):
+                return False
+            closeout = getattr(getattr(self.config, 'talisman_pass', None), 'closeout_config', None)
+            if closeout is not None and getattr(closeout, 'enable', False):
+                try:
+                    if self._evaluate_daily_closeout().queued:
+                        return False
+                except Exception as error:
+                    logger.warning(f'Daily closeout idle check failed: {type(error).__name__}')
             if datetime.now() > future:
                 return True
             # if self.stop_event is not None:
@@ -320,12 +340,61 @@ class Script:
             if self.config.should_reload():
                 return False
 
+    def _evaluate_daily_closeout(self):
+        """Queue enabled closeout only between game tasks, after due dailies."""
+        from tasks.Component.daily_closeout import (
+            evaluate_daily_closeout, arm_daily_closeout,
+            is_automatic_closeout, is_manual_talisman,
+        )
+
+        now = datetime.now()
+        # Only work already due is a dependency. Repeating foster/wanted jobs
+        # scheduled for later and long farming/event jobs never hold closeout.
+        daily_tasks = (
+            'CourtyardAffairs', 'KekkaiUtilize', 'KekkaiActivation',
+            'DemonEncounter', 'AreaBoss', 'GoldYoukai', 'ExperienceYoukai',
+            'Nian', 'Tako', 'AutoCheckinBigGod', 'RealmRaid', 'RyouToppa',
+            'DailyTrifles', 'WantedQuests', 'Pets', 'Delegation',
+        )
+        due = []
+        for name in daily_tasks:
+            task_config = getattr(self.config, convert_to_underscore(name), None)
+            scheduler = getattr(task_config, 'scheduler', None)
+            if scheduler is not None and scheduler.enable and scheduler.next_run <= now:
+                due.append(name)
+        decision = evaluate_daily_closeout(self.config, now=now, due_tasks=due)
+        # Retry an optional feedback notification only at this idle boundary.
+        # A push failure never requeues gameplay or interrupts another task.
+        from tasks.Component.daily_feedback import maybe_notify_feedback
+        maybe_notify_feedback(self.config, now=now)
+        scheduler = self.config.talisman_pass.scheduler
+        if (scheduler.next_run <= now
+                and not is_automatic_closeout(self.config, now=now)
+                and not is_manual_talisman(self.config, now=now)):
+            # Automatic checkpoints must not run the old fixed-time job early.
+            # Explicit flash requests are tracked separately and stay usable.
+            armed = arm_daily_closeout(self.config, now=now)
+            if not armed and decision.reason == 'state_unavailable' and scheduler.next_run <= now:
+                # A damaged/unwritable proof file must not cause a hot loop.
+                scheduler.next_run = (now + timedelta(minutes=3)).replace(microsecond=0)
+                self.config.save()
+        return decision
+
     def get_next_task(self) -> str:
         """
         获取下一个任务的名字, 大驼峰。
         :return:
         """
         while True:
+            if getattr(self, '_account_session_restart_pending', False):
+                return self._get_next_task_with_recovery()
+            closeout = getattr(getattr(self.config, 'talisman_pass', None), 'closeout_config', None)
+            if closeout is not None and getattr(closeout, 'enable', False):
+                try:
+                    self._evaluate_daily_closeout()
+                except Exception as error:
+                    # A closeout bookkeeping failure must not stop game tasks.
+                    logger.warning(f'Daily closeout check failed: {type(error).__name__}')
             task = self.config.get_next()
             self.config.task = task
             if self.state_queue:
@@ -495,24 +564,22 @@ class Script:
 
     def _wait_goto_main(self, next_run: datetime) -> bool:
         if self._emulator_down:
-            logger.info("Emulator is down, skip goto_main and wait with preheat")
-            return self._wait_until_with_emulator_preheat(next_run)
+            logger.info("前往庭院：立即恢复已关闭的模拟器")
+            self.device = Device(self.config)
+            self._emulator_down = False
 
-        close_emulator_wait_duration = self.config.script.optimization.close_emulator_wait_duration
-        close_emulator_wait = self._time_to_timedelta(close_emulator_wait_duration)
-        if close_emulator_wait > timedelta(0) and next_run > datetime.now() + close_emulator_wait:
-            logger.info("Close emulator during wait")
-            self.device.emulator_stop()
-            self._emulator_down = True
-
-            if not self._wait_until_with_emulator_preheat(next_run):
+        # Explicitly keeping the courtyard open takes priority over both
+        # close timers. Those timers belong to the close_game strategy only.
+        logger.info("空闲策略：前往庭院，保持游戏和模拟器运行，忽略关闭计时")
+        if not self.device.app_is_running():
+            if not self.run("Restart"):
                 return False
-
-            self.run("Restart")
-            return True
-
-        logger.info("Goto main page during wait")
-        self.run("GotoMain")
+        if not self.run("GotoMain"):
+            if getattr(self, '_account_session_restart_pending', False):
+                self._record_task_result('GotoMain', False)
+            return False
+        if getattr(self, 'failure_record', {}).get('GotoMain', 0):
+            self._record_task_result('GotoMain', True)
         self.device.release_during_wait()
         return self.wait_until(next_run)
 
@@ -537,6 +604,74 @@ class Script:
             self.config.task_call('SoulsTidy')
             time.sleep(1)
 
+    def _recover_account_session(self, command: str, error: AccountLoggedInElsewhere) -> bool:
+        logger.critical(str(error))
+        logger.warning('账号在其他设备登录，将按故障流程自动重启游戏并恢复任务')
+        self.config.model.running_task = ''
+        self._account_session_restart_pending = True
+        try:
+            self.save_error_log()
+        except Exception as save_error:
+            logger.warning(f'无法保存顶号证据：{type(save_error).__name__}')
+        try:
+            accepted = self.config.notifier.push(
+                title=f'{self.config_name} 自动恢复：账号在其他设备登录',
+                content='检测到其他设备登录，将自动重启游戏并恢复任务；同一任务连续失败三次仍按默认规则停止。'
+            )
+            if not accepted:
+                logger.warning('顶号恢复通知请求失败，请检查推送服务状态；继续自动恢复')
+        except Exception as notify_error:
+            logger.warning(f'顶号恢复通知失败：{type(notify_error).__name__}')
+        self.device.sleep(10)
+        return False
+
+    def _get_next_task_with_recovery(self) -> str:
+        if not getattr(self, '_account_session_restart_pending', False):
+            return self.get_next_task()
+        self._account_session_restart_pending = False
+        # One recovery run must work even when scheduled Restart is disabled.
+        # Only this in-memory Function is enabled; preserve the user setting.
+        recovery_task = Function('restart', self.config.model.restart.dict())
+        recovery_task.enable = True
+        recovery_task.next_run = datetime.now().replace(microsecond=0)
+        self.config.task = recovery_task
+        self.is_first_task = False
+        logger.info('Run one-shot Restart after other-device login')
+        return 'Restart'
+
+    def _record_task_result(self, task: str, success: bool) -> None:
+        """Use the same failure limit for scheduled work and idle takeovers."""
+        failed = self.failure_record.get(task, 0)
+        failed = 0 if success else failed + 1
+        self.failure_record[task] = failed
+        if failed >= 3:
+            logger.critical(f"Task `{task}` failed 3 or more times.")
+            logger.critical("Possible reason #1: You haven't used it correctly. "
+                            "Please read the help text of the options.")
+            logger.critical("Possible reason #2: There is a problem with this task. "
+                            "Please contact developers or try to fix it yourself.")
+            logger.critical('Request human takeover')
+            self.config.notifier.push(
+                title=f'{I18n.trans_zh_cn(task)}{task}',
+                content=f"<{self.config_name}> 任务连续失败三次，请上线查看"
+            )
+            if self.config.script.error.error_repeated:
+                self.device.emulator_stop()
+            exit(1)
+
+    def _check_account_session_before_recovery(self, command: str) -> bool:
+        try:
+            self.device.check_account_session()
+            self.device.refresh_account_session()
+        except AccountLoggedInElsewhere as error:
+            self._recover_account_session(command, error)
+            return True
+        except Exception as capture_error:
+            # A failed diagnostic screenshot must not replace the original
+            # network/stuck error or disable its established recovery path.
+            logger.warning(f'恢复前无法复核顶号画面：{type(capture_error).__name__}')
+        return False
+
     def run(self, command: str) -> bool:
         """
         :param command:  大写驼峰命名的任务名字
@@ -558,6 +693,8 @@ class Script:
             self.instance_guard.release()
             return False
 
+        recovery_was_active = getattr(self.device, '_account_session_recovery', False)
+        self.device._account_session_recovery = command == 'Restart'
         try:
             self.device.screenshot()
             module_name = 'script_task'
@@ -565,14 +702,20 @@ class Script:
             logger.info(f'module_path: {module_path}, module_name: {module_name}')
             task_module = load_module(module_name, module_path)
             task_module.ScriptTask(config=self.config, device=self.device).run()
+        except AccountLoggedInElsewhere as error:
+            return self._recover_account_session(command, error)
         except TaskEnd:
             return True
         except GameNotRunningError as e:
+            if self._check_account_session_before_recovery(command):
+                return False
             logger.warning(e)
             self.exception_handler(e=e, command=command)
             self.config.task_call('Restart')
             return True
         except (GameStuckError, GameTooManyClickError) as e:
+            if self._check_account_session_before_recovery(command):
+                return False
             logger.error(e)
             self.save_error_log()
             self.exception_handler(e=e, command=command)
@@ -583,6 +726,8 @@ class Script:
             self.device.sleep(10)
             return False
         except GameBugError as e:
+            if self._check_account_session_before_recovery(command):
+                return False
             logger.warning(e)
             self.save_error_log()
             self.exception_handler(e=e, command=command)
@@ -592,6 +737,8 @@ class Script:
             self.device.sleep(10)
             return False
         except GamePageUnknownError as e:
+            if self._check_account_session_before_recovery(command):
+                return False
             logger.info('Game server may be under maintenance or network may be broken, check server status now')
             # 这个还不重要 留着坑填
             logger.critical('Game page unknown')
@@ -619,6 +766,8 @@ class Script:
             self.save_error_log()
             self.config.notifier.push(title=f'{I18n.trans_zh_cn(command)}{command}', content=f"<{self.config_name}> Exception occured")
             exit(1)
+        finally:
+            self.device._account_session_recovery = recovery_was_active
 
     def loop(self):
         """
@@ -666,7 +815,7 @@ class Script:
             #     self.config.task_call('Restart')
 
             # Get task
-            task = self.get_next_task()
+            task = self._get_next_task_with_recovery()
             # Skip first restart
             if self.is_first_task and task == 'Restart':
                 logger.info('Skip task `Restart` at scheduler start')
@@ -693,28 +842,7 @@ class Script:
             self.is_first_task = False
             self.anti_ban_guard.record_active((datetime.now() - _task_start).total_seconds())
 
-            # Check failures
-            # failed = deep_get(self.failure_record, keys=task, default=0)
-            failed = self.failure_record[task] if task in self.failure_record else 0
-            failed = 0 if success else failed + 1
-            # deep_set(self.failure_record, keys=task, value=failed)
-            self.failure_record[task] = failed
-            if failed >= 3:
-                logger.critical(f"Task `{task}` failed 3 or more times.")
-                logger.critical("Possible reason #1: You haven't used it correctly. "
-                                "Please read the help text of the options.")
-                logger.critical("Possible reason #2: There is a problem with this task. "
-                                "Please contact developers or try to fix it yourself.")
-                logger.critical('Request human takeover')
-                # 添加失败三次的推送通知
-                self.config.notifier.push(
-                    title=f'{I18n.trans_zh_cn(task)}{task}',
-                    content=f"<{self.config_name}> 任务连续失败三次，请上线查看"
-                )
-                # 关闭模拟器
-                if self.config.script.error.error_repeated:
-                    self.device.emulator_stop()
-                exit(1)
+            self._record_task_result(task, success)
 
             if success:
                 del_cached_property(self, 'config')

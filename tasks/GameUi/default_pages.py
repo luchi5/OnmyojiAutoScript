@@ -4,7 +4,9 @@ from tasks.ActivityShikigami.assets import ActivityShikigamiAssets
 from tasks.Component.GeneralInvite.assets import GeneralInviteAssets
 from tasks.Component.SwitchAccount.assets import SwitchAccountAssets
 from tasks.Exploration.assets import ExplorationAssets
+from tasks.Chess.assets import ChessAssets
 from tasks.GameUi.action import conditional_action, sequence
+from tasks.GameUi.chess_battle import handle_chess_battle_page, handle_chess_result_page
 from tasks.Pets.assets import PetsAssets
 from typing import Union
 
@@ -174,10 +176,57 @@ page_main.connect(page_town, GameUiAssets.I_MAIN_GOTO_TOWN, key="page_main->page
 
 # 町中区域页面。
 page_entertainment = Page(GameUiAssets.I_CHECK_ENTERTAINMENT, category="global")
+page_entertainment.add_enter_success_hooks(ChessAssets.I_SKIP)
 page_town.connect(
     page_entertainment,
     GameUiAssets.I_TOWN_GOTO_ENTERTAINMENT,
     key="page_town->page_entertainment",
+    on_enter_failure=[ChessAssets.I_SKIP],
+)
+
+page_chess = Page(lambda task: task.chess_lobby_visible(), category="global")
+page_entertainment.connect(
+    page_chess,
+    GameUiAssets.I_ENTERTAINMENT_GOTO_CHESS,
+    key="page_entertainment->page_chess",
+    on_leave_failure=[ChessAssets.I_SKIP],
+    on_enter_failure=[ChessAssets.I_SKIP],
+)
+page_chess.connect(
+    page_entertainment,
+    GlobalGameAssets.I_UI_BACK_YELLOW,
+    key="page_chess->page_entertainment",
+)
+
+# 任意任务都能从遗留的棋局或结算页恢复到大厅，再导航到原目标。
+page_chess_battle = Page(
+    GameUiAssets.I_CHECK_CHESS_BATTLE,
+    category="global",
+    priority=95,
+)
+page_chess_battle.connect(
+    page_chess,
+    handle_chess_battle_page,
+    key="page_chess_battle->page_chess",
+)
+page_chess_result = Page(
+    any_of(
+        GameUiAssets.I_CHESS_EXIT_TO_LOBBY,
+        GameUiAssets.I_CHESS_EXIT_TO_LOBBY_2,
+        ChessAssets.I_REWARD_CHESS,
+        ChessAssets.I_SHARE,
+        GameUiAssets.I_CHECK_CHESS_RANK,
+        GameUiAssets.I_CHESS_RANK_GOTO_LOBBY,
+        all_of(ChessAssets.I_SHARE, GameUiAssets.I_CHESS_SHARE_PANEL_BAR,
+               GameUiAssets.I_CHESS_SHARE_PANEL_CLOSE),
+    ),
+    category="global",
+    priority=96,
+)
+page_chess_result.connect(
+    page_chess,
+    handle_chess_result_page,
+    key="page_chess_result->page_chess",
 )
 page_entertainment.connect(
     page_town,

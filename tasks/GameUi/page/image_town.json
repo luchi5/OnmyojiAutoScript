@@ -170,5 +170,23 @@
         "method": "Template matching",
         "threshold": 0.8,
         "description": "进入现世逢魔(移植自mine)"
-    }
+    },
+  {
+    "itemName": "entertainment_goto_chess",
+    "imageName": "page_entertainment_goto_chess.png",
+    "roiFront": "304,175,41,127",
+    "roiBack": "304,175,41,127",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": ""
+  },
+  {
+    "itemName": "check_chess",
+    "imageName": "page_check_chess.png",
+    "roiFront": "1159,592,66,70",
+    "roiBack": "1159,592,66,70",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": ""
+  }
 ]

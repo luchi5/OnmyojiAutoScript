@@ -1,3 +1,25 @@
+## luchi 分支
+
+本分支基于 [runhey/OnmyojiAutoScript](https://github.com/runhey/OnmyojiAutoScript)，于 2026-10-08 整理公开。保留上游 GPLv3 许可证。
+
+增强内容包括多庭院皮肤和庭院事务、寮任务与开场重试、每日收尾与反馈、账号会话保护、配置导入导出与日志统计，以及战斗、奖励领取和导航修复。百鬼棋局（Chess）模块移植自 [xylolit-mu/OnmyojiAutoScript](https://github.com/xylolit-mu/OnmyojiAutoScript)，来源与适配说明见 [Chess 文档](tasks/Chess/README.md)。感谢两项目的原作者与贡献者。
+
+配套前端为 [OASX](https://github.com/luchi5/OASX)，管理面板为 [OAS-WebPanel](https://github.com/luchi5/OAS-WebPanel)。部署时自行配置设备、账号和通知服务。仓库只提供通用模板与识别素材。
+
+每日反馈由管理面板展示。反馈链接默认使用 `http://127.0.0.1:22300`；如需通过公网通知打开，在启动后端与管理面板前将 `OAS_PUBLIC_FEEDBACK_ORIGIN` 设置为面板的实际 HTTP(S) origin，例如 `https://feedback.example.invalid`。本地 `config/daily_feedback/settings.json` 中的 `public_origin` 优先于环境变量；无效配置会回退到环境变量或本地默认值。origin 只包含协议、主机和可选端口。反馈功能的启用账号由本地 `config/daily_feedback/settings.json` 配置，该文件及生成的截图、报告均不提交到 Git。通知服务凭据通过各账号的本地配置填写。
+
+纯功能单测位于 `dev_tools/test_*.py` 与 `tests/test_*.py`，使用临时目录或模拟设备验证逻辑。不要将账号配置、运行日志、截图、证书或设备路径作为提交内容。
+
+拉取本分支：
+
+```sh
+git clone --branch luchi https://github.com/luchi5/OnmyojiAutoScript.git
+```
+
+已有安装需在本地 `config/deploy.yaml` 中将 `Repository` 设为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Branch` 设为 `luchi`，更新器才会继续使用本定制分支。显式配置的仓库与分支会被保留。后续跟进上游使用 `upstream` 指向 runhey 仓库，在同步前人工检查并合并改动。
+
+---
+
 <div align="center">
 
 # OnmyojiAutoScript

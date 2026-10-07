@@ -276,7 +276,13 @@
       "guild_assets_enable": true,
       "box_ap_enable": true,
       "box_exp_enable": true,
-      "box_exp_waste": true
+      "box_exp_waste": true,
+      "auto_fill": false,
+      "min_taiko_value": 0,
+      "min_fish_value": 0,
+      "utilize_harvest": true,
+      "lazy_mode": false,
+      "lazy_mode_weight": 1.0
     }
   },
   "kekkai_activation": {
@@ -292,10 +298,13 @@
     },
     "activation_config": {
       "card_rule": "auto",
+      "max_taiko_num": 0,
+      "max_fish_num": 0,
       "exchange_before": true,
       "exchange_max": true,
       "exchange_smart": false,
-      "shikigami_class": "N"
+      "shikigami_class": "N",
+      "auto_fill": false
     }
   },
   "demon_encounter": {
@@ -377,6 +386,11 @@
     "talisman": {
       "level_reward": "金币/勾玉",
       "harvest_soul": false
+    },
+    "closeout_config": {
+      "enable": false,
+      "fallback_time": "23:00:00",
+      "earliest_time": "18:00:00"
     }
   },
   "pets": {
@@ -1404,7 +1418,7 @@
       "team_name": ""
     }
   },
-  "collective_missions": {
+  "chess": {
     "scheduler": {
       "enable": false,
       "next_run": "2023-01-01 00:00:00",
@@ -1415,10 +1429,38 @@
       "delay_date": 1,
       "float_time": "00:00:00"
     },
+    "chess_config": {
+      "lineup_bond": "荒川",
+      "rank_protection": false,
+      "run_count": 1,
+      "matchmaking_timeout_seconds": 60,
+      "limit_time": "00:30:00",
+      "coin_full_exit": false,
+      "continue_grigri_refresh_below_nine": true
+    }
+  },
+  "collective_missions": {
+    "scheduler": {
+      "enable": false,
+      "next_run": "2099-01-01 00:00:00",
+      "priority": 5,
+      "success_interval": "01 00:00:00",
+      "failure_interval": "01 00:00:00",
+      "server_update": "09:00:00",
+      "delay_date": 1,
+      "float_time": "00:00:00"
+    },
     "missions_config": {
       "missions_rule": "契灵 > 觉醒三 > 觉醒二 > 觉醒一 > 御灵三 > 御灵二 > 御灵一 > 御魂二 > 御魂一 > 远远不够",
       "setup_when_bondling": true,
-      "missions_select": "觉醒三"
+      "missions_select": "觉醒三",
+      "monday_to_thursday": true,
+      "run_after_dokan": true,
+      "dokan_finished_date": "",
+      "attempted_date": "",
+      "completed_date": "",
+      "pending_kind": "",
+      "pending_until": ""
     }
   },
   "hunt": {
@@ -1466,7 +1508,10 @@
       "switch_preset_enable": false,
       "preset_group_1": "",
       "preset_group_2": "",
-      "green_mark_shikigami_name": ""
+      "green_mark_shikigami_name": "",
+      "opening_wait_minutes": 60,
+      "opening_retry_interval": "00 00:03:00",
+      "dokan_run_time": "19:00:00"
     },
     "general_battle_config": {
       "lock_team_enable": false,
@@ -1545,7 +1590,10 @@
       "day_1": "星期三",
       "run_time_1": "19:00:00",
       "day_2": "星期六",
-      "run_time_2": "19:00:00"
+      "run_time_2": "19:00:00",
+      "auto_switch_shikigami": false,
+      "opening_wait_minutes": 60,
+      "opening_retry_interval": "00 00:03:00"
     }
   },
   "demon_retreat": {
@@ -1560,7 +1608,9 @@
       "float_time": "00:00:00"
     },
     "demon_retreat_time": {
-      "custom_run_time": "10:00:00"
+      "custom_run_time": "10:00:00",
+      "opening_wait_minutes": 60,
+      "opening_retry_interval": "00 00:03:00"
     },
     "general_battle": {
       "lock_team_enable": false,
@@ -1577,6 +1627,23 @@
       "enable_switch_by_name": false,
       "group_name": "",
       "team_name": ""
+    }
+  },
+  "courtyard_affairs": {
+    "scheduler": {
+      "enable": false,
+      "next_run": "2023-01-01 00:00:00",
+      "priority": 5,
+      "success_interval": "01 00:00:00",
+      "failure_interval": "01 00:00:00",
+      "server_update": "09:00:00",
+      "delay_date": 1,
+      "float_time": "00:00:00"
+    },
+    "courtyard_affairs_config": {
+      "courtyard_skin": "courtyard_affairs_auto",
+      "timeout_seconds": 60,
+      "max_complete_clicks": 3
     }
   }
 }

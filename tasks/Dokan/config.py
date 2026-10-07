@@ -4,14 +4,15 @@
 # @note     draft version without full test
 # github    https://github.com/roarhill/oas
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.SwitchSoul.switch_soul_config import SwitchSoulConfig
-from tasks.Component.config_base import ConfigBase
+from tasks.Component.config_base import ConfigBase, Time, TimeDelta
+from tasks.Component.guild_opening_config import GuildOpeningScheduler, migrate_opening_settings
 from tasks.Component.config_scheduler import Scheduler
 
 
@@ -117,6 +118,13 @@ class AttackAccountConfig(BaseModel):
 
 
 class DokanConfig(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+    dokan_run_time: Time = Field(default=Time(hour=19), description='dokan_run_time_help')
+    opening_wait_minutes: int = Field(default=60, ge=1, le=1440,
+                                      description='opening_wait_minutes_help')
+    opening_retry_interval: TimeDelta = Field(default=TimeDelta(minutes=3),
+                                             gt=timedelta(0), lt=timedelta(days=1),
+                                             description='opening_retry_interval_help')
     # # 寮管理开启道馆
     # dokan_declare_war: bool = Field(default=False, description='dokan_declare_war_help')
     # # 选择哪一个竂
@@ -173,8 +181,13 @@ class DokanConfig(BaseModel):
 
 
 class Dokan(ConfigBase):
-    scheduler: Scheduler = Field(default_factory=Scheduler)
+    scheduler: GuildOpeningScheduler = Field(default_factory=GuildOpeningScheduler)
     dokan_config: DokanConfig = Field(default_factory=DokanConfig)
     general_battle_config: GeneralBattleConfig = Field(default_factory=GeneralBattleConfig)
     switch_soul_config: SwitchSoulConfig = Field(default_factory=SwitchSoulConfig)
     attack_count_config: AttackAccountConfig = Field(default_factory=AttackAccountConfig)
+
+    @model_validator(mode='before')
+    @classmethod
+    def preserve_legacy_opening(cls, data):
+        return migrate_opening_settings(data, 'dokan_config', dokan=True)

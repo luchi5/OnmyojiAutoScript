@@ -7,11 +7,12 @@ from module.exception import RequestHumanTakeover, GameTooManyClickError, GameSt
 from module.logger import logger
 from tasks.Restart.assets import RestartAssets
 from tasks.GameUi.assets import GameUiAssets
+from tasks.GameUi.chess_battle import ChessBattleNavigationMixin
 from tasks.Component.GeneralBuff.assets import GeneralBuffAssets
 from tasks.base_task import BaseTask
 import time
 
-class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
+class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
     character: str
 
     def __init__(self, *wargs, **kwargs):
@@ -31,6 +32,7 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
         confirm_timer = Timer(1.5, count=2).start()
         orientation_timer = Timer(10)
         login_success = False
+        self._login_recovered_chess = False
 
         while 1:
             # Watch device rotation
@@ -44,6 +46,20 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
             if not self.device.check_screen_size_sample():
                 continue
             self._burst()
+
+            # 中断棋局登录时先取消返回战斗，再完成遗留结算。
+            if self.appear_then_click(self.I_RETURN_CHESS_CANCEL, interval=0.8):
+                logger.info('Cancel returning to interrupted Chess battle; wait for result flow')
+                continue
+            if self.chess_result_page_visible():
+                logger.info('Login recovery detected unfinished Chess result flow')
+                self.return_to_chess_lobby()
+                self._login_recovered_chess = True
+                return True
+            if self.appear(self.I_CHECK_CHESS):
+                logger.info('Login recovery reached Chess lobby')
+                self._login_recovered_chess = True
+                return True
 
             # 取消继续战斗
             if self.appear_then_click(self.I_CANCEL_BATTLE, interval=0.8):
@@ -152,7 +168,7 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
             self.device.click_record_clear()
             try:
                 self._app_handle_login()
-                if self.config.restart.harvest_config.enable:
+                if self.config.restart.harvest_config.enable and not self._login_recovered_chess:
                     self.harvest()
                 return True
             except (GameTooManyClickError, GameStuckError) as e:
@@ -161,7 +177,7 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
                 self.device.app_start()
                 continue
 
-        logger.critical('Login failed more than 3')
+        logger.critical('Login failed after 2 attempts')
         logger.critical('Onmyoji server may be under maintenance, or you may lost network connection')
         raise RequestHumanTakeover
 
@@ -173,7 +189,6 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
         logger.hr('Harvest')
         timer_harvest = Timer(5)  # 如果连续5秒没有发现任何奖励，退出
         skip_default = False
-        courtyard_affairs_done = False  # 庭院事务只执行一次
         while 1:
             self.device.screenshot()
             # https://github.com/runhey/OnmyojiAutoScript/pull/1761
@@ -219,12 +234,6 @@ class LoginHandler(BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
                     logger.info('Close zidu')
                 continue
 
-            # 庭院事务
-            if self.config.restart.harvest_config.enable_courtyard_affairs and not courtyard_affairs_done:
-                self.harvest_courtyard_affairs()
-                timer_harvest.reset()
-                courtyard_affairs_done = True
-                continue
             # 勾玉
             if self.appear_then_click(self.I_HARVEST_JADE, interval=1.5):
                 timer_harvest.reset()

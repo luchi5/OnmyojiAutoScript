@@ -200,6 +200,9 @@ class BaseTask(GlobalGameAssets, CostumeBase):
                 return False
         if isinstance(target, RuleOcr):
             appear = self.ocr_appear(target, interval)
+        elif (target is getattr(self, 'I_CHECK_MAIN', None)
+              and len(getattr(self, 'main_costume_candidates', ())) > 1):
+            appear = self.detect_random_main_costume(threshold=threshold)
         else:
             appear = target.match(self.device.image, threshold=threshold)
 

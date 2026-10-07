@@ -4,11 +4,14 @@
 from tasks.GuildActivityMonitor.config import GuildActivityMonitor
 from typing import Dict, Any
 
+from copy import deepcopy
+import json
 import re
 import inflection
 
 from pathlib import Path
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, ValidationError, Field, PrivateAttr
+from filelock import FileLock
 
 from module.config.utils import *
 from module.logger import logger
@@ -30,6 +33,7 @@ from tasks.KekkaiUtilize.config import KekkaiUtilize
 from tasks.KekkaiActivation.config import KekkaiActivation
 from tasks.DemonEncounter.config import DemonEncounter
 from tasks.DailyTrifles.config import DailyTrifles
+from tasks.CourtyardAffairs.config import CourtyardAffairs
 from tasks.TalismanPass.config import TalismanPass
 from tasks.Pets.config import Pets
 from tasks.SoulsTidy.config import SoulsTidy
@@ -80,9 +84,12 @@ from tasks.Secret.config import Secret
 from tasks.WeeklyTrifles.config import WeeklyTrifles
 from tasks.MysteryShop.config import MysteryShop
 from tasks.Duel.config import Duel
+from tasks.Chess.config import Chess
 # ----------------------------------------------------------------------------------------------------------------------
 
 class ConfigModel(ConfigBase):
+    _save_baseline: dict = PrivateAttr(default_factory=dict)
+
     config_name: str = "oas"
     running_task: str = ''
     script: Script = Field(default_factory=Script)
@@ -100,6 +107,7 @@ class ConfigModel(ConfigBase):
     kekkai_activation: KekkaiActivation = Field(default_factory=KekkaiActivation)
     demon_encounter: DemonEncounter = Field(default_factory=DemonEncounter)
     daily_trifles: DailyTrifles = Field(default_factory=DailyTrifles)
+    courtyard_affairs: CourtyardAffairs = Field(default_factory=CourtyardAffairs)
     talisman_pass: TalismanPass = Field(default_factory=TalismanPass)
     pets: Pets = Field(default_factory=Pets)
     souls_tidy: SoulsTidy = Field(default_factory=SoulsTidy)
@@ -142,6 +150,7 @@ class ConfigModel(ConfigBase):
     weekly_trifles: WeeklyTrifles = Field(default_factory=WeeklyTrifles)
     mystery_shop: MysteryShop = Field(default_factory=MysteryShop)
     duel: Duel = Field(default_factory=Duel)
+    chess: Chess = Field(default_factory=Chess)
 
     # 阴阳寮
     collective_missions: CollectiveMissions = Field(default_factory=CollectiveMissions)
@@ -160,10 +169,12 @@ class ConfigModel(ConfigBase):
         """
         if not config_name:
             super().__init__()
+            self._save_baseline = deepcopy(self._serialized_data())
             return
         data = self.read_json(config_name)
         data["config_name"] = config_name
         super().__init__(**data)
+        self._save_baseline = deepcopy(self._serialized_data())
 
     def __setattr__(self, key, value):
         """
@@ -173,6 +184,8 @@ class ConfigModel(ConfigBase):
         :return:
         """
         super().__setattr__(key, value)
+        if key.startswith('_'):
+            return
         logger.info("auto save config")
         self.save()
 
@@ -234,12 +247,69 @@ class ConfigModel(ConfigBase):
             return ''
         return task.json()
 
-    def save(self) -> None:
-        """
+    def _serialized_data(self) -> dict:
+        # Match write_file's representation, including the task serializers.
+        return json.loads(json.dumps(self.model_dump(), default=str))
 
-        :return:
-        """
-        self.write_json(self.config_name, self.model_dump())
+    @staticmethod
+    def _local_changes(before, after, path=()):
+        """Yield changed leaves; lists and type changes are whole values."""
+        if isinstance(before, dict) and isinstance(after, dict):
+            for key in before.keys() | after.keys():
+                child = path + (key,)
+                if key not in after:
+                    yield child, True, None
+                elif key not in before:
+                    yield child, False, deepcopy(after[key])
+                else:
+                    yield from ConfigModel._local_changes(before[key], after[key], child)
+        elif before != after:
+            yield path, False, deepcopy(after)
+
+    @staticmethod
+    def _apply_local_changes(data: dict, changes) -> dict:
+        for path, deleted, value in changes:
+            parent = data
+            for key in path[:-1]:
+                if not isinstance(parent.get(key), dict):
+                    if deleted:
+                        parent = None
+                        break
+                    parent[key] = {}
+                parent = parent[key]
+            if parent is None:
+                continue
+            if deleted:
+                parent.pop(path[-1], None)
+            else:
+                parent[path[-1]] = deepcopy(value)
+        return data
+
+    def save(self) -> None:
+        """Merge this instance's changes without reverting another writer."""
+        current = self._serialized_data()
+        changes = list(self._local_changes(self._save_baseline, current))
+        filepath = Path.cwd() / "config" / f"{self.config_name}.json"
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        # read_file/write_file each take their own lock. Keep this entire
+        # read/merge/write transaction under that same cross-process lock.
+        with FileLock(f"{filepath}.lock"):
+            exists = filepath.exists()
+            if exists:
+                with filepath.open(encoding='utf-8') as source:
+                    latest = json.load(source)
+                if not isinstance(latest, dict):
+                    raise ValueError('Config document must be a JSON object')
+                merged = self._apply_local_changes(latest, changes)
+            else:
+                merged = deepcopy(current)
+            if changes or not exists:
+                with atomic_write(filepath, overwrite=True, encoding='utf-8', newline='') as target:
+                    json.dump(merged, target, indent=2, ensure_ascii=False, default=str)
+            # Preserve nested objects held by the current task. External
+            # values load at its normal reload boundary; old values cannot
+            # become a new local change on the next save.
+            self._save_baseline = deepcopy(current)
 
     @staticmethod
     def type(key: str) -> str:
@@ -336,6 +406,12 @@ class ConfigModel(ConfigBase):
                 if '$ref' in value:  # list
                     enum_key = re.search(r"/([^/]+)$", value['$ref']).group(1)
                     item["enumEnum"] = definitions[enum_key]["enum"]
+                elif value.get('type') == 'array' and '$ref' in value.get('items', {}):
+                    enum_key = value['items']['$ref'].rsplit('/', 1)[-1]
+                    if 'enum' in definitions[enum_key]:
+                        item['type'] = 'multi_enum'
+                        item['enumEnum'] = definitions[enum_key]['enum']
+                        item['minItems'] = value.get('minItems', 0)
                 # if 'allOf' in value:
                 #     enum_key = re.search(r"/([^/]+)$", value['allOf'][0]['$ref']).group(1)
                 #     item["enumEnum"] = definitions[enum_key]["enum"]
@@ -411,6 +487,15 @@ class ConfigModel(ConfigBase):
             setattr(group_object, argument, value)
             logger.info(f'Set arg {self.config_name}.{task}.{group}.{argument}.{value}')
             self.save()  # 我是没有想到什么方法可以使得属性改变自动保存的
+            if task == 'talisman_pass':
+                from tasks.Component.daily_closeout import arm_daily_closeout, request_manual_talisman
+                if group == 'scheduler' and argument == 'next_run' and isinstance(value, datetime):
+                    if value <= datetime.now():
+                        # Only external immediate-run writes use this API.
+                        # Internal task_call/save must not create manual proofs.
+                        request_manual_talisman(self, value)
+                elif group == 'closeout_config':
+                    arm_daily_closeout(self)
             return True
         except ValidationError as e:
             logger.error(e)
@@ -467,12 +552,11 @@ class ConfigModel(ConfigBase):
         self.replace_next_run(data, task_datetime)
         # logger.info(f"new config: {data}")
 
-        # write to json config  file
-        self.write_json(self.config_name, data)
-
-        # reload from the newly modified json config file
-        data = self.read_json(self.config_name)
+        # Keep bulk schedule changes on the same merge path as normal saves.
+        baseline = deepcopy(self._save_baseline)
         super().__init__(**data)
+        self._save_baseline = baseline
+        self.save()
 
 
 if __name__ == "__main__":

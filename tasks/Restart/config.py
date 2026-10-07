@@ -6,13 +6,13 @@ import string
 from pydantic import BaseModel, Field
 
 from tasks.Restart.config_scheduler import RestartScheduler
-from tasks.Component.config_base import ConfigBase, DateTime, MultiLine
+from tasks.Component.config_base import ConfigBase, DateTime, MultiLine, dynamic_hide
 
 
 class HarvestConfig(BaseModel):
     # 默认启用
     enable: bool = Field(default=True, description='harvest_enable_help')
-    # 庭院事务
+    # Legacy field retained for old backups; courtyard affairs now have their own task.
     enable_courtyard_affairs: bool = Field(default=True)
     # 永久勾玉卡
     enable_jade: bool = Field(default=True)
@@ -26,6 +26,8 @@ class HarvestConfig(BaseModel):
     enable_soul: bool = Field(default=True)
     # 体力
     enable_ap: bool = Field(default=True)
+
+    hide_fields = dynamic_hide('enable_courtyard_affairs')
 
 
 class TasksReset(BaseModel):

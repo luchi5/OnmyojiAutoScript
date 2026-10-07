@@ -39,7 +39,11 @@ class ScriptTask(KU, KekkaiActivationAssets):
         self.goto_realm()
 
         if con.exchange_before:
-            self.check_max_lv(con.shikigami_class)
+            if getattr(con, 'auto_fill', False):
+                self.check_max_lv(con.shikigami_class, auto_fill=True)
+            else:
+                # KekkaiUtilize may still be cached with its pre-update method signature.
+                self.check_max_lv(con.shikigami_class)
         # 收取经验
         self.harvest_card()
         # 开始挂卡
@@ -55,7 +59,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 continue
 
         if con.exchange_max:
-            self.check_max_lv(con.shikigami_class)
+            if getattr(con, 'auto_fill', False):
+                self.check_max_lv(con.shikigami_class, auto_fill=True)
+            else:
+                self.check_max_lv(con.shikigami_class)
         # self.back_guild()
         self.goto_page(page_main)
 
@@ -103,6 +110,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
         :return: 挂卡成功（）返回True，失败(时间没到提前来了)返回False
         退出的时候还是在挂卡界面而不是结界界面
         """
+        self._card_reward_limits(_config)
         self.goto_cards()
         # 太诡异了 为什么有这么长的动画, 那么长的动画先休息一会
         logger.hr('Start activation')
@@ -264,17 +272,34 @@ class ScriptTask(KU, KekkaiActivationAssets):
                     if self.click(target, interval=1):
                         continue
 
-    def check_card_num(self):
-        rule = self.config.kekkai_activation.activation_config.card_type
+    def _card_reward_limits(self, con=None):
+        if con is None:
+            con = self.config.kekkai_activation.activation_config
+        rule = con.card_type
         if rule == CardType.TAIKO:
-            min_card_num = self.config.kekkai_activation.activation_config.min_taiko_num
+            min_card_num = con.min_taiko_num
+            max_card_num = getattr(con, 'max_taiko_num', 0)
             check_card = "勾玉"
         elif rule == CardType.FISH:
-            min_card_num = self.config.kekkai_activation.activation_config.min_fish_num
+            min_card_num = con.min_fish_num
+            max_card_num = getattr(con, 'max_fish_num', 0)
             check_card = "体力"
         else:
             logger.error('Unknown utilize rule')
             raise ValueError('Unknown utilize rule')
+
+        if (type(min_card_num) is not int or type(max_card_num) is not int
+                or min_card_num < 0 or max_card_num < 0
+                or (max_card_num > 0 and max_card_num < min_card_num)):
+            logger.warning(f'挂卡{rule}收益范围无效，跳过本次选卡，180分钟后重查')
+            self.set_next_run('KekkaiActivation', target=datetime.now() + timedelta(minutes=180))
+            raise TaskEnd('Invalid card reward range')
+        return min_card_num, max_card_num, check_card
+
+    def check_card_num(self):
+        min_card_num, max_card_num, check_card = self._card_reward_limits()
+        upper_label = max_card_num if max_card_num else '不限'
+        logger.info(f'挂卡每小时{check_card}收益范围: {min_card_num}～{upper_label}')
 
         ocr_count = 0
         while 1:
@@ -291,7 +316,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 # 使用正则表达式提取所有数字
                 numbers = [int(num) for num in re.findall(r'\d+', result.ocr_text)]
                 if numbers:  # 如果提取到数字
-                    if numbers[0] < min_card_num:
+                    if numbers[0] < min_card_num or (max_card_num > 0 and numbers[0] > max_card_num):
                         continue
                     numeric_results.append((numbers[0], result))  # 按第一个数字排序
 

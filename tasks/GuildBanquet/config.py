@@ -2,11 +2,13 @@
 # @author ohspecial
 # github https://github.com/ohspecial
 from enum import Enum  
+from datetime import timedelta
 
-from pydantic import Field, BaseModel, SerializationInfo, field_serializer
+from pydantic import Field, BaseModel, SerializationInfo, field_serializer, model_validator, ConfigDict
 
 from tasks.Component.config_scheduler import Scheduler
-from tasks.Component.config_base import ConfigBase, Time, dynamic_hide
+from tasks.Component.config_base import ConfigBase, Time, TimeDelta, dynamic_hide
+from tasks.Component.guild_opening_config import GuildOpeningScheduler, migrate_opening_settings
 
 
 class Weekday(str,Enum):
@@ -20,6 +22,13 @@ class Weekday(str,Enum):
 
 
 class GuildBanquetTime(BaseModel):
+    model_config = ConfigDict(validate_assignment=True)
+    opening_wait_minutes: int = Field(default=60, ge=1, le=1440,
+                                      description='opening_wait_minutes_help')
+    opening_retry_interval: TimeDelta = Field(default=TimeDelta(minutes=3),
+                                             gt=timedelta(0), lt=timedelta(days=1),
+                                             description='opening_retry_interval_help')
+    auto_switch_shikigami: bool = Field(default=False, description='guild_auto_switch_shikigami_help')
     # 自定义运行时间
     day_1: Weekday = Field(
         default=Weekday.Wednesday,
@@ -35,10 +44,14 @@ class GuildBanquetTime(BaseModel):
         description="每周第2次运行时间设置"
     )
 
-    hide_fileds = dynamic_hide('run_time_1', 'run_time_2')
 
 
 class GuildBanquet(ConfigBase):
-    scheduler: Scheduler = Field(default_factory=Scheduler)
+    scheduler: GuildOpeningScheduler = Field(default_factory=GuildOpeningScheduler)
     guild_banquet_time: GuildBanquetTime = Field(default_factory=GuildBanquetTime)
+
+    @model_validator(mode='before')
+    @classmethod
+    def preserve_legacy_opening(cls, data):
+        return migrate_opening_settings(data, 'guild_banquet_time')
 

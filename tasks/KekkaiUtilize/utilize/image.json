@@ -205,5 +205,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "description"
+  },
+  {
+    "itemName": "u_empty_card",
+    "imageName": "utilize_u_empty_card.png",
+    "roiFront": "540,197,67,62",
+    "roiBack": "536,164,75,442",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "好友列表已经无卡"
   }
 ]

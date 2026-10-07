@@ -5,8 +5,10 @@ from datetime import timedelta, datetime
 
 import random
 
+from module.base.timer import Timer
+from module.exception import GameStuckError
 from module.server.i18n import I18n
-from tasks.BondlingFairyland.config import BondlingMode
+from tasks.BondlingFairyland.config import BondlingMode, UserStatus
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.BondlingFairyland.assets import BondlingFairylandAssets
 from tasks.BondlingFairyland.config_battle import BattleConfig
@@ -23,6 +25,11 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
         :return: 如果结契成功返回True，否则返回False
         """
         logger.hr("General battle start", 2)
+        preparation = self.check_load()
+        if preparation is None:
+            logger.warning('Battle entry not confirmed, retry from capture page')
+            return False
+
         self.current_count += 1
         logger.info(f'Current tasks: {I18n.trans_zh_cn(self.config.task.command)}')
         logger.info(f'Current count: {self.current_count} / {limit_count}')
@@ -32,7 +39,7 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
         task_run_time_seconds = timedelta(seconds=int(task_run_time.total_seconds()))
         logger.info(f'Current times: {task_run_time_seconds} / {self.limit_time}')
 
-        if self.check_load():
+        if preparation:
             # 首先要判断进入战斗的界面
             self.green_mark(battle_config.green_enable, battle_config.green_mark)
 
@@ -40,19 +47,47 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
         return self.catch_battle_wait(battle_config.random_click_swipt_enable)
 
 
-    def check_load(self) -> bool:
+    def _capture_result_visible(self) -> bool:
+        """Recognize results before testing battle or capture-page controls."""
+        return (
+            self.appear(self.I_REWARD, threshold=0.6)
+            or self.appear(self.I_WIN, threshold=0.6)
+            or self.appear(self.I_BATTLE_SUCCESS, threshold=0.6)
+            or self.appear(self.I_BATTLE_FAIL, threshold=0.6)
+            or self.appear(self.I_CAP_SUCCESS)
+            or self.appear(self.I_CAP_FAILURE)
+            or self.appear(self.I_BATTLE_FAIL_ABANDON)
+            or self.appear(self.I_CAP_AGAIN)
+        )
+
+    def check_load(self) -> bool | None:
         """
-        检查战斗时候的加载动画
-        如何是还在加载种，有那个要准备的按钮，就返回True
-        如果已经进入战斗了，就返回False
-        :return:
+        True: preparation; False: battle or results; None: solo entry failed.
         """
+        timeout = Timer(30).start()
+        capture_return = Timer(3, count=2)
+        alone = self.config.bondling_fairyland.bondling_config.user_status == UserStatus.ALONE
         while 1:
             self.screenshot()
+            # A quick battle may have finished before its loading UI was seen.
+            if self._capture_result_visible():
+                return False
             if self.appear(self.I_BUFF):
                 return True
             if self.appear(self.I_EXIT):
                 return False
+            if timeout.reached():
+                raise GameStuckError('Bondling battle entry timed out: no battle or result detected')
+            if self.appear(self.I_UI_CONFIRM):
+                self.appear_then_click(self.I_UI_CONFIRM, interval=1)
+                capture_return.clear()
+                continue
+            if alone and self.appear(self.I_BALL_FIRE):
+                capture_return.start()
+                if capture_return.reached():
+                    return None
+            else:
+                capture_return.clear()
 
     def catch_battle_wait(self, random_click_swipt_enable: bool) -> bool:
         """

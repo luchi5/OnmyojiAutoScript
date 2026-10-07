@@ -12,7 +12,7 @@
     "itemName": "gift_recommend",
     "imageName": "store_gift_recommend.png",
     "roiFront": "1183,454,53,64",
-    "roiBack": "1162,77,98,457",
+    "roiBack": "1162,77,98,550",
     "method": "Template matching",
     "threshold": 0.7,
     "description": "description"

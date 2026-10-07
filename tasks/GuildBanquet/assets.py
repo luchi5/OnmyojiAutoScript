@@ -9,6 +9,13 @@ from module.atom.list import RuleList
 # Don't modify it manually.
 class GuildBanquetAssets: 
 
+	I_BANQUET_EXP_FULL = RuleImage(roi_front=(28,408,18,16), roi_back=(7,138,106,366), threshold=0.8, method="Template matching", file="./tasks/GuildBanquet/res/res_banquet_exp_full.png")
+	I_BANQUET_SWITCH = RuleImage(roi_front=(998,164,49,83), roi_back=(974,131,106,152), threshold=0.8, method="Template matching", file="./tasks/GuildBanquet/res/res_banquet_switch.png")
+	I_BANQUET_CONFIRM = RuleImage(roi_front=(1072,411,50,59), roi_back=(990,348,202,163), threshold=0.8, method="Template matching", file="./tasks/GuildBanquet/res/res_banquet_confirm.png")
+	I_BANQUET_ALL_PUT = RuleImage(roi_front=(718,412,90,31), roi_back=(653,377,233,105), threshold=0.8, method="Template matching", file="./tasks/GuildBanquet/res/res_banquet_all_put.png")
+	I_BANQUET_CLEAR_ALL = RuleImage(roi_front=(480,413,90,31), roi_back=(416,377,233,105), threshold=0.8, method="Template matching", file="./tasks/GuildBanquet/res/res_banquet_clear_all.png")
+	O_BANQUET_SHIKIGAMI_NUM = RuleOcr(roi=(960,122,72,31), area=(960,122,72,31), mode="DigitCounter", method="Default", keyword="", name="banquet_shikigami_num")
+
 
 	# Image Rule Assets
 	# description 

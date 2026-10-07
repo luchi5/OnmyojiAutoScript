@@ -6,13 +6,23 @@ from pydantic import BaseModel, Field, validator
 
 from tasks.Component.config_base import MultiLine
 from tasks.Component.config_scheduler import Scheduler
-from tasks.Component.config_base import ConfigBase, TimeDelta
+from tasks.Component.config_base import ConfigBase, TimeDelta, dynamic_hide
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.SwitchSoul.switch_soul_config import SwitchSoulConfig
 
 
 
 class MissionsConfig(BaseModel):
+    monday_to_thursday: bool = Field(default=False, description='collective_monday_to_thursday_help')
+    run_after_dokan: bool = Field(default=False, description='run_after_dokan_help')
+    # Durable per-account proof and submission guard, hidden from editable UI.
+    dokan_finished_date: str = Field(default='')
+    attempted_date: str = Field(default='')
+    completed_date: str = Field(default='')
+    pending_kind: str = Field(default='')
+    pending_until: str = Field(default='')
+    hide_link_state = dynamic_hide('dokan_finished_date', 'attempted_date', 'completed_date',
+                                  'pending_kind', 'pending_until')
     # 契灵 > 觉醒二 > 觉醒一 > 御灵二 > 御灵一 > 御魂五 > 御魂四
     missions_rule: MultiLine = Field(default='契灵 > 觉醒三 > 觉醒二 > 觉醒一 > 御灵三 > 御灵二 > 御灵一 > 御魂二 > 御魂一 > 远远不够',
                                      description='missions_rule_help')

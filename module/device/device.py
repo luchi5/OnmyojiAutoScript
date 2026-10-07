@@ -14,10 +14,12 @@ from module.device.app_control import AppControl
 from module.device.control import Control
 from module.device.platform2 import Platform
 from module.device.screenshot import Screenshot
+from module.device.account_session_guard import other_device_login_visible
 from module.exception import (GameNotRunningError,
                               GameStuckError,
                               GameTooManyClickError,
                               RequestHumanTakeover,
+                              AccountLoggedInElsewhere,
                               EmulatorNotRunningError)
 from module.logger import logger
 
@@ -102,17 +104,35 @@ class Device(Platform, Screenshot, Control, AppControl):
         Returns:
             np.ndarray:
         """
-        self.stuck_record_check()
-
         try:
             super().screenshot()
+        except AccountLoggedInElsewhere:
+            raise
         except RequestHumanTakeover as e:
             raise RequestHumanTakeover
 
+        # Always obtain a fresh frame before checking the stuck timer. Otherwise
+        # an expired timer could hide a newly arrived other-device-login popup.
+        self.check_account_session()
         if self.handle_night_commission():
             super().screenshot()
+            self.check_account_session()
 
+        self.stuck_record_check()
         return self.image
+
+    def refresh_account_session(self):
+        # Recovery needs a fresh frame but must not recurse into stuck detection.
+        super().screenshot()
+        self.check_account_session()
+
+    def check_account_session(self):
+        if getattr(self, '_account_session_recovery', False):
+            return
+        if other_device_login_visible(getattr(self, 'image', None)):
+            message = '检测到账号在其他设备登录，将自动重启游戏并恢复任务'
+            logger.critical(message)
+            raise AccountLoggedInElsewhere(message)
 
     def release_during_wait(self):
         # Scrcpy server is still sending video stream,

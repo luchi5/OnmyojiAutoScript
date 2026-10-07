@@ -585,10 +585,10 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             return True
         return False
 
-    @cached_property
+    @property
     def special_main(self) -> bool:
         # 特殊的庭院需要点一下，左边然后才能找到图标
-        main_type = self.config.global_game.costume_config.costume_main_type
+        main_type = self.current_main_type
         if main_type == MainType.COSTUME_MAIN_3:
             return True
         return False

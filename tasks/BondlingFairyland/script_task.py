@@ -4,12 +4,16 @@
 
 from time import sleep
 
+from copy import copy
+from pathlib import Path
+import json
+import cv2
 import random
 from cached_property import cached_property
 from datetime import datetime
 from datetime import timedelta, time
 from module.base.timer import Timer
-from module.exception import TaskEnd
+from module.exception import GameStuckError, TaskEnd
 from module.logger import logger
 from tasks.BondlingFairyland.assets import BondlingFairylandAssets
 from tasks.BondlingFairyland.battle import BondlingBattle
@@ -332,28 +336,75 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         if not bondling_stone_enable or not self.appear(self.I_STONE_SURE):
             self.ui_click_until_disappear(self.I_STONE_CLOSE, interval=1.2)
             return False
-        cu, res, total = self.O_B_STONE_NUMBER.ocr(self.device.image)
-        # 如果没有石头了
-        if cu == 0 and cu + res == total:
+        available = self.check_stone_available()
+        if available is None:
+            self._defer_stone_check('鸣契石数量未能确认')
+        if not available:
             self.ui_click_until_disappear(self.I_STONE_CLOSE, interval=1.2)
-            logger.warning(f'已经没有鸣契石召唤契灵了')
+            logger.warning('已经没有鸣契石召唤契灵了（已连续3帧复核）')
             return False
         cnt = 0
-        while 1:
+        summon_timeout = Timer(30).start()
+        while not summon_timeout.reached():
             self.screenshot()
             if not self.appear(self.I_STONE_SURE):
                 sleep(random.uniform(1.5, 2))  # 等待购买后的动画, 否则已经买了但是下次再点击还会出现该界面
                 return True
             if cnt >= 6:
-                logger.warning("")
-                return False
+                self._defer_stone_check('鸣契石召唤结果未能确认')
             for i in range(3):
                 if self.appear_then_click(self.I_BUY_PLUS, interval=1):
                     sleep(0.5)
             if self.appear_then_click(self.I_GI_SURE, interval=1):
                 continue
             if self.appear_then_click(self.I_STONE_SURE, interval=2):
+                cnt += 1
                 continue
+
+        self._defer_stone_check('鸣契石召唤结果未能确认')
+
+    def _defer_stone_check(self, reason):
+        self.ui_click_until_disappear(self.I_STONE_CLOSE, interval=1.2)
+        logger.warning(f'{reason}，3分钟后重查；不标记契灵任务完成')
+        self.set_next_run(task='BondlingFairyland', finish=False, success=None,
+                          server=False, target=datetime.now() + timedelta(minutes=3))
+        raise TaskEnd('Bondling stone availability or summoning is unconfirmed')
+
+    def check_stone_available(self):
+        """Return None for unreadable stock; only verified zero means empty."""
+        target = self.O_B_STONE_NUMBER
+        timeout = Timer(8).start()
+        zero_frames, zero_total = 0, None
+        evidence_saved = False
+        while not timeout.reached():
+            self.screenshot()
+            if not self.appear(self.I_STONE_SURE):
+                zero_frames, zero_total = 0, None
+                sleep(0.5)
+                continue
+            primary = target.ocr(self.device.image)
+            if self._valid_plate_counter(primary) and primary[0] > 0:
+                return True
+            verified = self._recheck_plate_counter(target)
+            if not evidence_saved:
+                self._save_plate_read_evidence(target, primary, verified)
+                evidence_saved = True
+            if any(self._valid_plate_counter(value) and value[0] > 0 for value in verified):
+                logger.warning(f'鸣契石数量识别不完整或为零，复核发现仍有库存: {primary}, recheck={verified}')
+                return True
+            readings = (primary, *verified)
+            if (all(self._valid_plate_counter(value) and value[0] == 0 for value in readings)
+                    and len({value[2] for value in readings}) == 1):
+                total = primary[2]
+                zero_frames = zero_frames + 1 if total == zero_total else 1
+                zero_total = total
+                if zero_frames >= 3:
+                    logger.info(f'鸣契石库存连续3帧确认: 0/{total}')
+                    return False
+            else:
+                zero_frames, zero_total = 0, None
+            sleep(0.5)
+        return None
 
 
     def run_search(self, bondling_config: BondlingConfig, limit_cnt: int = None):
@@ -412,14 +463,8 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                 case BondlingMode.MODE4:
                     target_plate = self.O_B_HIGH_NUMBER
                 case _:
-                    logger.error('Invalid bondling mode')
-                    return False
-            self.screenshot()
-            cu, res, total = target_plate.ocr(self.device.image)
-            if cu == 0 and cu + res == total:
-                logger.warning(f'No plate number, exit')
-                return False
-            return True
+                    raise ValueError('Invalid bondling mode')
+            return self.check_plate_available(target_plate)
 
         def check_ball_number():
             self.screenshot()
@@ -480,6 +525,89 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
             if self.appear(self.I_MATCHING) or self.appear(self.I_CHECK_EXPLORATION):
                 return True
         return False
+
+    @staticmethod
+    def _valid_plate_counter(value):
+        if not isinstance(value, (tuple, list)) or len(value) != 3:
+            return False
+        current, remaining, total = value
+        return (all(isinstance(item, int) and not isinstance(item, bool) for item in value)
+                and total > 0 and 0 <= current <= total
+                and remaining >= 0 and current + remaining == total)
+
+    def _recheck_plate_counter(self, target):
+        # Keep the generated mainline asset and the global OCR model unchanged.
+        # Wider regions from XY include more padding around leading digits.
+        alternate_rois = {
+            'B_LOW_NUMBER': (540, 12, 107, 40),
+            'B_MEDIUM_NUMBER': (728, 15, 113, 35),
+            'B_HIGH_NUMBER': (922, 9, 102, 41),
+            'B_STONE_NUMBER': (1122, 10, 102, 44),
+        }
+        verifier = copy(target)
+        verifier.roi = list(alternate_rois.get(target.name, target.roi))
+        verifier.name = target.name + '_VERIFY'
+        verifier.score = verifier.min_score = 0.85
+        wide = verifier.ocr(self.device.image)
+        cropped = verifier.crop(self.device.image, verifier.roi)
+        enlarged = cv2.resize(cropped, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+        verifier.roi = [0, 0, enlarged.shape[1], enlarged.shape[0]]
+        verifier.name = target.name + '_VERIFY_2X'
+        return wide, verifier.ocr(enlarged)
+
+    def _save_plate_read_evidence(self, target, primary, verified):
+        try:
+            folder = Path(__file__).resolve().parents[2] / 'log' / 'resource-check'
+            folder.mkdir(parents=True, exist_ok=True)
+            stem = datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '_' + target.name
+            x, y, width, height = target.roi
+            roi = (max(0, x - 12), max(0, y - 8), width + 24, height + 16)
+            cropped = target.crop(self.device.image, roi)
+            ok, encoded = cv2.imencode('.png', cv2.cvtColor(cropped, cv2.COLOR_RGB2BGR))
+            if ok:
+                encoded.tofile(str(folder / (stem + '.png')))
+            details = {'account': getattr(self.config, 'config_name', ''),
+                       'current_count': self.current_count, 'primary': primary,
+                       'verified': verified, 'roi': roi}
+            (folder / (stem + '.json')).write_text(json.dumps(details, ensure_ascii=False), encoding='utf-8')
+            logger.warning(f'Resource OCR verification evidence: {folder / stem}')
+        except Exception as error:
+            logger.warning(f'Could not save resource OCR evidence: {type(error).__name__}')
+
+    def check_plate_available(self, target):
+        """A single zero or an unreadable counter must not finish the task."""
+        timeout = Timer(10).start()
+        zero_frames, zero_total = 0, None
+        evidence_saved = False
+        while not timeout.reached():
+            self.screenshot()
+            if not self.in_catch_ui():
+                zero_frames, zero_total = 0, None
+                sleep(0.5)
+                continue
+            primary = target.ocr(self.device.image)
+            if self._valid_plate_counter(primary) and primary[0] > 0:
+                return True
+            verified = self._recheck_plate_counter(target)
+            if not evidence_saved:
+                self._save_plate_read_evidence(target, primary, verified)
+                evidence_saved = True
+            if any(self._valid_plate_counter(value) and value[0] > 0 for value in verified):
+                logger.warning(f'Plate OCR zero/unreadable result rejected: {primary}, recheck={verified}')
+                return True
+            readings = (primary, *verified)
+            if (all(self._valid_plate_counter(value) and value[0] == 0 for value in readings)
+                    and len({value[2] for value in readings}) == 1):
+                total = primary[2]
+                zero_frames = zero_frames + 1 if total == zero_total else 1
+                zero_total = total
+                if zero_frames >= 3:
+                    logger.warning(f'No plate number, confirmed on 3 frames: 0/{total}, exit')
+                    return False
+            else:
+                zero_frames, zero_total = 0, None
+            sleep(0.5)
+        raise GameStuckError('Bondling plate OCR could not confirm availability; task is not completed')
 
     def ball_click(self, index: int) -> bool:
         """
@@ -629,19 +757,25 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         单人 挑战， 主要是结契时的挑战
         """
         click_count = 0
+        timeout = Timer(30).start()
         while 1:
             self.screenshot()
-            if not self.appear(self.I_BALL_FIRE, threshold=0.7):
-                break
-            if self.appear_then_click(self.I_BALL_FIRE, interval=1):
-                click_count += 1
+            if self._capture_result_visible():
+                return
+            if self.appear(self.I_BUFF) or self.appear(self.I_EXIT):
+                return
+            if timeout.reached():
+                raise GameStuckError('Bondling challenge timed out before battle entry')
+            # Confirm foreground dialogs before clicking a button behind them.
+            if self.appear(self.I_UI_CONFIRM):
+                self.appear_then_click(self.I_UI_CONFIRM, interval=1)
                 continue
+            if not self.appear(self.I_BALL_FIRE, threshold=0.7):
+                return
             if click_count >= 6:
-                logger.error('Click fire failed')
-                logger.error('You might need to check your bondling number. It most possibly arrived to the max 500')
-                raise BondlingNumberMax
-            # 某些活动的时候出现 “选择共鸣的阴阳师”
-            if self.appear_then_click(self.I_UI_CONFIRM, interval=1):
+                raise GameStuckError('Bondling challenge did not enter battle after 6 clicks')
+            if self.appear_then_click(self.I_BALL_FIRE, interval=2):
+                click_count += 1
                 continue
 
     def wait_battle(self, wait_time: time) -> bool:
