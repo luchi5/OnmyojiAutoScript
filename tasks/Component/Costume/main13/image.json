@@ -28,12 +28,12 @@
   },
   {
     "itemName": "check_main_13",
-    "imageName": "main13_check_main_13.png",
-    "roiFront": "806,273,64,31",
-    "roiBack": "805,273,67,31",
+    "imageName": "main13_check_main_13_stairs.png",
+    "roiFront": "1042,235,85,86",
+    "roiBack": "928,177,221,182",
     "method": "Template matching",
     "threshold": 0.8,
-    "description": "description"
+    "description": "云景阆苑稳定阶梯标识，沿用 XY 庭院识别模板"
   },
   {
     "itemName": "main_goto_exploration_13",

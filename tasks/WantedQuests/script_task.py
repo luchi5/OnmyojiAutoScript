@@ -21,6 +21,7 @@ from tasks.Secret.script_task import ScriptTask as SecretScriptTask
 from tasks.WantedQuests.assets import WantedQuestsAssets
 from tasks.WantedQuests.config import CooperationType, CooperationSelectMask
 from tasks.WantedQuests.explore import WQExplore, ExploreWantedBoss
+from tasks.WantedQuests.battle_auto import WantedBattleAuto
 
 
 class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
@@ -96,6 +97,31 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
 
         self.next_run()
         raise TaskEnd('WantedQuests')
+
+    def battle_wait(self, random_click_swipt_enable: bool) -> bool:
+        # Keep the Secret settlement flow used by wanted quests, and inspect
+        # manual/auto during the fight rather than assuming the game kept auto.
+        self.device.stuck_record_add('BATTLE_STATUS_S')
+        self.device.click_record_clear()
+        auto = WantedBattleAuto()
+        logger.info('Start battle process')
+        while True:
+            self.screenshot()
+            if self.appear(self.I_SE_BATTLE_WIN):
+                logger.info('Win battle')
+                self.ui_click_until_disappear(self.I_SE_BATTLE_WIN, interval=2)
+                return True
+            if self.appear_then_click(self.I_WIN, interval=1):
+                continue
+            if self.appear(self.I_REWARD):
+                logger.info('Win battle')
+                self.ui_click_until_disappear(self.I_REWARD)
+                return True
+            if self.appear(self.I_FALSE):
+                logger.warning('False battle')
+                self.ui_click_until_disappear(self.I_FALSE)
+                return False
+            auto.inspect(self)
 
     def next_run(self):
         before_end: time = self.get_config().before_end

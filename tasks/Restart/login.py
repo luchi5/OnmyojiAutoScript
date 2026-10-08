@@ -15,6 +15,14 @@ import time
 class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAssets, GeneralBuffAssets):
     character: str
 
+    def get_task_name(self) -> str:
+        # Navigation constructs this helper within another scheduled task.
+        # Keep the shared scheduler state intact; actual task subclasses
+        # still use BaseTask's strict model/path validation.
+        if type(self) is LoginHandler:
+            return 'Restart'
+        return super().get_task_name()
+
     def __init__(self, *wargs, **kwargs):
         super().__init__(*wargs, **kwargs)
         self.character = self.config.restart.login_character_config.character

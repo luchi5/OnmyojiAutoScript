@@ -8,7 +8,7 @@
 
 ### 同步主仓库
 
-GitHub 复用了账号原有的 fork，保留 `AzurTian → runhey` 来源关系及原 `mine` 分支；当前默认 `luchi` 分支直接基于 runhey 主仓库，并以 runhey 为代码同步源。
+本仓库直接 fork 自 `runhey/OnmyojiAutoScript`，默认 `luchi` 分支保留定制功能，并以 runhey 为代码同步源。
 
 ```shell
 git remote add upstream https://github.com/runhey/OnmyojiAutoScript.git
@@ -17,7 +17,7 @@ git switch luchi
 git merge upstream/master
 ```
 
-已配置 `upstream` 时跳过第一行，先检查本地修改和合并结果再更新运行环境。GitHub 网页的默认 fork 同步入口使用原 fork 的直接父仓库；同步 runhey 的更新请使用以上明确指定的来源。
+已配置 `upstream` 时跳过第一行，先检查本地修改和合并结果再更新运行环境。GitHub 网页的 fork 同步来源也直接指向 runhey；定制分支同步后仍需检查合并结果并运行相关测试。
 
 每日反馈由管理面板展示。反馈链接默认使用 `http://127.0.0.1:22300`；如需通过公网通知打开，在启动后端与管理面板前将 `OAS_PUBLIC_FEEDBACK_ORIGIN` 设置为面板的实际 HTTP(S) origin，例如 `https://feedback.example.invalid`。本地 `config/daily_feedback/settings.json` 中的 `public_origin` 优先于环境变量；无效配置会回退到环境变量或本地默认值。origin 只包含协议、主机和可选端口。反馈功能的启用账号由本地 `config/daily_feedback/settings.json` 配置，该文件及生成的截图、报告均不提交到 Git。通知服务凭据通过各账号的本地配置填写。
 
