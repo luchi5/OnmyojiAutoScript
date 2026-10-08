@@ -67,6 +67,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
                 if not getattr(config, 'lock_team_enable', False):  # 没有锁定阵容
                     if self.current_count == 1 and not confed:  # 第一次战斗且是本次第一次配置
                         self.switch_preset_team(config.preset_enable, config.preset_group, config.preset_team)
+                        if getattr(self, '_preset_selection_interrupted', lambda: False)():
+                            return True
                         self.check_and_open_buff(buff)
                         confed = True
                     # 点击准备(锁定阵容自动点准备,不锁定阵容前面也已经配置完毕需要点准备)
@@ -372,9 +374,12 @@ class GeneralBattle(BattleWait, GeneralBuff):
             return None
 
         logger.info("Preset is enable")
+        selection_interrupted = getattr(self, '_preset_selection_interrupted', lambda: False)
         # 点击预设按钮
         while 1:
             self.screenshot()
+            if selection_interrupted():
+                return None
 
             if self.appear(self.I_PRESET_ENSURE):
                 break
@@ -423,6 +428,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
         unselected_color = (224.9, 208.3, 187.4)
         while True:
             self.screenshot()
+            if selection_interrupted():
+                return None
             color_tmp = get_color(self.device.image,
                                   (tmp.roi_back[0], tmp.roi_back[1], tmp.roi_back[0] + color_size[0],
                                    tmp.roi_back[1] + color_size[1]))
@@ -443,6 +450,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
         unselected_color = (216.8, 185.0, 146.8)
         while True:
             self.screenshot()
+            if selection_interrupted():
+                return None
             color_tmp = get_color(self.device.image,
                                   (tmp.roi_back[0], tmp.roi_back[1], tmp.roi_back[0] + color_size[0],
                                    tmp.roi_back[1] + color_size[1]))
@@ -459,6 +468,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
         click_timer = Timer(10).start()
         while 1:
             self.screenshot()
+            if selection_interrupted():
+                return None
             if click_timer.reached():
                 logger.warning("Switch preset failure")
             if not self.appear(self.I_PRESET_ENSURE):

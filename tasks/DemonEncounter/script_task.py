@@ -105,6 +105,17 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         if target is not None:
             self.run_switch_soul_by_name(*target)
 
+    def _preset_selection_interrupted(self) -> bool:
+        """Timed preparation can end while the preset menu is still opening."""
+        if (self.is_in_prepare(False) or self.appear(self.I_PRESET_ENSURE)
+                or self.appear(self.I_PRESENT_LESS_THAN_5)):
+            return False
+        if self.is_in_real_battle(False) or any(self.appear(rule) for rule in (
+                self.I_WIN, self.I_DE_WIN, self.I_FALSE, self.I_REWARD)):
+            logger.info('Demon encounter battle started during preset selection; continue battle')
+            return True
+        return False
+
     def execute_boss(self):
         """
         打boss
