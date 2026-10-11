@@ -35,6 +35,114 @@ class ChessLegacyScriptTask(
 
     conf: Chess = None
 
+    def _notify_weekly_coin_full(self, *, confirmed: bool = False, now=None) -> bool:
+        """Optional Bark notice for a verified cap; local Monday is the dedupe period.
+
+        The calendar key follows this task's existing local Monday schedule,
+        not a claim about the game's exact reset hour. Accepted means the
+        provider accepted the request; final phone delivery is unconfirmed.
+        """
+        if confirmed is not True:
+            return False
+        try:
+            import copy
+            import hashlib
+            import json
+            import re
+            from pathlib import Path
+            from filelock import FileLock
+            from module.config.atomicwrites import atomic_write
+            import requests
+
+            now = (now or datetime.now()).replace(microsecond=0)
+            account = getattr(self.config, 'config_name', None)
+            if (not isinstance(account, str) or len(account) > 80
+                    or not re.fullmatch(r'[A-Za-z0-9_\-\u3400-\u9fff]+(?:\.[A-Za-z0-9_\-\u3400-\u9fff]+)*', account)):
+                return False
+            week = (now.date() - timedelta(days=now.weekday())).isoformat()
+            root = Path(__file__).resolve().parents[2]
+            state_root = root / 'config' / 'chess_weekly_notify'
+            directory = state_root / week
+            key = hashlib.sha256(account.encode('utf-8')).hexdigest()
+            path = directory / (key + '.json')
+            lock_path = path.with_suffix('.json.lock')
+            for item in (root / 'config', state_root, directory, path, lock_path):
+                if item.is_symlink() or (item.exists() and item.resolve() != item.absolute()):
+                    raise ValueError('Unexpected Chess notice state path')
+            directory.mkdir(parents=True, exist_ok=True)
+            # Keep the real file lock through requests. A recovered sending
+            # marker is retried only after acquiring this lock, never by age.
+            with FileLock(str(lock_path), timeout=0):
+                if path.exists():
+                    if path.stat().st_size > 65536:
+                        raise ValueError('Chess notice state too large')
+                    state = json.loads(path.read_text(encoding='utf-8'))
+                    notice = state.get('notification', {}) if isinstance(state, dict) else {}
+                    if (not isinstance(state, dict) or state.get('version') != 1
+                            or state.get('account') != account or state.get('week') != week
+                            or state.get('current') != 600 or state.get('total') != 600
+                            or not isinstance(notice, dict)
+                            or notice.get('status') not in ('pending', 'sending', 'accepted', 'failed', 'disabled')
+                            or type(notice.get('attempts')) is not int
+                            or not 0 <= notice['attempts'] <= 3):
+                        raise ValueError('Invalid Chess notice state')
+                    datetime.fromisoformat(state['confirmed_at'])
+                else:
+                    state = {'version': 1, 'account': account, 'week': week,
+                             'period_basis': 'local_monday_calendar',
+                             'current': 600, 'total': 600,
+                             'confirmed_at': now.isoformat(timespec='seconds'),
+                             'notification': {'status': 'pending', 'attempts': 0}}
+                    notice = state['notification']
+
+                def save(status, attempts, reason):
+                    state['notification'] = {'status': status, 'attempts': attempts,
+                                             'at': datetime.now().replace(microsecond=0).isoformat(),
+                                             'reason': reason}
+                    with atomic_write(str(path), overwrite=True, encoding='utf-8') as stream:
+                        json.dump(state, stream, ensure_ascii=False, indent=2)
+
+                if notice['status'] in ('accepted', 'disabled'):
+                    return False
+                attempts = notice['attempts']
+                if attempts >= 3:
+                    if notice['status'] == 'sending':
+                        save('failed', attempts, 'attempt_limit_after_interruption')
+                    return False
+                notifier = copy.deepcopy(self.config.notifier)
+                if not notifier.enable or str(notifier.provider_name).lower() != 'bark':
+                    save('disabled', attempts, 'notifier_disabled_or_not_bark')
+                    return False
+
+                def bounded_request(method, endpoint, **kwargs):
+                    kwargs['timeout'] = (3, 5)
+                    return requests.request(method, endpoint, **kwargs)
+
+                for attempt in range(attempts + 1, 4):
+                    save('sending', attempt, 'provider_result_unconfirmed')
+                    try:
+                        notifier.notifier.request = bounded_request
+                        accepted = notifier.push(
+                            title='百鬼棋局鼬乐币已核验600/600',
+                            content=f'游戏大厅当前读数600/600\n账号：{account}\n核验时间：{state["confirmed_at"]}',
+                            group='OAS百鬼棋局', isarchive=1,
+                        ) is True
+                    except Exception:
+                        accepted = False
+                    save('accepted' if accepted else 'failed', attempt,
+                         'request_accepted_delivery_unconfirmed' if accepted else 'provider_request_failed')
+                    if accepted:
+                        return True
+                    if attempt < 3:
+                        time.sleep(0.5)
+                return False
+        except Exception:
+            try:
+                logger.warning('Chess weekly notice unavailable; task scheduling is unchanged')
+            except Exception:
+                pass
+            return False
+
     def set_next_run_next_monday(self, task: str, scheduler) -> None:
         """满币后等到下周一，保留 xy 的默认时刻与自定义时刻行为。"""
         finished_at = datetime.now().replace(microsecond=0)
@@ -235,6 +343,7 @@ class ChessLegacyScriptTask(
             self.set_next_run_next_monday(
                 task='Chess', scheduler=self.config.chess.scheduler,
             )
+            self._notify_weekly_coin_full(confirmed=True)
         else:
             self.set_next_run(task='Chess', success=True, finish=True)
         raise TaskEnd('Chess')

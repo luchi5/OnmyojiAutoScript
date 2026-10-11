@@ -21,10 +21,11 @@ class WQExplore(BaseExploration, HighLight):
 
     def battle_before(self, buff, config, timeout: float = 5) -> bool:
         if not getattr(config, 'lock_team_enable', False):
-            return GeneralBattle.battle_before(self, buff, config, timeout)
+            if GeneralBattle.battle_before(self, buff, config, timeout):
+                return True
 
-        # 探索的锁阵容只保留队伍；部分战斗仍会停在准备界面。
-        # 必须确认进入战斗，不能将战前超时交给只处理结算的等待循环。
+        # 通用战前计时包含预设配置；超时后保留已选队伍，继续确认转场。
+        # 锁阵容同样需要确认实战，不能把准备页交给只处理结算的等待循环。
         prepare_timer = Timer(max(timeout, 20)).start()
         while not prepare_timer.reached():
             self.screenshot()
@@ -34,7 +35,8 @@ class WQExplore(BaseExploration, HighLight):
                 continue
             if not self.is_in_prepare(False):
                 if self.is_in_real_battle(False) or any(self.appear(marker) for marker in (
-                        self.I_WIN, self.I_DE_WIN, self.I_FALSE, self.I_REWARD, self.I_REWARD_GOLD)):
+                        self.I_WIN, self.I_DE_WIN, self.I_FALSE, self.I_REWARD, self.I_REWARD_GOLD,
+                        getattr(self, 'I_SE_BATTLE_WIN', None)) if marker is not None):
                     return True
             if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
                 continue
@@ -120,6 +122,15 @@ class WQExplore(BaseExploration, HighLight):
                     explore_only_boss = False
                     logger.info(f'Fight, minions cnt {self.minions_cnt}')
                     continue
+                # 可领取的悬赏交回外层处理，再重新识别尚未完成的目标。
+                reward_box = getattr(self, 'I_WQ_BOX', None)
+                if reward_box is not None and self.appear(reward_box):
+                    logger.info('Wanted reward available; return to wanted quest list')
+                    self._match_end.refresh()
+                    self.quit_explore()
+                    if not self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_EXPLORATION, interval=4, timeout=20):
+                        raise GameStuckError('Wanted reward did not return to exploration world')
+                    return
                 # 向后拉,寻找怪
                 if search_fail_timer.reached():
                     search_fail_timer.reset()

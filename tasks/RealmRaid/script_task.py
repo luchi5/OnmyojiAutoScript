@@ -10,6 +10,7 @@ from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_realm_raid, page_main, page_shikigami_records
 from tasks.RealmRaid.assets import RealmRaidAssets
+from tasks.GlobalGame.dialog_buttons import DialogButtonRule
 from tasks.RealmRaid.config import RealmRaid, RaidMode, AttackNumber, WhenAttackFail
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.Component.GeneralBattle.battle_wait import battle_wait_strategy
@@ -24,6 +25,12 @@ from module.atom.click import RuleClick
 
 
 class ScriptTask(GeneralBattle, GameUi, SwitchSoul, RealmRaidAssets):
+    # Keep the task's legacy refresh template and add the shared new button UI.
+    I_FRESH_ENSURE = DialogButtonRule(
+        button='confirm', roi_front=(672,403,173,59), roi_back=(672,403,173,59),
+        threshold=0.8, method='Template matching',
+        file='./tasks/RealmRaid/res/res_fresh_ensure.png',
+    )
     medal_grid: ImageGrid = None
 
     def replace_img(self, asset_before: str, asset_after: RuleImage,

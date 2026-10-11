@@ -9,6 +9,7 @@ from pathlib import Path
 from module.atom.click import RuleClick
 from module.atom.image import RuleImage
 from tasks.GameUi.assets import GameUiAssets
+from tasks.GlobalGame.dialog_buttons import DialogButtonRule
 from module.exception import GameStuckError
 from module.logger import logger
 from tasks.Chess.assets import ChessAssets
@@ -36,6 +37,18 @@ class ChessResultNavigationMixin:
 
     I_CHESS_SHARE_PANEL_BAR = _share_panel_rule('chess_share_panel_bar')
     I_CHESS_SHARE_PANEL_CLOSE = _share_panel_rule('chess_share_panel_close')
+
+    # 与公共弹窗共用新旧确定/取消素材；旧 worker 的 GameUiAssets 可继续缓存。
+    I_CHESS_EXIT_CONFIRM = DialogButtonRule(
+        button='confirm', roi_front=(716,409,88,45), roi_back=(716,409,88,45),
+        threshold=0.8, method='Template matching',
+        file=str(Path(__file__).resolve().parents[2] / 'GameUi/page/page_chess_exit_confirm.png'),
+    )
+    I_CHESS_EXIT_CANCEL = DialogButtonRule(
+        button='cancel', roi_front=(478,409,88,45), roi_back=(478,409,88,45),
+        threshold=0.8, method='Template matching',
+        file=str(Path(__file__).resolve().parents[2] / 'GameUi/page/page_chess_exit_cancel.png'),
+    )
 
     CHESS_EXIT_TIMEOUT = 60.0
     CHESS_EXIT_SCREENSHOT_INTERVAL = 0.35
@@ -242,7 +255,7 @@ class ChessResultNavigationMixin:
             if confirm_visible or cancel_visible:
                 dialog_seen = True
 
-            if dialog_seen and confirm_clicked and not confirm_visible:
+            if dialog_seen and confirm_clicked and not (confirm_visible or cancel_visible):
                 logger.debug('Global Chess page handler: exit confirmed')
                 if return_to_lobby:
                     return self.return_to_chess_lobby()

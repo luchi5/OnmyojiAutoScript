@@ -101,6 +101,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
         # which can advance when an enemy list contains no attackable target.
         # Every invocation must obtain new battle proof, even on reused tasks.
         self._closeout_fight_counts = {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0}
+        self._abyss_preset_selected = False
 
         if cfg.switch_soul_config.enable:
             self.goto_page(page_shikigami_records)
@@ -522,6 +523,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
             
         return suceess
 
+    def _preset_selection_interrupted(self):
+        # Preset selection can race a transition into battle or back to the map.
+        return (self.is_in_real_battle(False) or self.appear(self.I_WIN)
+                or self.appear(self.I_ABYSS_NAVIGATION))
+
     def run_general_battle_back(self, Monster_type: str) -> bool:
         """
         重写父类方法，因为狭间暗域的准备和战斗流程不一样
@@ -534,6 +540,17 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AbyssShadowsAssets):
             #确保进入战斗
             self.screenshot()
             if self.wait_until_appear(self.I_EQUIPPING, wait_time=4):
+                battle = cfg.general_battle_config
+                if (battle.preset_enable and not battle.lock_team_enable
+                        and not getattr(self, '_abyss_preset_selected', False)):
+                    self.switch_preset_team(True, battle.preset_group, battle.preset_team)
+                    self.screenshot()
+                    if self._preset_selection_interrupted():
+                        continue
+                    self._abyss_preset_selected = True
+                    # Selection changes the frame; recheck before clicking ready.
+                    if not self.appear(self.I_EQUIPPING):
+                        continue
                 self.click(self.I_EQUIPPING, interval=1.5)
             if not self.appear(self.I_EQUIPPING):
                 break

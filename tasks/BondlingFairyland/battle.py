@@ -39,13 +39,25 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
         task_run_time_seconds = timedelta(seconds=int(task_run_time.total_seconds()))
         logger.info(f'Current times: {task_run_time_seconds} / {self.limit_time}')
 
-        if preparation:
-            # 首先要判断进入战斗的界面
+        if preparation and self._finish_capture_preparation():
+            # Only mark targets after preparation actually enters battle.
             self.green_mark(battle_config.green_enable, battle_config.green_mark)
 
         # 进入战斗过程
         return self.catch_battle_wait(battle_config.random_click_swipt_enable)
 
+
+    def _finish_capture_preparation(self) -> bool:
+        """Return True for battle, False for results; never skip preparation."""
+        timeout = Timer(30).start()
+        while not timeout.reached():
+            self.screenshot()
+            if self._capture_result_visible():
+                return False
+            if self.is_in_real_battle(False):
+                return True
+            self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1)
+        raise GameStuckError('Bondling preparation timed out: battle or result not confirmed')
 
     def _capture_result_visible(self) -> bool:
         """Recognize results before testing battle or capture-page controls."""

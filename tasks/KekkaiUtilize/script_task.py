@@ -65,7 +65,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         for i in range(1, max_tries+1):
             self.goto_page(page_guild)
             # 在寮的主界面 检查是否有收取体力或者是收取寮资金
-            if self.check_guild_ap_or_assets():
+            if self.check_guild_ap_or_assets(assets_enable=self.config.kekkai_utilize.utilize_config.guild_assets_enable):
                 logger.warning(f'第[{i}]次检查寮收获,成功')
                 self.goto_page(page_main)
                 break
@@ -182,13 +182,13 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 continue
 
             # 资金收取确认
-            if self.appear_then_click(self.I_GUILD_ASSETS_RECEIVE, interval=1):
+            if assets_enable and self.appear_then_click(self.I_GUILD_ASSETS_RECEIVE, interval=1):
                 time.sleep(1)
                 timer_check.reset()
                 continue
 
             # 收资金
-            if self.appear_then_click(self.I_GUILD_ASSETS, interval=1.5, threshold=0.6):
+            if assets_enable and self.appear_then_click(self.I_GUILD_ASSETS, interval=1.5, threshold=0.6):
                 timer_check.reset()
                 continue
 

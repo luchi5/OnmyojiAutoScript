@@ -21,7 +21,7 @@ from module.atom.image import RuleImage
 from module.atom.image_grid import ImageGrid
 from module.atom.ocr import RuleOcr
 from module.base.timer import Timer
-from module.exception import TaskEnd
+from module.exception import GameStuckError, TaskEnd
 from module.logger import logger
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
@@ -510,13 +510,20 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
 
             任意庭院->道馆的界面返回庭院
         """
-        while 1:
+        deadline = time.monotonic() + 60
+        while time.monotonic() < deadline:
             self.screenshot()
             if self.appear(self.I_CHECK_MAIN):
-                break
+                return
+            # The final ranking can appear over an already-open exit dialog.
+            # Dismiss the visible result before clicking anything beneath it.
+            if self.appear(self.I_RYOU_DOKAN_TOPPA_RANK):
+                self.click(self.C_DOKAN_TOPPA_RANK_CLOSE_AREA, interval=2)
+                continue
             if self.appear(self.I_RYOU_DOKAN_QUIT_BATTLE_ENSURE):
-                # 借用下,猜测是一样的确定按钮,如果不一样,会卡住
-                self.ui_click_until_disappear(self.I_RYOU_DOKAN_QUIT_BATTLE_ENSURE, interval=2)
+                # Recheck the whole frame after each click: a late ranking
+                # must not be trapped inside a confirmation-only wait loop.
+                self.click(self.I_RYOU_DOKAN_QUIT_BATTLE_ENSURE, interval=2)
                 continue
             if self.appear(self.I_RYOU_DOKAN_DOKAN_QUIT):
                 self.click(self.I_RYOU_DOKAN_DOKAN_QUIT, interval=3)
@@ -527,6 +534,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             if self.appear(self.I_BACK_Y):
                 self.click(self.I_BACK_Y, interval=3)
                 continue
+        raise GameStuckError('Dokan exit did not reach the courtyard within 60 seconds')
 
     def goto_dokan_scene(self):
         # 截图速度太快会导致在道馆-神社之间一直循环无法退出,故设置截图间隔

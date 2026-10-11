@@ -17,7 +17,8 @@ from tasks.Orochi.page import page_orochi
 from tasks.Orochi.config import Orochi, UserStatus, Layer
 from tasks.TrueOrochi.assets import TrueOrochiAssets
 from module.logger import logger
-from module.exception import TaskEnd
+from module.base.timer import Timer
+from module.exception import TaskEnd, GameStuckError
 
 
 class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi, SwitchSoul, OrochiAssets, TrueOrochiAssets):
@@ -401,6 +402,41 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.appear(self.I_MATCHING) or self.appear(self.I_CHECK_EXPLORATION):
                 return True
         return False
+
+    def battle_before(self, buff, config, timeout: float = 5) -> bool:
+        """Keep preparation separate from result waiting after a slow preset switch."""
+        if GeneralBattle.battle_before(self, buff, config, timeout):
+            return True
+
+        # This recovery is for the confirmed solo/unlocked path. Team modes
+        # may legitimately wait for another player's preparation; preserve it.
+        orochi = getattr(getattr(self, 'config', None), 'orochi', None)
+        user_status = getattr(getattr(orochi, 'orochi_config', None), 'user_status', None)
+        if user_status != UserStatus.ALONE or getattr(config, 'lock_team_enable', False):
+            return False
+
+        # The initial five-second budget includes preset/buff setup. Keep the
+        # selected team and allow bounded retries on fresh post-selection frames.
+        logger.warning('Orochi preparation unconfirmed; checking entry after setup')
+        prepare_timer = Timer(20).start()
+        clicks = 0
+        while not prepare_timer.reached():
+            self.screenshot()
+            if not self.is_in_prepare(False):
+                if self.is_in_real_battle(False) or any(self.appear(marker) for marker in (
+                        self.I_WIN, self.I_FALSE, self.I_REWARD, self.I_GREED_GHOST)):
+                    logger.info('Orochi battle or settlement entry confirmed')
+                    return True
+            if self.appear_then_click(self.I_DISABLE_7DAYS_DIFF_SOUL, interval=0.6):
+                continue
+            if self.appear_then_click(self.I_CONFIRM_CLOSE_DIFF_SOUL, interval=0.6):
+                continue
+            if not getattr(config, 'lock_team_enable', False) and clicks < 6:
+                if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
+                    clicks += 1
+            sleep(0.3)
+
+        raise GameStuckError('Orochi preparation timed out: battle or settlement not confirmed')
 
     def battle_wait(self, random_click_swipt_enable: bool) -> bool:
         """

@@ -15,7 +15,7 @@ from module.base.timer import Timer
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.DemonEncounter.config import BossType, DemonEncounter, convert_to_general_battle_config
 from tasks.GameUi.game_ui import GameUi
-from tasks.GameUi.page import page_demon_encounter, page_demon_encounter_realworld, page_shikigami_records
+from tasks.GameUi.page import page_demon_encounter, page_demon_encounter_realworld, page_shikigami_records, page_town
 from tasks.DemonEncounter.assets import DemonEncounterAssets
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
@@ -189,7 +189,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
 
                 # 2次搜索都没找到: 重进地图清状态, 最多3轮
                 logger.info(f'Boss not found, re-enter demon encounter map (round {reenter_round}/3)')
-                self.goto_page(page_demon_encounter)
+                self.goto_page(page_town)
                 self.goto_page(page_demon_encounter_realworld)
 
             raise GameStuckError(

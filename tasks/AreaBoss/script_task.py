@@ -3,7 +3,10 @@
 # github https://github.com/runhey
 import time
 from copy import copy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import json
+import os
+import uuid
 from pathlib import Path
 
 import cv2
@@ -26,6 +29,72 @@ from typing import List
 
 class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
 
+    def _area_boss_identity(self):
+        # Reuse the existing boss-name reader; list positions are not identities.
+        try:
+            text = self.O_AB_BOSS_NAME.detect_text(self.device.image)
+            name = re.sub(r'\s+', '', text) if isinstance(text, str) else ''
+            return name if 2 <= len(name) <= 80 else None
+        except Exception as exc:
+            logger.warning(f'Cannot identify Area Boss for daily evidence: {type(exc).__name__}')
+            return None
+
+    def _record_area_boss(self, name=None, basis=None, target=None, reputation=None):
+        # Reporting is observational: a write/OCR failure cannot change battle
+        # results, schedule, or the accepted existing single-boss completion rule.
+        try:
+            now = datetime.now(timezone(timedelta(hours=8)))
+            account = self.config.config_name
+            if (not isinstance(account, str) or not account or account in ('.', '..')
+                    or any(c in account for c in '\\/:*?"<>|')
+                    or any(ord(c) < 32 for c in account) or account[-1:] in (' ', '.')):
+                raise ValueError('Invalid account name')
+            root = Path(__file__).resolve().parents[2]
+            directory = root / 'log' / 'area_boss_completion' / account
+            path = directory / (now.date().isoformat() + '.json')
+            for check in (root, root/'log', root/'log'/'area_boss_completion', directory, path):
+                if check.exists() and (check.is_symlink() or getattr(check.lstat(), 'st_file_attributes', 0) & 0x400):
+                    raise ValueError('Linked completion evidence path')
+            if path.exists() and path.stat().st_nlink != 1:
+                raise ValueError('Hardlinked completion evidence')
+            record = {'schema_version': 1, 'source': 'area_boss_task_v1', 'task': 'AreaBoss',
+                      'account': account, 'date': now.date().isoformat(), 'at': now.isoformat(timespec='seconds'),
+                      'target': None, 'reputation': None, 'bosses': [], 'unidentified_successes': 0}
+            if path.exists():
+                previous = json.loads(path.read_text(encoding='utf-8'))
+                if (previous.get('schema_version') != 1 or previous.get('source') != 'area_boss_task_v1'
+                        or previous.get('account') != account or previous.get('date') != record['date']
+                        or previous.get('task') != 'AreaBoss' or not isinstance(previous.get('bosses'), list)):
+                    raise ValueError('Invalid existing daily evidence')
+                record = previous
+                record['at'] = now.isoformat(timespec='seconds')
+            if type(target) is int and target in (1, 2, 3):
+                record['target'], record['reputation'] = target, reputation
+            if isinstance(name, str) and name and basis in ('existing_rank', 'battle_success'):
+                if not any(entry.get('name') == name for entry in record['bosses']):
+                    record['bosses'].append({'name': name, 'basis': basis, 'at': now.isoformat(timespec='seconds')})
+            elif basis in ('existing_rank', 'battle_success'):
+                record['unidentified_successes'] = record.get('unidentified_successes', 0) + 1
+            count = len({entry['name'] for entry in record['bosses']})
+            record['completed_count'] = count
+            record['outcome'] = ('completed' if type(record['target']) is int and count >= record['target']
+                                 else 'incomplete' if type(record['target']) is int and not record.get('unidentified_successes') else 'unverified')
+            directory.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_name(path.name + '.' + uuid.uuid4().hex + '.tmp')
+            try:
+                fd = os.open(str(temporary), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                with os.fdopen(fd, 'w', encoding='utf-8') as stream:
+                    json.dump(record, stream, ensure_ascii=False, indent=2)
+                    stream.flush(); os.fsync(stream.fileno())
+                if path.exists() and (path.is_symlink() or getattr(path.lstat(), 'st_file_attributes', 0) & 0x400
+                                      or path.stat().st_nlink != 1):
+                    raise ValueError('Unsafe evidence target')
+                os.replace(str(temporary), str(path))
+            finally:
+                if temporary.exists(): temporary.unlink()
+        except Exception as exc:
+            logger.warning(f'Cannot save Area Boss daily evidence: {type(exc).__name__}')
+
     def _get_dynamic_boss_count(self) -> int:
         """
         从地域鬼王主界面 OCR 声望值，动态决定可挑战次数
@@ -34,12 +103,34 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         self.screenshot()
         rep = self.O_AB_REPUTATION.ocr_digit(self.device.image)
         logger.info(f"Area boss reputation: {rep}")
+        target = 3 if rep >= 10000 else 2 if rep >= 2000 else 1
+        self._record_area_boss(target=target, reputation=rep)
         if rep >= 10000:
             return 3
         elif rep >= 2000:
             return 2
         else:
             return 1
+
+    def _select_challenge_button(self, battle: RuleImage) -> RuleImage | None:
+        """Match a visible red/gold challenge button without mutating assets."""
+        image = self.device.image
+        if image is None or len(image.shape) != 3 or image.shape[2] != 3:
+            return None
+        height, width = image.shape[:2]
+        x, y, w, h = battle.roi_back
+        left, top = max(0, x - 10), max(0, y - 10)
+        right, bottom = min(width, x + w + 10), min(height, y + h + 10)
+        if right <= left or bottom <= top:
+            return None
+        target = copy(battle)
+        target.roi_front = list(battle.roi_front)
+        target.roi_back = (left, top, right - left, bottom - top)
+        if not self.appear(target):
+            return None
+        if not target.match_saturation(image, roi=tuple(target.roi_front)):
+            return None
+        return target
 
     def run(self) -> bool:
         """
@@ -77,17 +168,22 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         # 动态获取可挑战次数
         dynamic_count = self._get_dynamic_boss_count()
         available = dynamic_count - boss_fought
-        if available >= 3:
-            self.boss_fight(self.I_BATTLE_1)
-            self.boss_fight(self.I_BATTLE_2)
-            self.boss_fight(self.I_BATTLE_3)
-        elif available == 2:
-            self.boss_fight(self.I_BATTLE_1)
-            self.boss_fight(self.I_BATTLE_2)
-        elif available == 1:
-            self.boss_fight(self.I_BATTLE_1)
+        battle_results = []
+        for battle in (self.I_BATTLE_1, self.I_BATTLE_2, self.I_BATTLE_3):
+            if len(battle_results) >= available:
+                break
+            self.screenshot()
+            if not self.appear(self.I_AB_FILTER_OPENED):
+                self.open_filter()
+            self.screenshot()
+            target = self._select_challenge_button(battle)
+            if target is None:
+                continue
+            battle_results.append(self.boss_fight(target))
         # 退出
         self.go_back()
+        if len(battle_results) < available or any(result is not True for result in battle_results):
+            logger.warning('Area Boss challenge incomplete; retain actual completion evidence and use normal schedule')
         self.set_next_run(task='AreaBoss', success=True, finish=False)
 
         # 以抛出异常的形式结束
@@ -161,8 +257,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         if not self.open_boss_detail(battle, 3):
             return False
 
+        boss_identity = self._area_boss_identity()
+
         # 如果已经打过该BOSS,直接跳过不打了
         if self.is_group_ranked():
+            self._record_area_boss(boss_identity, 'existing_rank')
             logger.warning("There is no boss could be challenged")
             self.ui_click_until_disappear(self.I_AB_CLOSE_RED, interval=3)
             return True
@@ -186,6 +285,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         if not self.start_fight():
             result = False
             logger.warning("Area Boss Fight Failed ")
+        if result is True:
+            self._record_area_boss(boss_identity, 'battle_success')
         self.wait_until_appear(self.I_AB_CLOSE_RED)
         self.ui_click_until_disappear(self.I_AB_CLOSE_RED, interval=1)
         return result
@@ -459,7 +560,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         return self._switch_to_floor(self.I_AB_JI_FLOOR_TEN, first=False)
 
     def _switch_to_floor(self, target: RuleImage, first: bool) -> bool:
-        """Select a visible star and verify the closed selector's title."""
+        """Select a visible star, then confirm its dropdown closes."""
         from copy import copy
 
         def in_area(rule, area):
@@ -473,10 +574,6 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         # template even though the list is already open.
         list_area = (365, 155, 130, 310)
         selected = in_area(target, (365, 108, 140, 45))
-        selected_text = copy(self.O_AB_BOSS_NAME)
-        # Exclude the difficulty icon on the left and the selector arrow.
-        selected_text.roi = [378, 112, 78, 38]
-        selected_text.name = 'AB_SELECTED_STAR'
         choice = in_area(target, list_area)
         list_first = in_area(self.I_AB_JI_FLOOR_ONE, list_area)
         list_last = in_area(self.I_AB_JI_FLOOR_TEN, list_area)
@@ -496,17 +593,12 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             self.screenshot()
             visible_choice = self.appear(choice)
             list_visible = visible_choice or self.appear(list_first) or self.appear(list_last)
-            menu_closed = not list_visible and (not opened or selections > 0)
-            title_matches = self.appear(selected)
-            if menu_closed and not title_matches:
-                # Header lettering has a different background from the menu.
-                # Reuse the account's OCR session and require an exact star,
-                # rather than relaxing a template enough to confuse levels.
-                text = re.sub(r'\s+', '', selected_text.detect_text(self.device.image))
-                title_matches = text in (
-                    ('壹星', '一星', '1星') if first else ('拾星', '十星', '10星')
-                )
-            if title_matches and menu_closed:
+            # After a real target click, closure is sufficient; do not OCR
+            # differently styled header text. Require the detail page itself
+            # and two fresh closed frames, so a navigation loss is not success.
+            menu_closed = not list_visible and self.appear(self.I_AB_CLOSE_RED)
+            confirmed = menu_closed and (selections > 0 or self.appear(selected))
+            if confirmed:
                 stable += 1
                 if stable >= 2:
                     logger.info(f'Switch to floor {1 if first else 10} confirmed')
@@ -520,6 +612,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
                 if selections >= 2:
                     if now - last_select >= 3:
                         logger.warning('Area boss star selection did not close the dropdown')
+                        self._save_star_selection_failure()
                         return False
                     time.sleep(0.2)
                     continue
@@ -532,7 +625,8 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
                 # Do not reopen a selector after an unverified selection or
                 # mistake a clicked menu item for the final difficulty.
                 if now - last_select >= 5:
-                    logger.warning('Area boss selected star was not confirmed in the title')
+                    logger.warning('Area boss star dropdown closure was not confirmed')
+                    self._save_star_selection_failure()
                     return False
                 time.sleep(0.2)
                 continue
@@ -541,6 +635,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             if opened:
                 if swipes >= 6:
                     logger.warning('Area boss target star not found after bounded scrolling')
+                    self._save_star_selection_failure()
                     return False
                 if now - last_swipe >= 1.3:
                     self.swipe(scroll, interval=1)
@@ -553,13 +648,30 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
                 continue
             if opens >= 2:
                 logger.warning('Area boss star dropdown could not be recognized')
+                self._save_star_selection_failure()
                 return False
             if self.click(self.C_AB_JI_FLOOR_SELECTED, interval=3):
                 opens += 1
                 last_open = now
             time.sleep(0.2)
         logger.warning('Area boss star selection timed out')
+        self._save_star_selection_failure()
         return False
+
+    def _save_star_selection_failure(self):
+        try:
+            directory = Path('log') / 'area_boss_star_selection'
+            directory.mkdir(parents=True, exist_ok=True)
+            account = re.sub(r'[^\w\-]', '_', str(getattr(self.config, 'config_name', 'account')))
+            path = directory / f'{account}-{datetime.now():%Y%m%d-%H%M%S-%f}.png'
+            ok, encoded = cv2.imencode('.png', cv2.cvtColor(self.device.image, cv2.COLOR_RGB2BGR))
+            if ok:
+                encoded.tofile(str(path))
+                logger.info(f'Area Boss star selection diagnostic: {path}')
+            else:
+                logger.warning('Cannot encode Area Boss star selection diagnostic')
+        except Exception as exc:
+            logger.warning(f'Cannot save Area Boss star selection diagnostic: {exc}')
 
     def fight_reward_boss(self):
         BOSS_REWARD_PHOTO1 = [self.C_AB_BOSS_REWARD_PHOTO_1, self.C_AB_BOSS_REWARD_PHOTO_2, self.C_AB_BOSS_REWARD_PHOTO_3]

@@ -2,6 +2,8 @@
 
 本分支基于 [runhey/OnmyojiAutoScript](https://github.com/runhey/OnmyojiAutoScript)，于 2026-10-08 整理公开。保留上游 GPLv3 许可证。
 
+2026-10-11：同步当前定制版的地域鬼王选择与每日计数、庭院事务“龙仪星引”识别和固定排期、预设切换后的准备流程、新旧确认弹窗与新版奖励素材、重启开关约束、手动关闭模拟器后的唤醒检查、结界挂卡默认第一张，以及百鬼棋局每周 600 鼬乐币通知。新增 [彼世逢魔](tasks/OtherWorldTwilight/README.md)，默认关闭。对应功能已做离线回归；这不等于每项功能都已完成游戏内实战验证。
+
 增强内容包括多庭院皮肤和庭院事务、寮任务与开场重试、每日收尾与反馈、账号会话保护、配置导入导出与日志统计，以及战斗、奖励领取和导航修复。百鬼棋局（Chess）模块移植自 [xylolit-mu/OnmyojiAutoScript](https://github.com/xylolit-mu/OnmyojiAutoScript)，来源与适配说明见 [Chess 文档](tasks/Chess/README.md)。感谢两项目的原作者与贡献者。
 
 配套前端为 [OASX](https://github.com/luchi5/OASX)，管理面板为 [OAS-WebPanel](https://github.com/luchi5/OAS-WebPanel)。部署时自行配置设备、账号和通知服务。仓库只提供通用模板与识别素材。

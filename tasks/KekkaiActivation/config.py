@@ -11,6 +11,7 @@ from tasks.Utils.config_enum import ShikigamiClass
 class CardType(str, Enum):
     FISH = '斗鱼'
     TAIKO = '太鼓'
+    FIRST = '不筛选（第一张）'
     
 
 class ActivationScheduler(Scheduler):
@@ -22,7 +23,7 @@ class ActivationScheduler(Scheduler):
 class ActivationConfig(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    card_type: CardType = Field(default=CardType.TAIKO, description='card_rule_help')
+    card_type: CardType = Field(default=CardType.TAIKO, description='太鼓、斗鱼按收益范围选卡；不筛选（第一张）使用全部列表第一张卡，不检查收益范围。')
     min_taiko_num: int = Field(default=8, ge=0, description='min_taiko_num_help')
     max_taiko_num: int = Field(default=0, ge=0, description='max_taiko_num_help')
     min_fish_num: int = Field(default=16, ge=0, description='min_fish_num_help')

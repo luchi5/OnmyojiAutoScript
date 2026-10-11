@@ -110,7 +110,9 @@ class ScriptTask(KU, KekkaiActivationAssets):
         :return: 挂卡成功（）返回True，失败(时间没到提前来了)返回False
         退出的时候还是在挂卡界面而不是结界界面
         """
-        self._card_reward_limits(_config)
+        # Compare the serialized value so an older cached CardType is compatible.
+        if _config.card_type != '不筛选（第一张）':
+            self._card_reward_limits(_config)
         self.goto_cards()
         # 太诡异了 为什么有这么长的动画, 那么长的动画先休息一会
         logger.hr('Start activation')
@@ -223,7 +225,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
         :return:
         """
 
-        if rule == CardType.TAIKO:
+        if rule == '不筛选（第一张）':
+            card_class = '全部'
+            target_class = self.I_A_CARD_ALL
+        elif rule == CardType.TAIKO:
             card_class = CardClass.TAIKO
             target_class = self.I_A_CARD_KAIKO
         elif rule == CardType.FISH:
@@ -234,8 +239,11 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.push_notify(content='Unknown card rule')
             return
 
+        selection_timeout = Timer(12).start() if rule == '不筛选（第一张）' else None
         while 1:
             self.screenshot()
+            if selection_timeout is not None and selection_timeout.reached():
+                self._card_not_found()
 
             if self.appear(target_class):
                 time.sleep(0.3)
@@ -247,11 +255,17 @@ class ScriptTask(KU, KekkaiActivationAssets):
         logger.info('Appear card class: {}'.format(card_class))
         while 1:
             self.screenshot()
+            if selection_timeout is not None and selection_timeout.reached():
+                self._card_not_found()
             if not self.appear(target_class):
                 break
             if self.appear_then_click(target_class, interval=1):
                 continue
         logger.info('Selected card class: {}'.format(card_class))
+
+        if rule == '不筛选（第一张）':
+            self._select_first_card(selection_timeout)
+            return
 
         # 找最优卡
         while 1:
@@ -271,6 +285,21 @@ class ScriptTask(KU, KekkaiActivationAssets):
                         return
                     if self.click(target, interval=1):
                         continue
+
+    def _select_first_card(self, timeout=None):
+        """Use the first row of the unfiltered list, without reward OCR."""
+        timeout = timeout if timeout is not None else Timer(12).start()
+        while 1:
+            self.screenshot()
+            if (not self.appear(self.I_A_EMPTY)
+                    and self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.95)):
+                self.config.kekkai_activation.activation_config.card_not_found_count = 0
+                self.config.save()
+                self.save_image(content='确认挂卡: 不筛选（第一张）', push_flag=False, wait_time=0)
+                return
+            if timeout.reached():
+                self._card_not_found()
+            self.click(self.C_A_SELECT_AUTO, interval=1)
 
     def _card_reward_limits(self, con=None):
         if con is None:
@@ -360,7 +389,12 @@ class ScriptTask(KU, KekkaiActivationAssets):
         # 递增未找到卡的计数器
         activation_config.card_not_found_count += 1
 
-        if activation_config.card_not_found_count >= retry_count:
+        if activation_config.card_type == '不筛选（第一张）':
+            log_msg = '⚠️全部列表第一张卡未能选中，180分钟后重试'
+            if activation_config.card_not_found_count >= retry_count:
+                activation_config.card_not_found_count = 0
+            next_run = datetime.now() + timedelta(minutes=retry_minutes)
+        elif activation_config.card_not_found_count >= retry_count:
             # 达到重试上限时的处理
             log_msg = f"⚠️{activation_config.card_type}卡未检出（累计{retry_count}次），{retry_minutes}分钟后重试"
             activation_config.card_not_found_count = 0  # 重置计数器并延长下次执行时间
@@ -381,7 +415,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
 
         # 保存配置并设置下次执行
         self.config.save()
-        self.set_next_run("KekkaiActivation", target=next_run)
+        if activation_config.card_type == '不筛选（第一张）':
+            self.set_next_run("KekkaiActivation", target=next_run, server=False)
+        else:
+            self.set_next_run("KekkaiActivation", target=next_run)
         raise TaskEnd
 
     def check_max_lv(self, shikigami_class: ShikigamiClass = ShikigamiClass.N):

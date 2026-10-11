@@ -55,8 +55,17 @@ class CaptureStd:
         sys.stderr = os.fdopen(self.fderr, 'w')
 
     def __enter__(self):
-        self.fdout = sys.stdout.fileno()
-        self.fderr = sys.stderr.fileno()
+        self._capture_disabled = False
+        try:
+            self.fdout = sys.stdout.fileno()
+            self.fderr = sys.stderr.fileno()
+            os.fstat(self.fdout)
+            os.fstat(self.fderr)
+        except (AttributeError, OSError, ValueError):
+            # pythonw workers can have no standard streams. Preserve the SDK
+            # return code instead of replacing its error with a fileno failure.
+            self._capture_disabled = True
+            return self
         self.reader_out, self.writer_out = os.pipe()
         self.reader_err, self.writer_err = os.pipe()
         self.old_stdout = os.dup(self.fdout)
@@ -69,6 +78,8 @@ class CaptureStd:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        if self._capture_disabled:
+            return
         self._redirect_stdout(to=self.old_stdout)
         self._redirect_stderr(to=self.old_stderr)
         os.close(self.old_stdout)

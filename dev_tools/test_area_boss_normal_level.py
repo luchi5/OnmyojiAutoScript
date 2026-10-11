@@ -96,6 +96,11 @@ class Harness:
             boss=SimpleNamespace(reward_floor=floor)))
         self.exception = self.navigation_exception = None
         self.ranked = False
+        # Daily reporting is observational and is tested independently; it must
+        # not write state while these tests exercise difficulty and battle gates.
+        self.recorded = []
+        self._area_boss_identity = lambda: 'synthetic-boss'
+        self._record_area_boss = lambda *args, **kwargs: self.recorded.append((args, kwargs))
         namespace = {
             'time': SimpleNamespace(monotonic=lambda: self.clock.now, sleep=self.sleep),
             'copy': copy, 're': re, 'datetime': datetime, 'timedelta': timedelta,

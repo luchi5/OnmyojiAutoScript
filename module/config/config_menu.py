@@ -20,6 +20,10 @@ class ConfigMenu:
         self.menu['Script'] = ['Script', 'Restart', 'GlobalGame']
         # 刷御魂
         self.menu["Soul Zones"] = ['Orochi', 'Sougenbi', 'FallenSun', 'EternitySea', 'SixRealms']
+        # 已缓存旧配置模型的进程不暴露尚不可配置的新任务。
+        from module.config.config_model import ConfigModel
+        if 'other_world_twilight' in ConfigModel.model_fields:
+            self.menu["Soul Zones"].append('OtherWorldTwilight')
         # 日常的任务
         self.menu["Daily Task"] = ['DailyTrifles', 'CourtyardAffairs', 'AreaBoss', 'GoldYoukai', 'ExperienceYoukai', 'Nian',
                                    'TalismanPass', 'DemonEncounter', 'Pets', 'SoulsTidy', 'Delegation', 'WantedQuests',

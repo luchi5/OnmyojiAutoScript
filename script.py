@@ -59,6 +59,7 @@ class Script:
         # Key: str, task name, value: int, failure count
         self.failure_record = {}
         self._account_session_restart_pending = False
+        self._account_session_restart_authorized = False
         # 运行loop的线程
         self.loop_thread: Thread = None
         # 跨进程排队管理器（仅在 queue_mode=True 时初始化）
@@ -317,6 +318,7 @@ class Script:
         """
         future = future + timedelta(seconds=1)
         self.config.start_watching()
+        self._resume_device_check_pending = True
         while 1:
             if getattr(self, '_account_session_restart_pending', False):
                 return False
@@ -627,6 +629,7 @@ class Script:
 
     def _get_next_task_with_recovery(self) -> str:
         if not getattr(self, '_account_session_restart_pending', False):
+            self._account_session_restart_authorized = False
             return self.get_next_task()
         self._account_session_restart_pending = False
         # One recovery run must work even when scheduled Restart is disabled.
@@ -635,9 +638,44 @@ class Script:
         recovery_task.enable = True
         recovery_task.next_run = datetime.now().replace(microsecond=0)
         self.config.task = recovery_task
+        self._account_session_restart_authorized = True
         self.is_first_task = False
         logger.info('Run one-shot Restart after other-device login')
         return 'Restart'
+
+    def _stop_when_restart_disabled(self, command: str, error: Exception) -> None:
+        """A disabled Restart forbids ordinary recovery, with takeover as the exception."""
+        if getattr(self, '_account_session_restart_active', False):
+            return
+        restart_enabled = None
+        try:
+            # Tasks can hold an old model for hours; respect an intervening UI toggle.
+            latest = self.config.model.read_json(self.config_name)
+            restart_enabled = latest['restart']['scheduler']['enable']
+            if type(restart_enabled) is not bool:
+                raise ValueError('Restart switch is not a boolean')
+        except Exception as read_error:
+            restart_enabled = None
+            logger.warning(f'无法核验最新重启开关：{type(read_error).__name__}')
+        if restart_enabled is True:
+            return
+        reason = '重启任务未开启' if restart_enabled is False else '重启开关无法核验'
+        logger.error(error)
+        logger.critical(f'{reason}；停止本账号脚本，不自动重启游戏')
+        try:
+            self.save_error_log()
+        except Exception as save_error:
+            logger.warning(f'无法保存停止证据：{type(save_error).__name__}')
+        try:
+            accepted = self.config.notifier.push(
+                title=f'{I18n.trans_zh_cn(command)}{command}',
+                content=f'<{self.config_name}> {type(error).__name__}；{reason}，已停止脚本，不自动重启游戏。'
+            )
+            if not accepted:
+                logger.warning('停止通知请求失败；账号仍保持停止')
+        except Exception as notify_error:
+            logger.warning(f'停止通知失败：{type(notify_error).__name__}')
+        exit(1)
 
     def _record_task_result(self, task: str, success: bool) -> None:
         """Use the same failure limit for scheduled work and idle takeovers."""
@@ -672,6 +710,48 @@ class Script:
             logger.warning(f'恢复前无法复核顶号画面：{type(capture_error).__name__}')
         return False
 
+    def _ensure_emulator_after_wait(self, command: str) -> None:
+        """Refresh a manually closed MuMu instance before reusing a waited device."""
+        self._resume_device_check_pending = False
+        if not IS_WINDOWS:
+            return
+        settings = self.config.script.device
+        if settings.emulatorinfo_type != 'MuMuPlayer12':
+            return
+        # This status protocol is verified for the modern Android 12 launcher.
+        path = Path(settings.emulatorinfo_path)
+        match = re.fullmatch(r'MuMuPlayer(?:Global)?-12\.0-(\d+)', settings.emulatorinfo_name)
+        if path.name.lower() != 'mumunxmain.exe' or match is None:
+            return
+        index = str(int(match.group(1)))
+        import subprocess
+        try:
+            result = subprocess.run(
+                [str(path.with_name('MuMuManager.exe')), 'info', '-v', index],
+                capture_output=True, check=True, timeout=5,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
+            )
+            status = json.loads(result.stdout.decode('utf-8-sig'))
+            if (not isinstance(status, dict)
+                    or str(status.get('index')) != index
+                    or status.get('android_version') != '12.0'
+                    or type(status.get('error_code')) is not int
+                    or status['error_code'] != 0
+                    or type(status.get('is_process_started')) is not bool
+                    or type(status.get('is_android_started')) is not bool):
+                raise ValueError('Invalid MuMu instance status')
+        except (OSError, subprocess.SubprocessError, ValueError, UnicodeError) as error:
+            logger.warning(f'等待后无法核验MuMu运行状态：{type(error).__name__}；保持原设备处理流程')
+            return
+        # A booting or running guest must never be restarted for an ADB/IPC failure.
+        if status['is_process_started'] or status['is_android_started']:
+            return
+        self._stop_when_restart_disabled(command, EmulatorNotRunningError('Emulator closed during wait'))
+        logger.info('等待期间模拟器已关闭，重新初始化设备并按正常流程唤醒')
+        self._emulator_down = True
+        self.device = Device(self.config)
+        self._emulator_down = False
+
     def run(self, command: str) -> bool:
         """
         :param command:  大写驼峰命名的任务名字
@@ -693,9 +773,20 @@ class Script:
             self.instance_guard.release()
             return False
 
+        takeover_restart = (command == 'Restart'
+                            and getattr(self, '_account_session_restart_authorized', False))
+        if command == 'Restart':
+            self._account_session_restart_authorized = False
+            if not takeover_restart:
+                self._stop_when_restart_disabled(command, GameNotRunningError('Unscheduled Restart'))
+        previous_takeover_restart = getattr(self, '_account_session_restart_active', False)
+        self._account_session_restart_active = takeover_restart
         recovery_was_active = getattr(self.device, '_account_session_recovery', False)
         self.device._account_session_recovery = command == 'Restart'
         try:
+            if getattr(self, '_resume_device_check_pending', False):
+                self._ensure_emulator_after_wait(command)
+                self.device._account_session_recovery = command == 'Restart'
             self.device.screenshot()
             module_name = 'script_task'
             module_path = str(Path.cwd() / 'tasks' / command / (module_name+'.py'))
@@ -709,6 +800,7 @@ class Script:
         except GameNotRunningError as e:
             if self._check_account_session_before_recovery(command):
                 return False
+            self._stop_when_restart_disabled(command, e)
             logger.warning(e)
             self.exception_handler(e=e, command=command)
             self.config.task_call('Restart')
@@ -716,6 +808,7 @@ class Script:
         except (GameStuckError, GameTooManyClickError) as e:
             if self._check_account_session_before_recovery(command):
                 return False
+            self._stop_when_restart_disabled(command, e)
             logger.error(e)
             self.save_error_log()
             self.exception_handler(e=e, command=command)
@@ -728,6 +821,7 @@ class Script:
         except GameBugError as e:
             if self._check_account_session_before_recovery(command):
                 return False
+            self._stop_when_restart_disabled(command, e)
             logger.warning(e)
             self.save_error_log()
             self.exception_handler(e=e, command=command)
@@ -739,6 +833,7 @@ class Script:
         except GamePageUnknownError as e:
             if self._check_account_session_before_recovery(command):
                 return False
+            self._stop_when_restart_disabled(command, e)
             logger.info('Game server may be under maintenance or network may be broken, check server status now')
             # 这个还不重要 留着坑填
             logger.critical('Game page unknown')
@@ -768,6 +863,7 @@ class Script:
             exit(1)
         finally:
             self.device._account_session_recovery = recovery_was_active
+            self._account_session_restart_active = previous_takeover_restart
 
     def loop(self):
         """

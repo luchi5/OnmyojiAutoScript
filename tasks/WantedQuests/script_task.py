@@ -12,7 +12,7 @@ from cached_property import cached_property
 from module.atom.image import RuleImage
 from module.atom.ocr import RuleOcr
 from module.base.timer import Timer
-from module.exception import TaskEnd
+from module.exception import TaskEnd, GameStuckError
 from module.logger import logger
 from tasks.Component.Costume.config import MainType
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
@@ -380,13 +380,32 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 continue
 
     def secret(self, goto, num=1):
-        self.ui_click(goto, self.I_WQSE_FIRE)
+        if not self.ui_click(goto, self.I_WQSE_FIRE, timeout=20):
+            raise GameStuckError('Wanted secret mission entry did not appear')
+        won_count = 0
         for i in range(num):
-            self.wait_until_appear(self.I_WQSE_FIRE)
+            entry_timer = Timer(20).start()
+            retry_from_wanted = False
+            while not entry_timer.reached():
+                self.screenshot()
+                if self.appear(self.I_WQSE_FIRE):
+                    break
+                # 普通秘闻获胜后可能回到本周竞速；其选中层并非悬赏目标。
+                # 返回探索重新读取实际进度，再由原策略前往所需的普通层。
+                if (won_count and self.appear(self.I_UI_BACK_BLUE)
+                        and self.appear(self.I_SE_FIRE) and self.appear(self.I_SE_PLACEMENT)):
+                    logger.warning('Secret returned to weekly race; recheck wanted progress')
+                    retry_from_wanted = True
+                    break
+            else:
+                raise GameStuckError('Wanted secret mission entry did not reappear')
+            if retry_from_wanted:
+                break
             # self.ui_click_until_disappear(self.I_WQSE_FIRE)
             # 又臭又长的对话针的是服了这个网易
             click_count = 0
-            while 1:
+            entry_timer = Timer(20).start()
+            while not entry_timer.reached():
                 self.screenshot()
                 if not self.appear(self.I_UI_BACK_RED, threshold=0.7):
                     break
@@ -400,8 +419,15 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                         click_count = 0
                         self.device.click_record_clear()
                     continue
+            else:
+                raise GameStuckError('Wanted secret mission did not leave the dialogue')
             success = self.run_general_battle(self.battle_config)
-        while 1:
+            if not success:
+                logger.warning('Secret battle lost; recheck wanted progress')
+                break
+            won_count += 1
+        exit_timer = Timer(20).start()
+        while not exit_timer.reached():
             self.screenshot()
             if self.appear(self.I_CHECK_SECRET_ZONES):
                 break
@@ -409,9 +435,18 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 continue
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5):
                 continue
+        else:
+            raise GameStuckError('Wanted secret mission did not return to the zone list')
         self.goto_page(page_exploration)
         self.wait_until_stable(self.I_CHECK_EXPLORATION)
-        logger.info('Secret mission finished')
+        self.screenshot()
+        if not self.appear(self.I_CHECK_EXPLORATION):
+            raise GameStuckError('Wanted secret mission did not return to exploration')
+        if won_count == num:
+            logger.info('Secret mission finished')
+            return True
+        logger.warning(f'Secret mission won {won_count}/{num}; wanted progress needs rechecking')
+        return False
 
     def invite_random(self, add_button: RuleImage):
         self.screenshot()
