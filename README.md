@@ -33,6 +33,34 @@ git clone --branch luchi https://github.com/luchi5/OnmyojiAutoScript.git
 
 已有安装需在本地 `config/deploy.yaml` 中将 `Repository` 设为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Branch` 设为 `luchi`，更新器才会继续使用本定制分支。显式配置的仓库与分支会被保留。后续跟进上游使用 `upstream` 指向 runhey 仓库，在同步前人工检查并合并改动。
 
+### 初次安装与启动（Windows）
+
+本仓库提供主脚本源码。GitHub 的 `Code → Download ZIP` 和自动生成的 `Source code.zip` 不包含 `toolkit` 运行环境或 `oas.exe` 启动器，不能当作完整安装包使用。配套 OASX 的编译包只提供图形客户端，网页面板也需要已经安装的 OAS 后台。
+
+初次使用建议按 [上游安装说明](https://runhey.github.io/OnmyojiAutoScript-website/docs/user-manual/installation/) 准备运行环境：
+
+1. 从 [runhey 的 Easy install v1.0.0](https://github.com/runhey/OnmyojiAutoScript/releases/tag/oas-install-v1.0.0) 下载 `OnmyojiAutoScript-easy-install.rar`，完整解压到新的目录。这个安装包提供 `oas.exe`、`toolkit` 和初始部署配置。
+2. **首次启动前**，编辑包内 `config/deploy.yaml`：将 `Deploy.Git.Repository` 改为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Deploy.Git.Branch` 改为 `luchi`，并将 `Deploy.Adb.ReplaceAdb` 设为 `false`。这样安装器会拉取本定制分支，而非上游默认分支。
+3. 双击安装包的 `oas.exe` 完成代码拉取和依赖安装。旧安装器首次可能仍加载旧部署模块；更新后退出程序，再执行一次安装器，按下文核对官方 ADB 的安装日志。只在没有运行任务、模拟器和 ADB 服务时执行完整安装器。
+4. 后台就绪后，再打开 [OASX 编译版](https://github.com/luchi5/OASX/releases) 或 [网页面板](https://github.com/luchi5/OAS-WebPanel)。客户端的连接地址要使用后台日志中显示的实际端口。
+
+`config/deploy.yaml` 是每台电脑的本地部署配置，不提交真实配置。通用模板已经在 [deploy/template](deploy/template)，首次加载部署配置时会据此生成本地 YAML。需要提前编辑时，可以在主脚本根目录执行以下 PowerShell 命令；它不会覆盖现有配置：
+
+```powershell
+if (!(Test-Path -LiteralPath config/deploy.yaml)) {
+    New-Item -ItemType Directory -Path config -Force | Out-Null
+    Copy-Item deploy/template config/deploy.yaml
+}
+```
+
+`oas.exe` 的作用是启动安装和后台流程，主脚本本身由 Python 执行。已经准备好运行环境和依赖时，无需这个 EXE；在主脚本根目录执行：
+
+```powershell
+.\toolkit\python.exe -X utf8 -B server.py --host 127.0.0.1 --port 22289
+```
+
+这条命令启动后台，不运行安装器。通用模板中的 `Deploy.Webui.Run: null` 默认不自动启动账号任务；如果已有配置指定了 `Run`，后台仍会按该配置启动对应账号。OASX 连接 `127.0.0.1:22289`；网页面板的 `backend_url` 填 `http://127.0.0.1:22289`，`backend_root` 填该主脚本目录。关闭这条命令所在的终端会结束后台，因此运行任务期间保持终端打开。
+
 ### Windows ADB 自动安装
 
 Windows 安装器在 Python 依赖安装完成后，自动下载 Google 官方 **Platform-Tools 37.0.1**，核对固定版本压缩包及四个 EXE/DLL 的 SHA-256，再安装到默认的 `toolkit/Lib/site-packages/adbutils/binaries`。`adbutils==0.11.0` 保留为 Python 接口，不再使用它附带的旧版 ADB。已安装且四个文件完全匹配时跳过下载；重新安装依赖带回旧文件后，下次执行安装器会再次校验升级。Linux/macOS 和用户自行指定的 ADB 路径不受这一步管理。
