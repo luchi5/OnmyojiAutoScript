@@ -24,6 +24,24 @@ class AdbManager(DeployConfig):
         return self.filepath('AdbExecutable')
 
     def adb_install(self):
+        # adbutils still provides the Python API; its old bundled executable is
+        # upgraded separately after pip_install, before any ADB connection.
+        if os.name == 'nt':
+            managed = os.path.join(self.root_filepath, 'toolkit', 'Lib', 'site-packages',
+                                   'adbutils', 'binaries', 'adb.exe')
+            if os.path.normcase(os.path.abspath(self.adb)) == os.path.normcase(os.path.abspath(managed)):
+                from deploy.official_adb import OfficialAdbError, VERSION, ensure_official_adb
+                if self.ReplaceAdb:
+                    logger.critical('Set Deploy.Adb.ReplaceAdb to false before installing official ADB. '
+                                    'The legacy emulator replacement copies only adb.exe, without its required DLLs.')
+                    raise ExecutionError
+                try:
+                    result = ensure_official_adb(self.adb)
+                except (OfficialAdbError, OSError) as exc:
+                    logger.critical(f'Official ADB {VERSION} installation blocked: {exc}')
+                    raise ExecutionError from exc
+                logger.info(f'Official ADB {VERSION}: {result}')
+
         logger.hr('Start ADB service', 0)
 
         emulator = EmulatorConnect(adb=self.adb)

@@ -55,9 +55,10 @@ Deploy:
     #   1. Terminate current ADB server
     #   2. Rename ADB from all emulators to *.bak and replace them by the AdbExecutable set above
     #   3. Brute-force connect to all available emulator instances
-    # [In most cases] Use true
-    # [In few cases] Use false, if you have other programs using ADB.
-    ReplaceAdb: true
+    # [Managed Google ADB] Keep false: legacy replacement copies only the EXE,
+    # without the DLLs required by the official 37.0.1 bundle.
+    # [Custom ADB path] Replacement retains the legacy behavior; use carefully.
+    ReplaceAdb: false
     # Brute-force connect to all available emulator instances
     # [In most cases] Use true
     AutoConnect: true

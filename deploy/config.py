@@ -29,7 +29,7 @@ class ConfigModel:
 
     # Adb
     AdbExecutable: str = "./toolkit/Lib/site-packages/adbutils/binaries/adb.exe"
-    ReplaceAdb: bool = True
+    ReplaceAdb: bool = False
     AutoConnect: bool = True
     InstallUiautomator2: bool = True
 

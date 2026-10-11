@@ -31,6 +31,18 @@ git clone --branch luchi https://github.com/luchi5/OnmyojiAutoScript.git
 
 已有安装需在本地 `config/deploy.yaml` 中将 `Repository` 设为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Branch` 设为 `luchi`，更新器才会继续使用本定制分支。显式配置的仓库与分支会被保留。后续跟进上游使用 `upstream` 指向 runhey 仓库，在同步前人工检查并合并改动。
 
+### Windows ADB 自动安装
+
+Windows 安装器在 Python 依赖安装完成后，自动下载 Google 官方 **Platform-Tools 37.0.1**，核对固定版本压缩包及四个 EXE/DLL 的 SHA-256，再安装到默认的 `toolkit/Lib/site-packages/adbutils/binaries`。`adbutils==0.11.0` 保留为 Python 接口，不再使用它附带的旧版 ADB。已安装且四个文件完全匹配时跳过下载；重新安装依赖带回旧文件后，下次执行安装器会再次校验升级。Linux/macOS 和用户自行指定的 ADB 路径不受这一步管理。
+
+已有安装使用默认 ADB 路径时，还需将 `config/deploy.yaml` 的 `Deploy.Adb.ReplaceAdb` 设为 `false`。新版安装模板默认关闭它：旧的模拟器替换逻辑只复制 EXE，无法完整提供 37.0.1 所需的 DLL，安装器会明确阻止这种组合。此功能管理脚本自带的 ADB，不覆盖模拟器自己的程序文件。
+
+通过原安装器执行更新才能安装 ADB；仅在网页拉取 Git 代码不会运行二进制安装。首次从旧仓库切换时，旧安装器可能已经在内存中载入旧部署模块：先拉取代码，退出刚启动的程序后再执行一次安装器，确认日志出现 `Official ADB 37.0.1: installed` 或 `already_current`。升级前应退出任务、模拟器和已有 ADB 服务；新步骤不会主动停止或启动它们，发现 ADB 运行中或文件被占用就停止升级。原安装器自身仍会执行其既有的进程处理和设备连接步骤，因此不要在账号运行时执行整套安装器。
+
+校验或下载失败时不启动旧版 ADB。成功替换前保存精确前像，失败时尝试恢复已替换且未被再次修改、未被加载的文件。压缩包、原版 NOTICE、备份及安装结果位于默认 ADB 目录的 `.official-adb` 子目录；锁冲突不按锁龄抢占。版本固定为 37.0.1，不会随官方 `latest` 链接自动换成未经验证的新版本。
+
+离线验证：`python -B tests/test_official_adb.py -v`，测试只使用临时目录和模拟数据，不连接设备、不执行 ADB、不修改真实配置。
+
 ---
 
 <div align="center">
