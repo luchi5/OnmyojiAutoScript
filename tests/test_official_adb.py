@@ -135,6 +135,12 @@ class InstallerTests(unittest.TestCase):
         self.assert_bundle(old)
         self.assertFalse(list((self.directory / '.official-adb').glob('backup-*')))
 
+    def test_new_separate_destination_does_not_touch_running_adb(self):
+        self.running.return_value = True
+        self.assertEqual(adb.ensure_official_adb(self.exe), 'installed')
+        self.assert_bundle(self.files)
+        self.running.assert_not_called()
+
     def test_install_lock_conflict_preserves_other_owner(self):
         old = self.old_bundle()
         lock = self.directory / '.official-adb-install.lock'

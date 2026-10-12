@@ -35,14 +35,24 @@ git clone --branch luchi https://github.com/luchi5/OnmyojiAutoScript.git
 
 ### 初次安装与启动（Windows）
 
-本仓库提供主脚本源码。GitHub 的 `Code → Download ZIP` 和自动生成的 `Source code.zip` 不包含 `toolkit` 运行环境或 `oas.exe` 启动器，不能当作完整安装包使用。配套 OASX 的编译包只提供图形客户端，网页面板也需要已经安装的 OAS 后台。
+**直接下载本仓库即可安装，无需先下载主仓库安装包或修改仓库地址。** 支持 Windows x64。
 
-初次使用建议按 [上游安装说明](https://runhey.github.io/OnmyojiAutoScript-website/docs/user-manual/installation/) 准备运行环境：
+1. 下载 [luchi 分支 ZIP](https://github.com/luchi5/OnmyojiAutoScript/archive/refs/heads/luchi.zip)，完整解压到可写目录。
+2. 双击根目录的 **`安装并启动.cmd`**。首次需要联网：自动下载独立 Python 3.10.11、MinGit、配套 OASX，安装 Python 依赖和官方 ADB。下载的前置组件都有固定 SHA-256 校验。依赖安装会在配置的镜像失败时尝试清华镜像和官方 PyPI。
+3. 后台准备完成后自动打开 OASX，默认连接 `127.0.0.1:22289`。在界面中添加自己的账号、模拟器和任务配置；新安装不会自动运行账号任务。
+4. 以后仍双击 `安装并启动.cmd`。已完成的环境会检查后复用。运行任务期间保持启动窗口打开，关闭该窗口会结束本次启动的后台。
 
-1. 从 [runhey 的 Easy install v1.0.0](https://github.com/runhey/OnmyojiAutoScript/releases/tag/oas-install-v1.0.0) 下载 `OnmyojiAutoScript-easy-install.rar`，完整解压到新的目录。这个安装包提供 `oas.exe`、`toolkit` 和初始部署配置。
-2. **首次启动前**，编辑包内 `config/deploy.yaml`：将 `Deploy.Git.Repository` 改为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Deploy.Git.Branch` 改为 `luchi`，并将 `Deploy.Adb.ReplaceAdb` 设为 `false`。这样安装器会拉取本定制分支，而非上游默认分支。
-3. 双击安装包的 `oas.exe` 完成代码拉取和依赖安装。旧安装器首次可能仍加载旧部署模块；更新后退出程序，再执行一次安装器，按下文核对官方 ADB 的安装日志。只在没有运行任务、模拟器和 ADB 服务时执行完整安装器。
-4. 后台就绪后，再打开 [OASX 编译版](https://github.com/luchi5/OASX/releases) 或 [网页面板](https://github.com/luchi5/OAS-WebPanel)。客户端的连接地址要使用后台日志中显示的实际端口。
+安装日志和下载缓存位于 `log/installer`。网络失败时修复网络或代理后重新运行，已校验的下载缓存可以继续使用。不需要管理员权限，也不修改系统 Python、系统 PATH 或模拟器的 ADB。仓库 ZIP 本身不包含大型运行环境；入口会自动下载和安装这些前置文件。
+
+已有 `config/deploy.yaml` 和账号配置会原样保留；新安装自动生成指向本仓库 `luchi` 分支的部署配置，并为下载的源码建立 Git 更新记录，不覆盖工作文件。新安装的独立 ADB 放在 `toolkit/adb`，不会被 Python 依赖更新带回旧版。已运行的后台和账号不会被安装入口终止。
+
+只安装而不启动后台或客户端，可在根目录运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy/bootstrap.ps1 -PrepareOnly
+```
+
+`-NoFrontend` 可跳过 OASX 的下载和启动，用于已有客户端的安装。配套网页面板仍可连接安装好的后台。
 
 `config/deploy.yaml` 是每台电脑的本地部署配置，不提交真实配置。通用模板已经在 [deploy/template](deploy/template)，首次加载部署配置时会据此生成本地 YAML。需要提前编辑时，可以在主脚本根目录执行以下 PowerShell 命令；它不会覆盖现有配置：
 
@@ -63,7 +73,7 @@ if (!(Test-Path -LiteralPath config/deploy.yaml)) {
 
 ### Windows ADB 自动安装
 
-Windows 安装器在 Python 依赖安装完成后，自动下载 Google 官方 **Platform-Tools 37.0.1**，核对固定版本压缩包及四个 EXE/DLL 的 SHA-256，再安装到默认的 `toolkit/Lib/site-packages/adbutils/binaries`。`adbutils==0.11.0` 保留为 Python 接口，不再使用它附带的旧版 ADB。已安装且四个文件完全匹配时跳过下载；重新安装依赖带回旧文件后，下次执行安装器会再次校验升级。Linux/macOS 和用户自行指定的 ADB 路径不受这一步管理。
+Windows 安装器在 Python 依赖安装完成后，自动下载 Google 官方 **Platform-Tools 37.0.1**，核对固定版本压缩包及四个 EXE/DLL 的 SHA-256。`安装并启动.cmd` 的新安装使用独立的 `toolkit/adb`；原 `oas.exe` 安装器继续管理默认的 `toolkit/Lib/site-packages/adbutils/binaries`。`adbutils==0.11.0` 保留为 Python 接口。已安装且四个文件完全匹配时跳过下载；原安装器的依赖重装带回旧文件后，下次执行安装器会再次校验升级。Linux/macOS 和原安装器中用户自行指定的 ADB 路径不受这一步管理。
 
 已有安装使用默认 ADB 路径时，还需将 `config/deploy.yaml` 的 `Deploy.Adb.ReplaceAdb` 设为 `false`。新版安装模板默认关闭它：旧的模拟器替换逻辑只复制 EXE，无法完整提供 37.0.1 所需的 DLL，安装器会明确阻止这种组合。此功能管理脚本自带的 ADB，不覆盖模拟器自己的程序文件。
 

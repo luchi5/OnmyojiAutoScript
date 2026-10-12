@@ -330,7 +330,8 @@ def ensure_official_adb(executable):
         files, notice = _unpack(data)
         if not archive_path.exists():
             _write(archive_path, data)
-        if _adb_running():
+        # A fresh, separate destination cannot replace any running ADB image.
+        if any(path.exists() for path in paths.values()) and _adb_running():
             raise OfficialAdbError('ADB is running. Close account tasks, emulators and the existing ADB service, then rerun the installer. No binaries changed.')
         with _binary_guards(paths.values()) as images:
             # Acquire the guards before capturing/checking preimages.
