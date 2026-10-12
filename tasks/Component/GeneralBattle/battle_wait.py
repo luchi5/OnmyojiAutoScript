@@ -1208,6 +1208,11 @@ class BattleWait(BaseTask, GeneralBattleAssets):
         return HookSignal.CONTINUE
 
     def _bw_idle_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
+        # Input clears the device's wait markers. Restore the combat marker
+        # after preparation/marking/random input without resetting its timers.
+        if ('BATTLE_STATUS_S' not in self.device.detect_record
+                and self.is_in_real_battle(False)):
+            self.device.stuck_record_add('BATTLE_STATUS_S')
         return HookSignal.CONTINUE
 
     def _bw_prepare_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:

@@ -30,6 +30,8 @@ class KekkaiActivationAssets:
 
 
 	# Image Rule Assets
+	# 伞室内结界卡收取奖励，覆盖默认和雪景结界位置
+	I_A_HARVEST_UMBRELLA = RuleImage(roi_front=(810,328,50,45), roi_back=(780,120,240,285), threshold=0.8, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_harvest_umbrella.png")
 	# 斗鱼收获奖励4星 
 	I_A_HARVEST_FISH4 = RuleImage(roi_front=(897,159,48,40), roi_back=(872,128,140,181), threshold=0.8, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_harvest_fish4.png")
 	# 一般的收获奖励 

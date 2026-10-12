@@ -137,7 +137,7 @@ class Runtime:
         self.expand_clicks = 0
         self.cancel_clicks = 0
         self.feed_back_clicks = 0
-        self.ready_after = 2
+        self.ready_after = 1
         self.material_ready = True
         self.config = S(script=S(device=S(control_method='adb')))
         self.interval_timer = {}
@@ -197,7 +197,7 @@ class Runtime:
         if rule is self.button:
             return self.phase == 'ready' or (
                 self.phase == 'feed_select' and (self.initial_selection or
-                                                self.selection_clicks >= self.ready_after)) or (
+                                                self.selected_count > 0 and self.selection_clicks >= self.ready_after)) or (
                 self.phase == 'donate_fill') or (self.phase == 'after' and (
                     self.persistent_submit or Clock.now - self.submit_at < self.submit_visible_until))
         return False
@@ -221,7 +221,9 @@ class Runtime:
         if name == self.C_FEED_BACK.name:
             self.feed_back_clicks += 1
             self.phase = 'collective_overview'
-        if name.startswith(('feed_click_', 'feed_select_', 'feed_single_')):
+        if name == 'feed_stack':
+            self.expanded = False
+        if name.startswith(('feed_click_', 'feed_select_', 'feed_single_', 'feed_stack_select_')):
             self.selection_clicks += 1
             self.selection_long_clicks += int(long)
             step = (self.selected_steps.pop(0) if self.selected_steps else
@@ -375,7 +377,7 @@ class RewardTests(unittest.TestCase):
         task.phase = 'overview'
         self.assertTrue(task._feed(0))
         self.assertEqual(task.card_clicks, 1)
-        self.assertEqual(task.selection_clicks, 2)
+        self.assertEqual(task.selection_clicks, 1)
         self.assertEqual(len(task.submits), 1)
         self.assertEqual(len(task.reward_clicks), 1)
         self.assertLess(Clock.now, 15)

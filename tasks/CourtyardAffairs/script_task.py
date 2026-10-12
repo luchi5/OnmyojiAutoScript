@@ -1,10 +1,11 @@
-from module.exception import TaskEnd
+from module.exception import TaskEnd, GameStuckError
 from datetime import datetime, timedelta, timezone, time as clock_time
 import json
 import os
 import uuid
 from tasks.CourtyardAffairs.selected_skin import CompletionAwareCourtyardMixin
 from tasks.CourtyardAffairs.themes import CourtyardSkin
+from tasks.CourtyardAffairs.rewards import CourtyardRewardMixin
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_main
 from tasks.Restart.assets import RestartAssets
@@ -129,6 +130,9 @@ class LongyiCourtyardMixin(CompletionAwareCourtyardMixin):
             if timer.reached():
                 logger.warning('Longyi courtyard timed out; keep the task unfinished')
                 return False
+            if self.handle_courtyard_reward():
+                stable_done = 0
+                continue
             # Rewards and daily sign-in overlays are intermediate states.
             # Never use any of them as completion proof.
             handled = (
@@ -161,7 +165,7 @@ class LongyiCourtyardMixin(CompletionAwareCourtyardMixin):
                 clicks += 1
 
 
-class ScriptTask(LongyiCourtyardMixin, GameUi, RestartAssets):
+class ScriptTask(LongyiCourtyardMixin, CourtyardRewardMixin, GameUi, RestartAssets):
     """An independently scheduled daily task; login no longer runs it."""
 
     def appear_then_click(self, target, *args, **kwargs):
@@ -250,6 +254,11 @@ class ScriptTask(LongyiCourtyardMixin, GameUi, RestartAssets):
             max_complete_clicks=options.max_complete_clicks,
             courtyard_skin=courtyard_skin,
         )
+        # Like AZ, finish the sign-in/reward flow before leaving the task.
+        # A missing note starts from main, so no-entry checks can end directly.
+        if not self._courtyard_no_entry and not self.finish_courtyard_rewards(
+                timeout_seconds=options.timeout_seconds):
+            raise GameStuckError('Courtyard sign-in/rewards did not return to main')
         self.goto_page(page_main)
         outcome = ('completed' if success and self._courtyard_one_click_count > 0
                    else 'already_complete' if success else 'no_entry' if self._courtyard_no_entry

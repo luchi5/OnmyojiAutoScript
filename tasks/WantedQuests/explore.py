@@ -90,9 +90,12 @@ class WQExplore(BaseExploration, HighLight):
                     timeout=Timer(2, count=10)
                 )
                 curr_scene = self.get_current_scene(reuse_screenshot=False)
-                if curr_scene == Scene.WORLD and _cnt_exploration >= num:
-                    logger.info('All Done')
-                    break
+                if curr_scene == Scene.WORLD:
+                    # Boss 后可能自动回到大地图。交回悬赏循环重新读取剩余数量，
+                    # 再通过任务的“前往”进入章节，避免在大地图等待后续轮次。
+                    logger.info('Returned to exploration world; recheck wanted progress')
+                    self._match_end.refresh()
+                    return
                 continue
             # 探索里面
             elif scene == Scene.MAIN:

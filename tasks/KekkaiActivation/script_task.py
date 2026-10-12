@@ -458,6 +458,13 @@ class ScriptTask(KU, KekkaiActivationAssets):
         收卡的经验
         :return:
         """
+        # Running workers may still hold the asset class from before this update.
+        umbrella = getattr(self, 'I_A_HARVEST_UMBRELLA', None)
+        if umbrella is None:
+            umbrella = RuleImage(
+                roi_front=(810, 328, 50, 45), roi_back=(780, 120, 240, 285),
+                threshold=0.8, method='Template matching',
+                file='./tasks/KekkaiActivation/a/a_a_harvest_umbrella.png')
         cards = [
             self.I_A_HARVEST_EXP,  # 如果到最后没有领的话有下面的一些图片
             self.I_A_HARVEST_FISH4,  # 斗鱼4/5区别不大 斗鱼的如果一直没有领的话
@@ -470,6 +477,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
         ]
         for i in range(5):
             self.screenshot()
+            if self.appear_then_click_multi_scale(umbrella, threshold=0.8):
+                break
             appear = [ self.appear_then_click_multi_scale(card, threshold=0.7) for card in cards ]
             if any(appear):
                 break

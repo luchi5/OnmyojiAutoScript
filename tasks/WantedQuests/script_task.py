@@ -281,7 +281,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             类型： 挑战0, 秘闻1， 探索2
             """
             # 获取用户设置的值
-            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value            
+            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value
             # 定义完整的层数后缀顺序
             all_layers = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾", "番外"]
             # 根据用户选择进行截取，生成 layer_limit 集合
@@ -466,11 +466,13 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         self.click(self.I_WQ_FRIEND_5)
         sleep(0.2)
         self.screenshot()
-        if not self.appear(self.I_SELECTED):
+        if not self.appear(self.I_WQ_INVITE_SELECTED):
             logger.warning('No friend selected')
             return False
-        self.ui_click_until_disappear(self.I_INVITE_ENSURE)
+        logger.info('Wanted friends selected; confirm invitation')
+        self.ui_click_until_disappear(self.I_WQ_INVITE_ENSURE)
         sleep(0.5)
+        return True
 
     def invite_five(self):
         """

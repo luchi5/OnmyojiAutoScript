@@ -1,5 +1,14 @@
 [
   {
+    "itemName": "a_harvest_umbrella",
+    "imageName": "a_a_harvest_umbrella.png",
+    "roiFront": "810,328,50,45",
+    "roiBack": "780,120,240,285",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "伞室内结界卡收取奖励，覆盖默认和雪景结界位置"
+  },
+  {
     "itemName": "a_harvest_fish4",
     "imageName": "a_a_harvest_fish4.png",
     "roiFront": "897,159,48,40",

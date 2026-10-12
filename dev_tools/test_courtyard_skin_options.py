@@ -80,7 +80,7 @@ def scheduler_run():
                if isinstance(item, ast.FunctionDef) and item.name == 'run')
     run.decorator_list = []
     namespace = {'TaskEnd': OfflineTaskEnd, 'page_main': object(),
-                 'CourtyardSkin': CourtyardSkin}
+                 'CourtyardSkin': CourtyardSkin, 'GameStuckError': RuntimeError}
     exec(compile(ast.fix_missing_locations(ast.Module(body=[run], type_ignores=[])),
                  str(source), 'exec'), namespace)
     return namespace['run']
@@ -138,15 +138,17 @@ class CourtyardSkinConfigTests(unittest.TestCase):
                     configure_courtyard_skin=Mock(side_effect=lambda value: events.append('configure')),
                     goto_page=Mock(side_effect=lambda page: events.append('navigate')),
                     harvest_courtyard_affairs=Mock(side_effect=lambda **kwargs: events.append('claim') or True),
-                    set_next_run=Mock())
+                    screenshot=Mock(), finish_courtyard_rewards=Mock(return_value=True),
+                    _write_courtyard_outcome=Mock(), _schedule_courtyard_tomorrow=Mock())
                 with self.assertRaises(OfflineTaskEnd):
                     run(task)
                 task.harvest_courtyard_affairs.assert_called_once_with(
                     timeout_seconds=60, max_complete_clicks=3, courtyard_skin=skin)
                 task.configure_courtyard_skin.assert_called_once_with(skin)
                 self.assertEqual(events, ['configure', 'navigate', 'claim', 'navigate'])
-                task.set_next_run.assert_called_once_with(
-                    'CourtyardAffairs', success=True, finish=True, server=True)
+                task.finish_courtyard_rewards.assert_called_once_with(timeout_seconds=60)
+                task._write_courtyard_outcome.assert_called_once_with('already_complete')
+                task._schedule_courtyard_tomorrow.assert_called_once_with()
 
     def test_old_cached_options_without_skin_remain_usable(self):
         task = SimpleNamespace(
@@ -155,13 +157,14 @@ class CourtyardSkinConfigTests(unittest.TestCase):
                     timeout_seconds=60, max_complete_clicks=3))),
             configure_courtyard_skin=Mock(),
             goto_page=Mock(), harvest_courtyard_affairs=Mock(return_value=False),
-            set_next_run=Mock())
+            screenshot=Mock(), finish_courtyard_rewards=Mock(return_value=True),
+            _write_courtyard_outcome=Mock(), _schedule_courtyard_tomorrow=Mock())
         with self.assertRaises(OfflineTaskEnd):
             scheduler_run()(task)
         task.harvest_courtyard_affairs.assert_called_once_with(
             timeout_seconds=60, max_complete_clicks=3, courtyard_skin=CourtyardSkin.AUTO)
-        task.set_next_run.assert_called_once_with('CourtyardAffairs',
-                                                success=False, finish=False, server=False)
+        task._write_courtyard_outcome.assert_called_once_with('failed')
+        task._schedule_courtyard_tomorrow.assert_called_once_with()
 
 
 class CourtyardForcedSkinRulesTests(unittest.TestCase):
@@ -256,7 +259,9 @@ class ClaimFrames(CompletionAwareCourtyardMixin):
         self.current = set(entry)
         self.device = SimpleNamespace(image=self.current)
         self.actions = []
-        for name in ('I_NOTE', 'I_PAGE', 'I_NO_TASKS', 'I_HARVEST_SOUL_2',
+        for name in ('I_HARVEST_SIGN', 'I_HARVEST_SIGN_2', 'I_HARVEST_SIGN_3',
+                     'I_HARVEST_SIGN_4', 'I_HARVEST_SIGN_999', 'I_UI_REWARD',
+                     'I_NOTE', 'I_PAGE', 'I_NO_TASKS', 'I_HARVEST_SOUL_2',
                      'I_HARVEST_SOUL_3', 'I_UI_AWARD', 'I_CONFIRM', 'I_DAILY',
                      'I_SUCCESS_CLAIMED', 'I_SKIP', 'I_LOGIN_RED_CLOSE',
                      'I_COMPLETE_TASKS', 'I_BLUE_PAGE', 'I_BLUE_DAILY_SELECTED',
@@ -266,6 +271,7 @@ class ClaimFrames(CompletionAwareCourtyardMixin):
                      'I_CHECK_GUILD'):
             setattr(self, name, ImageRule(name))
         self.C_BLUE_REWARD_CLOSE = SimpleNamespace(name='C_BLUE_REWARD_CLOSE')
+        self.C_UI_REWARD = SimpleNamespace(name='C_UI_REWARD')
         self.ui_click_multi_scale = Mock(
             side_effect=lambda target, stop, **kwargs: stop.match(self.current))
 
@@ -369,9 +375,10 @@ class CourtyardNavigationScopeTests(unittest.TestCase):
         task.configure_courtyard_skin(CourtyardSkin.BLUE)
         closers = task.navigator.local_unknown_closers
         self.assertIs(closers[0], unrelated)
-        self.assertEqual([item.action.name for item in closers[1:]],
+        self.assertEqual([item.action.name for item in closers[1:] if not callable(item)],
                          ['C_BLUE_REWARD_CLOSE', 'I_UI_BACK_YELLOW'])
-        result, page = closers[1:]
+        result, reward_handler, page = closers[1:]
+        self.assertTrue(callable(reward_handler))
         self.assertTrue(result.condition.target.match({'I_BLUE_SUCCESS_CLAIMED'}))
         self.assertFalse(result.condition.target.match({'I_BLUE_PAGE'}))
         self.assertTrue(page.condition.target.match({'I_BLUE_PAGE'}))
@@ -391,13 +398,14 @@ class CourtyardNavigationScopeTests(unittest.TestCase):
         task.I_PAGE.match({'I_BLUE_PAGE'})
         task.configure_courtyard_skin(CourtyardSkin.DEFAULT)
         closers = task.navigator.local_unknown_closers
-        self.assertEqual(len(closers), 2)
+        self.assertEqual(len(closers), 3)
         self.assertIs(closers[0], unrelated)
-        self.assertEqual(closers[1].action.name, 'I_UI_BACK_YELLOW')
+        self.assertTrue(callable(closers[1]))
+        self.assertEqual(closers[2].action.name, 'I_UI_BACK_YELLOW')
         self.assertTrue(task.I_PAGE.match({'I_PAGE'}))
         self.assertFalse(task.I_PAGE.match({'I_BLUE_PAGE'}))
         task.configure_courtyard_skin(CourtyardSkin.BLUE)
-        self.assertEqual(len(task.navigator.local_unknown_closers), 3)
+        self.assertEqual(len(task.navigator.local_unknown_closers), 4)
         self.assertTrue(task.I_PAGE.match({'I_BLUE_PAGE'}))
         self.assertFalse(task.I_PAGE.match({'I_PAGE'}))
 
@@ -410,7 +418,7 @@ class CourtyardNavigationScopeTests(unittest.TestCase):
         self.assertIsNot(blue.I_PAGE, default.I_PAGE)
         self.assertTrue(default.I_PAGE.match({'I_PAGE'}))
         self.assertFalse(default.I_PAGE.match({'I_BLUE_PAGE'}))
-        self.assertEqual(len(default.navigator.local_unknown_closers), 2)
+        self.assertEqual(len(default.navigator.local_unknown_closers), 3)
 
 
 class CourtyardClaimedFrameTests(unittest.TestCase):
@@ -529,7 +537,9 @@ class Harness(fresh.ScriptTask):
         self.navigator = SimpleNamespace(local_unknown_closers=local,
             add_unknown_closer=lambda *actions: local.extend(actions))
         self.goto_page = Mock()
-        self.set_next_run = Mock()
+        self.finish_courtyard_rewards = Mock(return_value=True)
+        self._write_courtyard_outcome = Mock()
+        self._schedule_courtyard_tomorrow = Mock()
         self.ui_click_multi_scale = lambda target, stop, **kwargs: stop.match(self.current)
     def screenshot(self):
         assert self.frames, 'Fresh claim loop did not terminate'
@@ -551,6 +561,14 @@ timer.reached.return_value = False
 detector = Mock()
 detector.ready.return_value = False
 task = Harness()
+task._longyi_rules = None
+for name in ('I_HARVEST_SIGN', 'I_HARVEST_SIGN_2', 'I_HARVEST_SIGN_3',
+             'I_HARVEST_SIGN_4', 'I_HARVEST_SIGN_999', 'I_UI_REWARD'):
+    setattr(task, name, Rule(name))
+# The cached-worker frames use symbolic markers, so avoid pixel-only Longyi
+# rules here; their actual screenshots are covered by the Longyi replay suite.
+task.configure_courtyard_skin = lambda skin: fresh.CompletionAwareCourtyardMixin.configure_courtyard_skin(task, skin)
+task.frames.insert(0, {'I_BLUE_PAGE'})
 with patch('tasks.CourtyardAffairs.selected_skin.Timer', return_value=timer), \
         patch('tasks.CourtyardAffairs.selected_skin.BlueCompletionDetector', return_value=detector):
     try:
@@ -563,9 +581,10 @@ assert not task.frames
 assert task.actions == ['blue-safe-close']
 assert task._courtyard_skin == fresh.CourtyardSkin.AUTO
 assert task.goto_page.call_count == 2
-assert len(task.navigator.local_unknown_closers) == 2
-task.set_next_run.assert_called_once_with('CourtyardAffairs', success=True,
-                                        finish=True, server=True)
+assert len(task.navigator.local_unknown_closers) == 3
+task.finish_courtyard_rewards.assert_called_once_with(timeout_seconds=60)
+task._write_courtyard_outcome.assert_called_once_with('already_complete')
+task._schedule_courtyard_tomorrow.assert_called_once_with()
 for name, module in old.items():
     assert sys.modules['tasks.CourtyardAffairs.' + name] is module
 assert not hasattr(old['config'], 'CourtyardSkin')

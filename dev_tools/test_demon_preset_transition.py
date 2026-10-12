@@ -82,6 +82,7 @@ class Harness:
                  'I_PRESENT_LESS_THAN_5', 'O_PRESET', 'O_PRESET_FULL',
                  'I_PREPARE_HIGHLIGHT', 'I_PREPARE_DARK', 'I_BUFF', 'I_BATTLE_INFO',
                  'I_WIN', 'I_DE_WIN', 'I_FALSE', 'I_REWARD', 'I_REWARD_GOLD',
+                 'I_UI_CONFIRM_SAMLL', 'O_DE_BOSS_ESCAPED', 'O_DE_SETTLEMENT_CONTINUE',
                  'I_DISABLE_7DAYS_DIFF_SOUL', 'I_CONFIRM_CLOSE_DIFF_SOUL')
         for name in names:
             setattr(self, name, Marker(name))

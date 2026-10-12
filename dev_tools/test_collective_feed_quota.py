@@ -90,10 +90,33 @@ class Runtime:
 
     def feed(self, index, max_items=2):
         self.feed_calls.append((index, max_items, self.state.pending_kind))
+        self._feed_batch_count = min(2, max_items)
         return self.settled
 
 
 class FeedQuotaTests(unittest.TestCase):
+    def test_twenty_to_thirty_with_one_ten_task_stack(self):
+        task = Runtime([(20, 30), (30, 30), (30, 30)])
+        def feed(index, max_items):
+            self.assertEqual(max_items, 10)
+            task._feed_batch_count = 10
+            return True
+        task._feed.side_effect = feed
+        self.assertTrue(task._feed_to_quota(0, (20, 30)))
+        self.assertEqual(task._feed.call_count, 1)
+        self.assertEqual(task.state.pending_kind, 'feed_confirmed:30')
+
+    def test_variable_stacks_stop_at_thirty_with_remaining_budget(self):
+        task = Runtime([(20, 30), (23, 30), (23, 30), (30, 30), (30, 30)])
+        sizes = iter((3, 7))
+        def feed(index, max_items):
+            task._feed_batch_count = next(sizes)
+            return True
+        task._feed.side_effect = feed
+        self.assertTrue(task._feed_to_quota(0, (20, 30)))
+        self.assertEqual([c.kwargs['max_items'] for c in task._feed.call_args_list], [10, 7])
+        self.assertEqual(task.state.pending_kind, 'feed_confirmed:30')
+
     def setUp(self):
         Clock.current = datetime(2026, 10, 7, 20, 16, 30)
         Clock.elapsed = 0
@@ -101,7 +124,7 @@ class FeedQuotaTests(unittest.TestCase):
     def test_twenty_of_thirty_is_completed_in_five_confirmed_batches(self):
         task = Runtime([(20, 30)] + [value for n in (22, 24, 26, 28, 30) for value in ((n, 30), (n, 30))])
         self.assertTrue(task._feed_to_quota(0, (20, 30)))
-        self.assertEqual([budget for _, budget, _ in task.feed_calls], [2] * 5)
+        self.assertEqual([budget for _, budget, _ in task.feed_calls], [10, 8, 6, 4, 2])
         self.assertEqual([kind for _, _, kind in task.feed_calls],
                          ['feed_inflight:20', 'feed_inflight:22', 'feed_inflight:24',
                           'feed_inflight:26', 'feed_inflight:28'])
@@ -119,6 +142,7 @@ class FeedQuotaTests(unittest.TestCase):
         def inspect(index, max_items):
             self.assertEqual(task.snapshots[-1].pending_kind, 'feed_inflight:28')
             self.assertEqual(task.snapshots[-1].attempted_date, '2026-10-07')
+            task._feed_batch_count = 2
             return True
 
         task._feed.side_effect = inspect
@@ -162,7 +186,7 @@ class FeedQuotaTests(unittest.TestCase):
         task = Runtime([(0, 30)] + [value for n in range(2, 31, 2) for value in ((n, 30), (n, 30))])
         self.assertTrue(task._feed_to_quota(0, (0, 30)))
         self.assertEqual(len(task.feed_calls), 15)
-        self.assertEqual(sum(budget for _, budget, _ in task.feed_calls), 30)
+        self.assertEqual(sum(min(2, budget) for _, budget, _ in task.feed_calls), 30)
 
     def test_time_limit_keeps_confirmed_partial_progress_without_new_batch(self):
         task = Runtime([(20, 30), (22, 30), (22, 30)])
@@ -170,6 +194,7 @@ class FeedQuotaTests(unittest.TestCase):
         def slow_feed(index, max_items):
             task.feed_calls.append((index, max_items, task.state.pending_kind))
             Clock.elapsed += 181
+            task._feed_batch_count = 2
             return True
 
         task._feed.side_effect = slow_feed
@@ -250,121 +275,78 @@ class FeedQuotaTests(unittest.TestCase):
 
 
 class ActualNCardSelectionTests(unittest.TestCase):
-    def test_actual_single_card_budget_does_not_spend_an_extra_card(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
+    def task(self, **kw):
+        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime
         SubmitClock.now = 0
-        task = SubmitRuntime()
-        task.ready_after = 1
-        self.assertTrue(task._feed(0, max_items=1))
+        return Runtime(**kw)
+
+    def test_stacked_ten_tasks_are_submitted_without_expanding(self):
+        task = self.task(selected_steps=[10])
+        self.assertTrue(task._feed(0, max_items=10))
+        self.assertEqual(task._feed_batch_count, 10)
         self.assertEqual(task.selection_clicks, 1)
+        self.assertEqual(task.expand_clicks, 0)
         self.assertEqual(task.selection_long_clicks, 0)
         self.assertEqual(len(task.submits), 1)
-        task.device.click_record_clear.assert_not_called()
 
-    def test_actual_selection_never_repeats_an_unready_click(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime()
-        task.ready_after = 99
-        self.assertFalse(task._feed(0, max_items=2))
-        self.assertEqual(task.selection_clicks, 2)
-        self.assertEqual(task.selection_long_clicks, 0)
-        self.assertEqual(task.submits, [])
-        task.device.click_record_clear.assert_not_called()
+    def test_actual_stack_count_can_be_less_than_remaining_budget(self):
+        task = self.task(selected_steps=[3])
+        self.assertTrue(task._feed(0, max_items=10))
+        self.assertEqual(task._feed_batch_count, 3)
 
-    def test_invalid_budget_or_blocked_click_never_submits(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        for budget in (0, 3, True, None):
-            with self.subTest(budget=budget):
-                SubmitClock.now = 0
-                task = SubmitRuntime()
-                self.assertFalse(task._feed(0, max_items=budget))
-                self.assertEqual(task.selection_clicks, 0)
-                self.assertEqual(task.submits, [])
-        SubmitClock.now = 0
-        task = SubmitRuntime()
-        task._collective_click_available = Mock(return_value=False)
-        self.assertFalse(task._feed(0, max_items=2))
-        self.assertEqual(task.selection_clicks, 0)
-        self.assertEqual(task.submits, [])
-
-    def test_actual_stacked_extra_count_cannot_submit_three_as_two(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        # Reproduce the real 1-card + 2-card stack result even if the expanded
-        # marker erroneously appears: actual header quantity remains decisive.
-        task = SubmitRuntime(selected_steps=(1, 2))
-        self.assertFalse(task._feed(0, max_items=2))
+    def test_oversized_stack_is_canceled_then_smaller_stack_used(self):
+        task = self.task(selected_steps=[12, 3])
+        self.assertTrue(task._feed(0, max_items=3))
+        self.assertEqual(task.cancel_clicks, 1)
         self.assertEqual(task.selected_count, 3)
-        self.assertEqual(task.selection_clicks, 2)
-        self.assertEqual(task.selection_long_clicks, 0)
-        self.assertEqual(task.submits, [])
+        self.assertEqual(len(task.submits), 1)
+        self.assertEqual(task.expand_clicks, 0)
 
-    def test_actual_existing_selection_is_canceled_before_budgeted_new_selection(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime(selected_count=3)
+    def test_all_oversized_stacks_stop_without_submission(self):
+        task = self.task(selected_steps=[12] * 8)
+        self.assertFalse(task._feed(0, max_items=10))
+        self.assertEqual(task.submits, [])
+        self.assertEqual(task.selection_clicks, 8)
+
+    def test_expanded_view_is_switched_back_to_stacked(self):
+        task = self.task(expanded=True, selected_steps=[1])
+        self.assertTrue(task._feed(0, max_items=1))
+        self.assertFalse(task.expanded)
+        self.assertIn('feed_stack', task.device.click_record)
+        self.assertEqual(task.expand_clicks, 0)
+
+    def test_invalid_budget_never_selects(self):
+        for budget in (0, -1, 11, True, None):
+            task = self.task()
+            self.assertFalse(task._feed(0, max_items=budget))
+            self.assertEqual(task.selection_clicks, 0)
+
+    def test_old_selection_is_canceled_before_new_stack(self):
+        task = self.task(selected_count=3, selected_steps=[2])
         task.phase = 'overview'
         self.assertTrue(task._feed(0, max_items=2))
         self.assertEqual(task.cancel_clicks, 1)
         self.assertEqual(task.selected_count, 2)
-        self.assertEqual(task.selection_clicks, 2)
-        self.assertEqual(task.selection_long_clicks, 0)
-        self.assertEqual(len(task.submits), 1)
 
-    def test_actual_unconfirmed_expanded_mode_never_selects_or_submits(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime(expand_confirmed=False)
-        self.assertFalse(task._feed(0, max_items=2))
-        self.assertEqual(task.selection_clicks, 0)
-        self.assertEqual(task.submits, [])
-        self.assertLessEqual(task.expand_clicks, 8)
-        self.assertLessEqual(SubmitClock.now, 12)
-
-    def test_actual_unknown_selection_count_stops_before_second_slot(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime()
+    def test_unknown_count_does_not_submit(self):
+        task = self.task()
         task.O_FEED_SUBMIT_COUNT.ocr.side_effect = lambda _: '乱码'
-        self.assertFalse(task._feed(0, max_items=2))
+        self.assertFalse(task._feed(0, max_items=10))
+        self.assertEqual(task.submits, [])
         self.assertEqual(task.selection_clicks, 1)
-        self.assertEqual(task.submits, [])
-        self.assertLessEqual(SubmitClock.now, 12)
 
-    def test_actual_final_count_is_rechecked_immediately_before_submission(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime()
-        numbers = iter((1, 1, 2, 2, 3))
+    def test_final_count_change_does_not_submit(self):
+        task = self.task()
+        numbers = iter([2, 2, 3])
         task.O_FEED_SUBMIT_COUNT.ocr.side_effect = lambda _: f'将提交{next(numbers)}次任务'
-        self.assertFalse(task._feed(0, max_items=2))
-        self.assertEqual(task.selection_clicks, 2)
+        self.assertFalse(task._feed(0, max_items=10))
         self.assertEqual(task.submits, [])
 
-    def test_actual_non_n_page_cannot_enter_selection(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime(n_page=False)
+    def test_wrong_page_does_not_select(self):
+        task = self.task(n_page=False)
         task.phase = 'overview'
-        self.assertFalse(task._feed(0, max_items=2))
+        self.assertFalse(task._feed(0, max_items=10))
         self.assertEqual(task.selection_clicks, 0)
-        self.assertEqual(task.submits, [])
-
-    def test_actual_lower_count_animation_waits_for_two_correct_frames(self):
-        from dev_tools.test_collective_missions_rewards import Clock as SubmitClock, Runtime as SubmitRuntime
-        SubmitClock.now = 0
-        task = SubmitRuntime()
-        texts = iter(('', '将提交1次任务', '将提交1次任务',
-                      '将提交1次任务', '将提交2次任务', '将提交2次任务',
-                      '将提交2次任务', '将提交2次任务'))
-        task.O_FEED_SUBMIT_COUNT.ocr.side_effect = lambda _: next(texts)
-        self.assertTrue(task._feed(0, max_items=2))
-        self.assertEqual(task.selection_clicks, 2)
-        self.assertEqual(task.selection_long_clicks, 0)
-        self.assertTrue(task._feed_submitted)
-        self.assertEqual(len(task.submits), 1)
-        self.assertGreaterEqual(SubmitClock.now, 2.2)
 
 
 class ActualNPageExitTests(unittest.TestCase):
@@ -530,7 +512,7 @@ class ActualRunContinuationTests(unittest.TestCase):
         task = RunRuntime(config, readings)
         task._preferred_mission = Mock(return_value=task.MC.FEED)
         task.detect_best.return_value = (task.MC.FEED if selected_feed else task.MC.AW3, 0)
-        task._feed.return_value = True
+        task._feed.side_effect = lambda *a, **kw: (setattr(task, '_feed_batch_count', min(2, kw['max_items'])) or True)
         for name in ('_feed_resume_allowed', '_save_feed_progress', '_feed_to_quota'):
             setattr(task, name, ACTUAL[name].__get__(task))
         return task
@@ -550,7 +532,7 @@ class ActualRunContinuationTests(unittest.TestCase):
             self.run_task(task)
         begin.assert_not_called()
         self.assertEqual(task._feed.call_count, 4)
-        self.assertEqual([call.kwargs['max_items'] for call in task._feed.call_args_list], [2] * 4)
+        self.assertEqual([call.kwargs['max_items'] for call in task._feed.call_args_list], [8, 6, 4, 2])
         self.assertEqual(task.config.state.attempted_date, '2026-10-07')
         self.assertEqual(task.config.state.completed_date, '2026-10-07')
         self.assertEqual(task.config.state.pending_kind, '')

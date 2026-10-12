@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from module.logger import logger
 from module.exception import GameStuckError, TaskEnd
 from module.base.timer import Timer
+from module.atom.ocr import RuleOcr
 
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.DemonEncounter.config import BossType, DemonEncounter, convert_to_general_battle_config
@@ -34,6 +35,32 @@ class LanternClass(Enum):
 
 class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
     conf: DemonEncounter = None
+
+    # Keep these settlement rules local to DemonEncounter; other battles use
+    # different result pages. OCR is only needed after a confirmation appears.
+    O_DE_BOSS_ESCAPED = RuleOcr(
+        name='de_boss_escaped', mode='Full', method='Default',
+        roi=(438, 270, 405, 92), area=(438, 270, 405, 92), keyword='逃走',
+    )
+    O_DE_SETTLEMENT_CONTINUE = RuleOcr(
+        name='de_settlement_continue', mode='Full', method='Default',
+        roi=(463, 661, 351, 58), area=(463, 661, 351, 58), keyword='点击屏幕',
+    )
+
+    def screenshot(self):
+        """Use XY's long-battle recovery only while a real battle is visible."""
+        try:
+            return super().screenshot()
+        except GameStuckError:
+            if not self.exist_image() or not self.is_in_real_battle(False):
+                raise
+            logger.warning(
+                'Demon encounter wait timeout, but battle is still active; '
+                'reset stuck timer'
+            )
+            self.device.stuck_record_clear()
+            self.device.stuck_record_add('BATTLE_STATUS_S')
+            return super().screenshot()
 
     def run(self):
         self.conf = self.config.demon_encounter
@@ -594,6 +621,15 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         check_timer = None
         while 1:
             self.screenshot()
+            # The escaped-boss dialog obscures the normal loss marker. Close
+            # both the notice and its settlement before the next lantern.
+            if (not self.is_in_real_battle(False)
+                    and self.appear(self.I_UI_CONFIRM_SAMLL)
+                    and self.appear(self.O_DE_BOSS_ESCAPED)):
+                logger.warning('Demon encounter boss escaped; close failed settlement')
+                self.ui_click_until_disappear(self.I_UI_CONFIRM_SAMLL)
+                self.ui_click_until_disappear(self.O_DE_SETTLEMENT_CONTINUE)
+                return False
             if self.appear(self.I_DE_WIN):
                 logger.info('Appear [demon encounter] win button')
                 self.ui_click_until_disappear(self.I_DE_WIN)

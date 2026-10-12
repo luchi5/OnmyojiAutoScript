@@ -686,16 +686,17 @@ class ScriptTask(GameUi, CollectiveMissionsAssets, FeedSelectionAssets):
         started_date = datetime.now().date()
         current = counter[0]
         limit = Timer(180).start()
-        for _batch in range(15):
+        for _batch in range(30):
             if limit.reached() or datetime.now().date() != started_date:
                 return False
             # Re-open only the same positively identified N-card submission UI.
             # Persist inflight before input so a crash never authorizes another
             # batch until its result has been positively verified and saved.
-            budget = min(2, 30 - current)
+            budget = min(10, 30 - current)
             if not self._save_feed_progress('inflight', current):
                 return False
             self._feed_submitted = False
+            self._feed_batch_count = 0
             settled = self._feed(index, max_items=budget)
             if not settled:
                 if (not self._feed_submitted and self._return_to_missions()
@@ -707,7 +708,9 @@ class ScriptTask(GameUi, CollectiveMissionsAssets, FeedSelectionAssets):
             if not self._return_to_missions():
                 return False
             after = self._mission_counter()
-            if (after != (current + budget, 30) or self._mission_counter() != after
+            submitted = self._feed_batch_count
+            if (type(submitted) is not int or not 1 <= submitted <= budget
+                    or after != (current + submitted, 30) or self._mission_counter() != after
                     or datetime.now().date() != started_date):
                 logger.warning('N-card submission result is unconfirmed; do not submit another batch')
                 return False
@@ -729,68 +732,75 @@ class ScriptTask(GameUi, CollectiveMissionsAssets, FeedSelectionAssets):
             return None
         return int(match.group(1))
 
-    def _feed(self, index: int, max_items=2):
+    def _feed(self, index: int, max_items=10):
+        """Submit one verified N-card stack without exceeding the remaining quota."""
         self._feed_submitted = False
-        if type(max_items) is not int or not 1 <= max_items <= 2:
+        self._feed_batch_count = 0
+        if type(max_items) is not int or not 1 <= max_items <= 10:
             return False
-        logger.info('Start to feed soul')
-        match_click = {
-            0: self.C_CM_1,
-            1: self.C_CM_2,
-            2: self.C_CM_3,
-        }
+        match_click = {0: self.C_CM_1, 1: self.C_CM_2, 2: self.C_CM_3}
         if not self._open_collective_submission(match_click[index], self.I_FEED_N_PAGE):
             return False
-        # A stacked card can represent several N cards, even with a short tap.
-        # Clear any leftover choice and positively confirm expanded mode first.
         self.screenshot()
         if self.appear(self.I_FEED_SUBMIT):
             self.click(self.C_FEED_CANCEL, interval=1)
-        expand_limit = Timer(8).start()
-        while not expand_limit.reached():
+        # Leave the normal stacked view unchanged; only switch back if expanded.
+        mode_limit = Timer(8).start()
+        while not mode_limit.reached():
             self.screenshot()
             if not self.appear(self.I_FEED_N_PAGE) or self.appear(self.I_FEED_SUBMIT):
                 return False
-            if self.appear(self.I_FEED_EXPANDED):
+            if not self.appear(self.I_FEED_EXPANDED):
                 break
-            if not self._collective_click_available(self.C_FEED_EXPAND):
+            stack = RuleClick((25, 557, 35, 35), (25, 557, 35, 35), name='feed_stack')
+            if not self._collective_click_available(stack):
                 return False
-            self.click(self.C_FEED_EXPAND, interval=1)
+            self.click(stack, interval=1)
         else:
-            logger.warning('Expanded N-card selection is not confirmed; do not submit')
             return False
-        time.sleep(1.2)  # The card row animates after the mode indicator changes.
-        logger.info('Submit to feed soul')
-        click_list = random.sample([self.L_FEED_CLICK_1, self.L_FEED_CLICK_2, self.L_FEED_CLICK_3, self.L_FEED_CLICK_4], max_items)
-        for expected, slot in enumerate(click_list, start=1):
-            click = RuleClick(tuple(slot.roi_front), tuple(slot.roi_front), name=f'{slot.name}_single')
-            if not self._collective_click_available(click) or not self.click(click, interval=1.5):
+        time.sleep(.5)
+        # A tap selects the entire stack. Read its actual contribution instead
+        # of assuming one tap means one task; try another stack if it is too big.
+        for column in range(8):
+            self.screenshot()
+            if (not self.appear(self.I_FEED_N_PAGE) or self.appear(self.I_FEED_EXPANDED)
+                    or self.appear(self.I_FEED_SUBMIT)):
                 return False
-            time.sleep(.5)
+            roi = (165 + 135 * column, 540, 80, 80)
+            slot = RuleClick(roi, roi, name=f'feed_stack_select_{column}')
+            if not self._collective_click_available(slot) or not self.click(slot, interval=1):
+                return False
             count_limit = Timer(5).start()
-            verified = 0
+            previous = None
+            number = None
             while not count_limit.reached():
                 self.screenshot()
-                if not self.appear(self.I_FEED_N_PAGE) or not self.appear(self.I_FEED_EXPANDED):
+                if not self.appear(self.I_FEED_N_PAGE) or self.appear(self.I_FEED_EXPANDED):
                     return False
                 number = self._feed_selected_count()
-                if number is not None and number > expected:
-                    logger.warning('Actual N-card selection differs from budget; do not submit')
-                    return False
-                verified = verified + 1 if number == expected else 0
-                if verified >= 2:
+                if number is not None and number == previous:
                     break
+                previous = number
             else:
                 return False
-        for _frame in range(2):
-            self.screenshot()
-            if not self.appear(self.I_FEED_SUBMIT) or self._feed_selected_count() != max_items:
-                return False
-        logger.info('Finish to feed soul')
-        settled = self._submit_collective_once_and_claim(self.I_FEED_SUBMIT)
-        if settled:
-            logger.info('Feed reward phase finished; the counter will confirm completion')
-        return settled
+            if number > max_items:
+                logger.info(f'N-card stack has {number} tasks, remaining budget {max_items}; try another')
+                if not self._collective_click_available(self.C_FEED_CANCEL):
+                    return False
+                self.click(self.C_FEED_CANCEL)
+                time.sleep(.5)
+                continue
+            for _frame in range(2):
+                self.screenshot()
+                if (not self.appear(self.I_FEED_N_PAGE) or self.appear(self.I_FEED_EXPANDED)
+                        or not self.appear(self.I_FEED_SUBMIT)
+                        or self._feed_selected_count() != number):
+                    return False
+            self._feed_batch_count = number
+            logger.info(f'Submit stacked N cards: {number} tasks (remaining budget {max_items})')
+            return self._submit_collective_once_and_claim(self.I_FEED_SUBMIT)
+        logger.warning('No visible N-card stack fits the remaining task count')
+        return False
 
 
 

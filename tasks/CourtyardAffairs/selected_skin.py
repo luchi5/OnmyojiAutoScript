@@ -11,6 +11,7 @@ from tasks.CourtyardAffairs.themes import CourtyardSkin
 from tasks.CourtyardAffairs.selected_assets import (
     BlueCourtyardAssets, CourtyardSkinRule, SkinAwareCourtyardAffairsMixin)
 from tasks.GameUi.action import conditional_action
+from tasks.CourtyardAffairs.rewards import CourtyardRewardMixin
 
 
 def _clone_rule(rule):
@@ -126,7 +127,7 @@ class BlueCompletionDetector:
         return float(np.mean(button_value)) <= 130 and float(np.median(card_value)) >= 190
 
 
-class CompletionAwareCourtyardMixin(SkinAwareCourtyardAffairsMixin):
+class CompletionAwareCourtyardMixin(CourtyardRewardMixin, SkinAwareCourtyardAffairsMixin):
     def configure_courtyard_skin(self, courtyard_skin=CourtyardSkin.AUTO):
         skin = CourtyardSkin(courtyard_skin)
         if getattr(self, '_courtyard_skin', None) == skin:
@@ -160,7 +161,8 @@ class CompletionAwareCourtyardMixin(SkinAwareCourtyardAffairsMixin):
             previous = getattr(self, '_courtyard_closers', ())
             navigator.local_unknown_closers[:] = [closer for closer in navigator.local_unknown_closers
                                                   if not any(closer is old for old in previous)]
-            closers = [conditional_action(self.I_PAGE, self.I_UI_BACK_YELLOW)]
+            closers = [lambda task: task.handle_courtyard_reward(),
+                       conditional_action(self.I_PAGE, self.I_UI_BACK_YELLOW)]
             if skin != CourtyardSkin.DEFAULT:
                 closers.insert(0, conditional_action(
                     self.I_BLUE_SUCCESS_CLAIMED, self.C_BLUE_REWARD_CLOSE))
@@ -181,6 +183,12 @@ class CompletionAwareCourtyardMixin(SkinAwareCourtyardAffairsMixin):
         complete_clicks = stable_done = 0
         while True:
             self.screenshot()
+            if self.handle_courtyard_reward():
+                stable_done = 0
+                if timer.reached():
+                    logger.warning('Courtyard affairs rewards timed out')
+                    return False
+                continue
             if self.appear(self.I_NO_TASKS):
                 logger.info('Courtyard affairs completed')
                 return True

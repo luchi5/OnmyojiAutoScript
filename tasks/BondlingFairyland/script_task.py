@@ -37,6 +37,14 @@ class BondlingNumberMax(Exception):
 
 
 class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul, BondlingFairylandAssets, RichManAssets):
+    def check_and_invite(self, default_invite=True):
+        # Keep this dispatch in the reloaded task for already-running workers.
+        from tasks.BondlingFairyland.invite_dialog import handle_continue_invite
+        handled = handle_continue_invite(self, default_invite)
+        if handled is not None:
+            return handled
+        return GeneralInvite.check_and_invite(self, default_invite)
+
     ball_pos_list = [None, None, None, None, None]  # 用于记录每一个位置的球是否出现
     first_catch = True  # 用于记录是否是第一次捕捉
 
@@ -102,6 +110,8 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                     self.screenshot()
                     if self.appear(self.I_GI_IN_ROOM):
                         return True
+                    if self.check_and_invite(True):
+                        continue
                     # 求援后可能出现式盘数量上限确认弹窗
                     if self.appear_then_click(self.I_UI_CONFIRM, interval=1):
                         sleep(1)
@@ -111,8 +121,6 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                         logger.error(
                             'You might need to check your bondling number. It most possibly arrived to the max 500')
                         raise BondlingNumberMax
-                    if self.check_and_invite(True):
-                        continue
                     if self.appear(self.I_CREATE_TEAM, interval=1):
                         self.ensure_private()
                         if self.appear_then_click(self.I_CREATE_TEAM, interval=2):
@@ -344,9 +352,18 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
             logger.warning('已经没有鸣契石召唤契灵了（已连续3帧复核）')
             return False
         cnt = 0
+        confirmation_count = 0
         summon_timeout = Timer(30).start()
         while not summon_timeout.reached():
             self.screenshot()
+            # 二次确认弹窗后仍能匹配到鸣契和加号，必须先处理弹窗。
+            if self.appear(self.I_UI_CONFIRM):
+                if confirmation_count >= 6:
+                    self._defer_stone_check('鸣契石召唤确认弹窗未能关闭')
+                if self.appear_then_click(self.I_UI_CONFIRM, interval=1):
+                    confirmation_count += 1
+                    logger.info('确认消耗鸣契石召唤契灵')
+                continue
             if not self.appear(self.I_STONE_SURE):
                 sleep(random.uniform(1.5, 2))  # 等待购买后的动画, 否则已经买了但是下次再点击还会出现该界面
                 return True
@@ -878,6 +895,9 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         队员接受邀请
         :return:
         """
+        from tasks.BondlingFairyland.member_invite_dialog import handle_member_invite
+        if handle_member_invite(self):
+            return True
         if not self.appear(self.I_I_ACCEPT):
             return False
         if self.appear(self.I_I_ACCEPT_JY):
@@ -890,6 +910,9 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         logger.info("识别到队长邀请，准备点击接受....")
         while 1:
             self.screenshot()
+
+            if handle_member_invite(self):
+                return True
 
             if accept_timer.reached():
                 logger.info(f"队员点击接受超时:{accept_timer.current()}, 退出")

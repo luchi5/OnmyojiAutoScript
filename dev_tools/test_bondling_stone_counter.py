@@ -30,7 +30,7 @@ def frame(primary=ZERO, verified=(ZERO, ZERO), modal=True):
 
 
 class StoneHarness:
-    def __init__(self, frames, confirmation_closes=True):
+    def __init__(self, frames, confirmation_closes=True, confirmation_required=False):
         self.frames = frames
         self.frame = dict(frames[0])
         self.clock, self.logger = FakeClock(), FakeLogger()
@@ -38,11 +38,13 @@ class StoneHarness:
         self.screenshots = self.rechecks = self.evidence = 0
         self.clicks, self.click_attempts, self.closed, self.delays = [], [], [], []
         self.confirmation_closes = confirmation_closes
+        self.confirmation_required = confirmation_required
+        self.confirmation_visible = False
         self.summoned = False
         self.current_count = 70
         self.config = SimpleNamespace(config_name='11')
         self.O_B_STONE_NUMBER = SimpleNamespace(name='B_STONE_NUMBER', ocr=self.ocr)
-        for name in ('I_STONE_SURE', 'I_STONE_CLOSE', 'I_BUY_PLUS', 'I_GI_SURE'):
+        for name in ('I_STONE_SURE', 'I_STONE_CLOSE', 'I_BUY_PLUS', 'I_GI_SURE', 'I_UI_CONFIRM'):
             setattr(self, name, name)
 
         class SimulatedDatetime:
@@ -78,6 +80,8 @@ class StoneHarness:
         return image.get('primary', UNKNOWN)
 
     def appear(self, marker, **kwargs):
+        if marker == self.I_UI_CONFIRM:
+            return self.confirmation_visible or self.frame.get('confirmation', False)
         if marker in (self.I_STONE_SURE, self.I_STONE_CLOSE):
             return self.frame.get('modal', True)
         return False
@@ -104,9 +108,18 @@ class StoneHarness:
 
     def appear_then_click(self, marker, **kwargs):
         self.click_attempts.append(marker)
+        if marker == self.I_UI_CONFIRM and self.appear(marker):
+            self.clicks.append(marker)
+            if self.confirmation_closes:
+                self.summoned = True
+                self.confirmation_visible = False
+            return True
         if marker == self.I_STONE_SURE and self.appear(marker):
             self.clicks.append(marker)
-            self.summoned = self.confirmation_closes
+            if self.confirmation_required:
+                self.confirmation_visible = True
+            else:
+                self.summoned = self.confirmation_closes
             return True
         return False
 
@@ -320,6 +333,46 @@ class StoneCounterTests(unittest.TestCase):
         self.assert_retry_pending(task)
         self.assertGreater(len(task.clicks), 0)
         self.assertLessEqual(len(task.clicks), 6)
+        self.assertLess(task.clock.now - 100, 35)
+
+    def test_second_confirmation_blocks_clicks_on_background_controls(self):
+        task = StoneHarness([frame(SEVEN)], confirmation_required=True)
+        self.assertIs(task.run_stone(True), True)
+        self.assertEqual(task.clicks, [task.I_STONE_SURE, task.I_UI_CONFIRM])
+        purchase = task.click_attempts.index(task.I_STONE_SURE)
+        self.assertEqual(task.click_attempts[purchase + 1:], [task.I_UI_CONFIRM])
+        self.assertEqual(task.delays, [])
+
+    def test_confirmation_is_handled_before_missing_background_means_success(self):
+        modal = dict(frame(SEVEN, modal=False), confirmation=True)
+        task = StoneHarness([frame(SEVEN), modal, frame(SEVEN, modal=False)])
+        self.assertIs(task.run_stone(True), True)
+        self.assertEqual(task.clicks, [task.I_UI_CONFIRM])
+        self.assertEqual(task.click_attempts, [task.I_UI_CONFIRM])
+
+    def test_confirmation_retry_wait_never_clicks_through_popup(self):
+        task = StoneHarness([frame(SEVEN)], confirmation_required=True)
+        original_click = task.appear_then_click
+        def throttled_click(marker, **kwargs):
+            if marker == task.I_UI_CONFIRM:
+                task.click_attempts.append(marker)
+                return False
+            return original_click(marker, **kwargs)
+        task.appear_then_click = throttled_click
+        with self.assertRaises(TaskEnd):
+            task.run_stone(True)
+        purchase = task.click_attempts.index(task.I_STONE_SURE)
+        self.assertTrue(all(marker == task.I_UI_CONFIRM
+                            for marker in task.click_attempts[purchase + 1:]))
+        self.assert_retry_pending(task)
+
+    def test_persistent_confirmation_has_bounded_attempts_without_background_clicks(self):
+        task = StoneHarness([frame(SEVEN)], confirmation_required=True,
+                            confirmation_closes=False)
+        with self.assertRaises(TaskEnd):
+            task.run_stone(True)
+        self.assertEqual(task.clicks, [task.I_STONE_SURE] + [task.I_UI_CONFIRM] * 6)
+        self.assert_retry_pending(task)
         self.assertLess(task.clock.now - 100, 35)
 
 
