@@ -2,7 +2,6 @@
 *.jpg -text
 *.png -text
 *.bat text eol=crlf
-*.cmd text eol=crlf
 *.txt text eol=lf
 *.sh text eol=lf
 *.js text eol=lf
