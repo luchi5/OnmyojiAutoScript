@@ -37,10 +37,10 @@ git clone --branch luchi https://github.com/luchi5/OnmyojiAutoScript.git
 
 本仓库提供主脚本源码。GitHub 的 `Code → Download ZIP` 和自动生成的 `Source code.zip` 不包含 `toolkit` 运行环境或 `oas.exe` 启动器，不能当作完整安装包使用。配套 OASX 的编译包只提供图形客户端，网页面板也需要已经安装的 OAS 后台。
 
-初次使用建议按 [上游安装说明](https://runhey.github.io/OnmyojiAutoScript-website/docs/user-manual/installation/) 准备运行环境：
+初次使用直接下载本仓库 Releases 中的预配置安装包：
 
-1. 从 [runhey 的 Easy install v1.0.0](https://github.com/runhey/OnmyojiAutoScript/releases/tag/oas-install-v1.0.0) 下载 `OnmyojiAutoScript-easy-install.rar`，完整解压到新的目录。这个安装包提供 `oas.exe`、`toolkit` 和初始部署配置。
-2. **首次启动前**，编辑包内 `config/deploy.yaml`：将 `Deploy.Git.Repository` 改为 `https://github.com/luchi5/OnmyojiAutoScript.git`，`Deploy.Git.Branch` 改为 `luchi`，并将 `Deploy.Adb.ReplaceAdb` 设为 `false`。这样安装器会拉取本定制分支，而非上游默认分支。
+1. 从 [本仓库 Easy install](https://github.com/luchi5/OnmyojiAutoScript/releases/tag/easy-install-luchi-v1.0.0) 下载 `OnmyojiAutoScript-easy-install-luchi.rar`，完整解压到新的目录。安装包来自 [runhey 的原版 Easy install v1.0.0](https://github.com/runhey/OnmyojiAutoScript/releases/tag/oas-install-v1.0.0)，只修改了包内的 `config/deploy.yaml`，保留原版 `oas.exe`、`toolkit` 和安装流程。
+2. 包内已经设置本仓库地址、`luchi` 分支、`ReplaceAdb: false`、官方 PyPI 依赖源，以及配套 OASX 使用的 `22289` 端口；无需先下载主仓库安装包，也无需手动修改 YAML。
 3. 双击安装包的 `oas.exe` 完成代码拉取和依赖安装。旧安装器首次可能仍加载旧部署模块；更新后退出程序，再执行一次安装器，按下文核对官方 ADB 的安装日志。只在没有运行任务、模拟器和 ADB 服务时执行完整安装器。
 4. 后台就绪后，再打开 [OASX 编译版](https://github.com/luchi5/OASX/releases) 或 [网页面板](https://github.com/luchi5/OAS-WebPanel)。客户端的连接地址要使用后台日志中显示的实际端口。
 
