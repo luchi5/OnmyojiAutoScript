@@ -13,6 +13,7 @@ from tasks.Chess.runtime.recognition import ChessRecognitionMixin
 from tasks.Chess.runtime.round_state import ChessRoundStateMixin
 from tasks.Chess.runtime.settings import ChessRuntimeSettings
 from tasks.Chess.runtime.result_navigation import chess_game_ui_type
+from tasks.Chess.runtime.lobby_recovery import ChessLobbyRecoveryMixin
 from tasks.Chess.runtime.state_loop import ChessStateLoopMixin
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.GameUi.game_ui import GameUi
@@ -22,6 +23,7 @@ ChessGameUi = chess_game_ui_type(GameUi)
 
 
 class ChessLegacyScriptTask(
+    ChessLobbyRecoveryMixin,
     ChessRecognitionMixin,
     ChessHandOperationsMixin,
     ChessRoundStateMixin,
@@ -908,6 +910,15 @@ class ChessLegacyScriptTask(
             # 在每次截图之前清除，不能等识别到“取消等待”后才清除。
             self.device.stuck_record_clear()
             self.screenshot()
+            if self._recover_chess_outside_page():
+                deadline = time.monotonic() + timeout
+                waiting_logged = False
+                waiting_started_at = None
+                waiting_seen = False
+                matched_loading_started_at = None
+                matched_loading_logged = False
+                lobby_frames = 0
+                continue
             # 单帧出现“战”字不能排除结算动画；必须连续确认且无分享/
             # 排名/奖励覆盖。仍由主仓库识别点击接口定位真正开战按钮。
             lobby_frames = (

@@ -149,8 +149,8 @@ class ChessNavigationTests(unittest.TestCase):
         task = ScriptedNavigation([
             Screen((GameUiAssets.I_CHECK_CHESS_BATTLE, GameUiAssets.I_CHESS_EXIT),
                    GameUiAssets.I_CHESS_EXIT),
-            Screen((GameUiAssets.I_CHESS_EXIT_CONFIRM, GameUiAssets.I_CHESS_EXIT_CANCEL),
-                   GameUiAssets.I_CHESS_EXIT_CONFIRM),
+            Screen((GameUi.I_CHESS_EXIT_CONFIRM, GameUi.I_CHESS_EXIT_CANCEL),
+                   GameUi.I_CHESS_EXIT_CONFIRM),
             *result_screens(),
             *route_from_lobby_to_souls(),
         ])
@@ -158,7 +158,7 @@ class ChessNavigationTests(unittest.TestCase):
         self.assertTrue(task.goto_page(page_soul_zones))
         self.assertEqual(task.navigator.current_page, page_soul_zones)
         self.assertIs(task.clicked[0], GameUiAssets.I_CHESS_EXIT)
-        self.assertIs(task.clicked[1], GameUiAssets.I_CHESS_EXIT_CONFIRM)
+        self.assertIs(task.clicked[1], GameUi.I_CHESS_EXIT_CONFIRM)
         self.assertEqual(task.screen_index, len(task.screens) - 1)
 
     def test_unfinished_result_returns_to_lobby_then_another_task(self):

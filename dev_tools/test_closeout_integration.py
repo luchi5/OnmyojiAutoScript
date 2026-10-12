@@ -54,6 +54,7 @@ def talisman(config, page=True, error=None):
         setattr(task, name, method.__get__(task))
     task.goto_page = lambda page: task.actions.append(('goto', page))
     task.in_task = lambda: page
+    task.enter_task_page = lambda: False
     task.get_flower = lambda value: task.actions.append(('level', value))
     task.harvest_soul = lambda: task.actions.append(('soul',))
     task._capture_daily_feedback = lambda **kwargs: False

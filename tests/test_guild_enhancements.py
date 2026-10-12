@@ -81,7 +81,8 @@ KU, KU_ENV = task_methods('tasks/KekkaiUtilize/script_task.py', {
     '_scan_lazy_resource_cards', '_select_lazy_resource_card', '_select_optimal_resource_card',
     '_current_select_best', 'check_max_lv', 'run', 'recive_guild_ap_or_assets',
 })
-GB, GB_ENV = task_methods('tasks/GuildBanquet/script_task.py', {'check_full_experience', 'switch_shikigami'})
+GB, GB_ENV = task_methods('tasks/GuildBanquet/script_task.py', {
+    'check_full_experience', 'switch_shikigami', 'confirm_banquet_lineup', 'exit_banquet_rotation'})
 KA, KA_ENV = task_methods('tasks/KekkaiActivation/script_task.py', {'run'})
 
 
@@ -361,6 +362,8 @@ class BanquetTests(unittest.TestCase):
         for name in names:
             setattr(task, name, name)
         task.ui_click = Mock(return_value=True)
+        task.confirm_banquet_lineup = Mock(return_value=True)
+        task.exit_banquet_rotation = Mock(return_value=True)
         task.appear_then_click = Mock(return_value=True)
         task.screenshot = Mock()
         task.goto_page = Mock()
@@ -372,14 +375,13 @@ class BanquetTests(unittest.TestCase):
     def test_empty_ocr_never_confirms_empty_team(self):
         task = self.replacement([(0, 0, 0)] * 6)
         self.assertFalse(task.switch_shikigami())
-        self.assertFalse(any(call.args[0] == task.I_BANQUET_CONFIRM for call in task.ui_click.call_args_list))
+        task.confirm_banquet_lineup.assert_not_called()
 
     def test_stable_nonempty_team_confirms_with_mainline_intervals(self):
         task = self.replacement([(6, 0, 6)] * 2)
         self.assertTrue(task.switch_shikigami())
-        confirms = [call for call in task.ui_click.call_args_list if call.args[0] == task.I_BANQUET_CONFIRM]
-        self.assertEqual(len(confirms), 1)
-        self.assertEqual(confirms[0].kwargs, dict(interval=1.5, timeout=15))
+        task.confirm_banquet_lineup.assert_called_once_with()
+        self.assertGreaterEqual(task.exit_banquet_rotation.call_count, 1)
         self.assertTrue(all(call.kwargs['interval'] == 1.5 for call in task.appear_then_click.call_args_list))
 
     def test_partial_nonempty_team_can_be_kept(self):
@@ -396,7 +398,81 @@ class BanquetTests(unittest.TestCase):
         task.O_BANQUET_SHIKIGAMI_NUM.ocr_digit_counter = Mock(return_value=(6, 0, 6))
         self.assertFalse(task.switch_shikigami())
         self.assertFalse(any(call.args[0] == task.I_BANQUET_ALL_PUT for call in task.appear_then_click.call_args_list))
-        self.assertFalse(any(call.args[0] == task.I_BANQUET_CONFIRM for call in task.ui_click.call_args_list))
+        task.confirm_banquet_lineup.assert_not_called()
+
+    def test_same_full_indicator_never_repeats_rotation_after_cooldown(self):
+        task = banquet_task()
+        task.I_BANQUET_EXP_FULL = 'full'
+        task.switch_shikigami = Mock(return_value=True)
+        monotonic = GB_ENV['time'].monotonic
+        old = monotonic.return_value
+        try:
+            self.assertFalse(task.check_full_experience())
+            self.assertTrue(task.check_full_experience())
+            monotonic.return_value = old + 600
+            for _ in range(10):
+                self.assertFalse(task.check_full_experience())
+            task.switch_shikigami.assert_called_once_with()
+            # A fresh no-full frame arms the next actual full event.
+            task.appear.return_value = False
+            self.assertFalse(task.check_full_experience())
+            task.appear.return_value = True
+            self.assertFalse(task.check_full_experience())
+            self.assertTrue(task.check_full_experience())
+            self.assertEqual(task.switch_shikigami.call_count, 2)
+        finally:
+            monotonic.return_value = old
+
+    def overlay(self, state):
+        task = banquet_task()
+        for name in ('I_BANQUET_CONFIRM', 'I_BANQUET_CLEAR_ALL', 'I_BANQUET_SWITCH',
+                     'I_UI_BACK_RED', 'I_UI_BACK_YELLOW', 'I_FLAG'):
+            setattr(task, name, name)
+        task.screenshot = Mock()
+        task.state = state
+        # The guild flag and rotation entry remain visible behind both overlays.
+        task.appear = lambda marker: (
+            marker == task.I_FLAG
+            or (marker == task.I_BANQUET_SWITCH and task.state in ('placement', 'rotation'))
+            or (marker in (task.I_BANQUET_CONFIRM, task.I_BANQUET_CLEAR_ALL) and task.state == 'placement'))
+        def click(marker, **kw):
+            if marker in (task.I_BANQUET_CONFIRM, task.I_UI_BACK_RED) and task.state == 'placement':
+                task.state = 'rotation'
+            elif marker == task.I_UI_BACK_YELLOW and task.state == 'rotation':
+                task.state = 'guild'
+            return True
+        task.appear_then_click = Mock(side_effect=click)
+        return task
+
+    def test_confirmation_clicks_despite_rotation_marker_visible_behind_placement(self):
+        task = self.overlay('placement')
+        self.assertTrue(task.confirm_banquet_lineup())
+        self.assertEqual(task.state, 'rotation')
+        task.appear_then_click.assert_called_once_with(task.I_BANQUET_CONFIRM, interval=1.5)
+
+    def test_exit_dismisses_both_overlays_despite_guild_flag_visible_behind(self):
+        task = self.overlay('placement')
+        self.assertTrue(task.exit_banquet_rotation())
+        self.assertEqual(task.state, 'guild')
+        self.assertEqual([c.args[0] for c in task.appear_then_click.call_args_list],
+                         [task.I_UI_BACK_RED, task.I_UI_BACK_YELLOW])
+
+    def test_stuck_rotation_is_failure_even_though_background_flag_visible(self):
+        task = self.overlay('rotation')
+        task.appear_then_click.side_effect = None
+        self.assertFalse(task.exit_banquet_rotation())
+        self.assertEqual(task.state, 'rotation')
+
+    def test_stuck_confirm_is_failure_even_though_rotation_marker_visible(self):
+        task = self.overlay('placement')
+        task.appear_then_click.side_effect = None
+        self.assertFalse(task.confirm_banquet_lineup())
+        self.assertEqual(task.state, 'placement')
+
+    def test_already_on_guild_page_does_not_click_back(self):
+        task = self.overlay('guild')
+        self.assertTrue(task.exit_banquet_rotation())
+        task.appear_then_click.assert_not_called()
 
 
 class AssetTests(unittest.TestCase):

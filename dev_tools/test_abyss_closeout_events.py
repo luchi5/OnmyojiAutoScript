@@ -53,8 +53,9 @@ def load_task():
     original = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'ScriptTask')
     selected = copy.deepcopy(original)
     selected.bases = []
-    keep = {'run', 'fight_and_switch', 'switch_area', 'find_enemy', 'run_boss_fight',
-            'run_general_fight', 'run_elite_fight', 'run_general_battle_back'}
+    keep = {'run', 'fight_and_switch', 'find_enemy', 'run_boss_fight',
+            'run_general_fight', 'run_elite_fight', 'run_general_battle_back',
+            'fight_count', 'quota_complete'}
     selected.body = [n for n in selected.body if isinstance(n, ast.FunctionDef) and n.name in keep]
     env = {'datetime': Clock, 'logger': Mock(), 'TaskEnd': TaskEnd, 'AbyssShadows': object,
            'AreaType': AREAS, 'CilckArea': CLICKS, 'EmemyType': Enemy,
@@ -90,7 +91,10 @@ def runtime(*, smart=False, enemies=True, stale_counts=False):
     task.custom_next_run = Mock()
     task.set_next_run = Mock()
     task.current_area = AREAS.DRAGON
-    task.change_area = Mock(side_effect=lambda area: setattr(task, 'current_area', area))
+    def change(area):
+        task.current_area = area
+        return True
+    task.change_area = Mock(side_effect=change)
     task.check_current_area = lambda: task.current_area
     task.battles = []
     for name in ('WAIT_TO_START', 'ABYSS_MAP_EXIT', 'ABYSS_MAP', 'ABYSS_NAVIGATION',
@@ -159,12 +163,11 @@ class AbyssCloseoutEvents(unittest.TestCase):
         task = runtime(smart=True, enemies=False)
         self.run_to_end(task)
         self.assert_outcome('skipped')
-        # Retain old behavior, but never use these virtual increments as proof.
-        self.assertEqual((task.general_fight_count, task.elite_fight_count), (4, 6))
+        self.assertEqual((task.general_fight_count, task.elite_fight_count), (0, 0))
         self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0})
         self.assertIn('general=0/4', self.report.call_args.kwargs['detail'])
 
-    def test_smart_partial_target_virtual_quota_is_not_completed(self):
+    def test_smart_partial_targets_count_only_real_battles(self):
         task = runtime(smart=True)
         actual_click = task.click_emeny_area.side_effect
         task.click_emeny_area.side_effect = lambda marker: (
@@ -173,8 +176,8 @@ class AbyssCloseoutEvents(unittest.TestCase):
         self.run_to_end(task)
         self.assert_outcome('skipped')
         self.assertEqual((task.boss_fight_count, task.general_fight_count,
-                          task.elite_fight_count), (2, 4, 6))
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 2, 'ELITE': 2})
+                          task.elite_fight_count), (2, 4, 4))
+        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 4})
 
     def test_both_modes_reset_closeout_proof_despite_stale_task_counts(self):
         for smart in (False, True):
@@ -183,9 +186,9 @@ class AbyssCloseoutEvents(unittest.TestCase):
                 task = runtime(smart=smart, stale_counts=True)
                 task._closeout_fight_counts = {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6}
                 self.run_to_end(task)
-                self.assert_outcome('skipped')
-                self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0})
-                self.assertEqual(task.battles, [])
+                self.assert_outcome('completed')
+                self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
+                self.assertEqual(len(task.battles), 12)
 
     def test_failed_entry_keeps_retry_without_terminal_event(self):
         task = runtime()
@@ -195,6 +198,51 @@ class AbyssCloseoutEvents(unittest.TestCase):
         task.set_next_run.assert_called_once_with(
             task='AbyssShadows', finish=False, server=True, success=False)
         task.custom_next_run.assert_not_called()
+
+    def test_missing_boss_does_not_skip_other_enemy_types_in_normal_mode(self):
+        task = runtime()
+        available = task.click_emeny_area.side_effect
+        task.click_emeny_area.side_effect = lambda marker: marker != CLICKS.BOSS and available(marker)
+        self.run_to_end(task)
+        self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 4, 'ELITE': 6})
+        self.assert_outcome('skipped')
+
+    def test_both_modes_skip_sealed_first_areas_and_fill_from_remaining_areas(self):
+        for smart in (False, True):
+            with self.subTest(smart=smart):
+                self.report.reset_mock()
+                task = runtime(smart=smart)
+                def select(area):
+                    if area in (AREAS.DRAGON, AREAS.PEACOCK):
+                        return False
+                    task.current_area = area
+                    return True
+                task.select_boss.side_effect = select
+                task.change_area.side_effect = select
+                self.run_to_end(task)
+                self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
+                self.assert_outcome('completed')
+                self.assertTrue(all(area in (AREAS.FOX, AREAS.LEOPARD) for area, _ in task.battles))
+
+    def test_smart_fills_partial_groups_with_actual_targets_in_later_areas(self):
+        task = runtime(smart=True)
+        available = task.click_emeny_area.side_effect
+        def partial(marker):
+            if task.current_area == AREAS.DRAGON and marker in (CLICKS.GENERAL_2, CLICKS.ELITE_3):
+                return False
+            return available(marker)
+        task.click_emeny_area.side_effect = partial
+        self.run_to_end(task)
+        self.assert_outcome('completed')
+        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
+        self.assertEqual(len(task.battles), 12)
+
+    def test_interrupted_general_preparation_never_increments_counter(self):
+        task = runtime()
+        task.run_general_battle_back = Mock(side_effect=RuntimeError('interrupted'))
+        with self.assertRaisesRegex(RuntimeError, 'interrupted'):
+            task.run_general_fight()
+        self.assertEqual(task.general_fight_count, 0)
 
     def test_weekday_does_not_emit_completion_or_skipped(self):
         Clock.current = datetime(2026, 10, 7, 19, 40)

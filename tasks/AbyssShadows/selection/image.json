@@ -1,0 +1,56 @@
+[
+  {
+    "itemName": "abyss_select_title",
+    "imageName": "selection_title.png",
+    "roiFront": "153,20,125,34",
+    "roiBack": "145,12,145,50",
+    "threshold": 0.8,
+    "method": "Template matching",
+    "description": "狭间暗域区域选择页标题"
+  },
+  {
+    "itemName": "abyss_select_modal",
+    "imageName": "selection_modal.png",
+    "roiFront": "560,613,170,24",
+    "roiBack": "535,600,220,45",
+    "threshold": 0.8,
+    "method": "Template matching",
+    "description": "切换暗域弹窗关闭提示"
+  },
+  {
+    "itemName": "abyss_select_dragon_sealed",
+    "imageName": "selection_dragon_sealed.png",
+    "roiFront": "185,282,38,113",
+    "roiBack": "100,145,225,360",
+    "threshold": 0.75,
+    "method": "Template matching",
+    "description": "神龙已封印"
+  },
+  {
+    "itemName": "abyss_select_peacock_sealed",
+    "imageName": "selection_dragon_sealed.png",
+    "roiFront": "185,282,38,113",
+    "roiBack": "390,100,230,410",
+    "threshold": 0.75,
+    "method": "Template matching",
+    "description": "peacock已封印"
+  },
+  {
+    "itemName": "abyss_select_fox_sealed",
+    "imageName": "selection_dragon_sealed.png",
+    "roiFront": "185,282,38,113",
+    "roiBack": "670,135,250,400",
+    "threshold": 0.75,
+    "method": "Template matching",
+    "description": "fox已封印"
+  },
+  {
+    "itemName": "abyss_select_leopard_sealed",
+    "imageName": "selection_dragon_sealed.png",
+    "roiFront": "185,282,38,113",
+    "roiBack": "990,100,250,410",
+    "threshold": 0.75,
+    "method": "Template matching",
+    "description": "leopard已封印"
+  }
+]

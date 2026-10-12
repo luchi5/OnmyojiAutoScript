@@ -43,6 +43,7 @@ class ScriptTask(GameUi, GuildBanquetAssets):
         self._banquet_full_samples = 0
         self._banquet_auto_switch_failed = False
         self._banquet_last_switch = float('-inf')
+        self._banquet_full_armed = True
         # 第一天宴会日期及时间
         self.banquet_day_1 = self.get_key_from_value(WEEKDAYDICT, self.run_time.day_1.value)
         self.banquet_day_1_start_time = self.run_time.run_time_1
@@ -130,6 +131,11 @@ class ScriptTask(GameUi, GuildBanquetAssets):
             return False
         if not self.appear(self.I_BANQUET_EXP_FULL):
             self._banquet_full_samples = 0
+            self._banquet_full_armed = True
+            return False
+        # 换人后必须先见到“满”提示消失，才允许下一次轮换。
+        # 冷却时间到了并不能证明这是一个新的满经验事件。
+        if not getattr(self, '_banquet_full_armed', True):
             return False
         self._banquet_full_samples += 1
         if self._banquet_full_samples < 2 or time.monotonic() - self._banquet_last_switch < 30:
@@ -137,6 +143,8 @@ class ScriptTask(GameUi, GuildBanquetAssets):
         self._banquet_full_samples = 0
         self._banquet_last_switch = time.monotonic()
         success = self.switch_shikigami()
+        if success:
+            self._banquet_full_armed = False
         if not success:
             # An optional change must not repeatedly clear the lineup after a failed UI/OCR check.
             self._banquet_auto_switch_failed = True
@@ -184,24 +192,47 @@ class ScriptTask(GameUi, GuildBanquetAssets):
                 if valid and (count, total) == last_count:
                     if count < total:
                         logger.warning(f'Only {count}/{total} eligible banquet shikigami; keep the nonempty lineup')
-                    if not self.ui_click(self.I_BANQUET_CONFIRM, self.I_BANQUET_SWITCH,
-                                         interval=1.5, timeout=15):
+                    if not self.confirm_banquet_lineup():
                         return False
-                    return self.ui_click(self.I_UI_BACK_YELLOW, self.I_FLAG,
-                                         interval=1.5, timeout=10)
+                    return self.exit_banquet_rotation()
                 last_count = (count, total) if valid else None
             logger.warning('Cannot confirm a nonempty banquet lineup; cancel replacement')
             return False
         finally:
             # Return through the existing mainline controls, without importing XY's navigator.
+            if not self.exit_banquet_rotation():
+                self.goto_page(page_guild)
+
+    def confirm_banquet_lineup(self) -> bool:
+        """Confirm the filled lineup and verify that the placement panel closed."""
+        timer = Timer(15).start()
+        while not timer.reached():
             self.screenshot()
             if self.appear(self.I_BANQUET_CONFIRM) or self.appear(self.I_BANQUET_CLEAR_ALL):
-                self.ui_click(self.I_UI_BACK_RED, self.I_BANQUET_SWITCH, interval=1.5, timeout=10)
-                self.screenshot()
+                self.appear_then_click(self.I_BANQUET_CONFIRM, interval=1.5)
+                continue
+            # 背景里的轮换按钮/集结标志不能代替放置页面的消失。
+            if self.appear(self.I_BANQUET_SWITCH) or self.appear(self.I_FLAG):
+                return True
+        logger.warning('Banquet placement panel did not close after confirmation')
+        return False
+
+    def exit_banquet_rotation(self) -> bool:
+        """Dismiss placement/rotation overlays before accepting the guild flag."""
+        timer = Timer(10).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_BANQUET_CONFIRM) or self.appear(self.I_BANQUET_CLEAR_ALL):
+                self.appear_then_click(self.I_UI_BACK_RED, interval=1.5)
+                continue
             if self.appear(self.I_BANQUET_SWITCH):
-                self.ui_click(self.I_UI_BACK_YELLOW, self.I_FLAG, interval=1.5, timeout=10)
-            elif not self.appear(self.I_FLAG):
-                self.goto_page(page_guild)
+                self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1.5)
+                continue
+            if self.appear(self.I_FLAG):
+                return True
+        logger.warning('Banquet rotation page did not close; replacement is not confirmed')
+        return False
+
     def _opening_plan(self, now=None, completed=False):
         configured = self.config.guild_banquet.guild_banquet_time
         slots = [

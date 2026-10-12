@@ -226,14 +226,18 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         :param exp_enable:
         :return:
         """
+        from tasks.KekkaiUtilize.exp_box_counter import read_exp_box_counter
 
         # 退出到寮结界
         def _exit_to_realm():
             # 右上方关闭红色
+            exit_timer = Timer(8).start()
             while 1:
                 self.screenshot()
                 if self.appear(self.I_REALM_SHIN):
                     break
+                if exit_timer.reached():
+                    raise GameStuckError('Cannot close realm resource box')
                 if self.appear_then_click(self.I_UI_BACK_RED, interval=1):
                     continue
 
@@ -277,6 +281,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             time_exp.start()
             while 1:
                 self.screenshot()
+                # 所有 continue 分支都必须受限，OCR 失败不能绕过超时。
+                if time_exp.reached():
+                    logger.warning('Extract exp box timeout; close the box and continue')
+                    break
                 # 如果出现结界皮肤， 表示收取好了
                 if self.appear(self.I_REALM_SHIN) and not self.appear(self.I_BOX_EXP, threshold=0.6):
                     break
@@ -294,16 +302,20 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                         self.screenshot()
                         if not self.appear(check_button):
                             break
+                        if time_exp.reached():
+                            logger.warning('Exp box confirmation timeout')
+                            break
                         if self.appear_then_click(check_button, interval=1):
                             continue
                     break
 
                 if self.appear(self.I_EXP_EXTRACT):
                     # 如果达到今日领取的最大，就不领取了
-                    cur, res, totol = self.O_BOX_EXP.ocr(self.device.image)
-                    if cur == res == totol == 0:
+                    counter = read_exp_box_counter(self.device.image)
+                    if counter is None:
                         continue
-                    if cur == totol and cur + res == totol:
+                    cur, res, total = counter
+                    if cur == total and res == 0:
                         logger.info('Exp box reach max do not collect')
                         break
                 if self.appear_then_click(self.I_BOX_EXP, threshold=0.6, interval=1):
@@ -311,9 +323,6 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 if self.appear_then_click(self.I_EXP_EXTRACT, interval=1):
                     continue
 
-                if time_exp.reached():
-                    logger.warning('Extract exp box timeout')
-                    break
             _exit_to_realm()
 
         self.screenshot()

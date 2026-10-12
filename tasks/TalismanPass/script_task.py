@@ -103,6 +103,9 @@ class ScriptTask(GameUi, TalismanPassAssets):
                     logger.warning(f'只读补采报告暂未归档 ({type(exc).__name__})')
             raise TaskEnd('TalismanPass')
         in_task = self.in_task()
+        if not in_task:
+            # 领取任务必须主动进入任务页；反馈采集关闭时也不能停在奖励页。
+            in_task = self.enter_task_page()
         if automatic and not in_task:
             logger.warning('花合战动态收尾：未确认任务页面，延后3分钟重查')
             self._capture_daily_feedback(final=automatic)
@@ -232,6 +235,33 @@ class ScriptTask(GameUi, TalismanPassAssets):
                 logger.info('Get all reward')
                 check_timer.reset()
                 continue
+
+    def enter_task_page(self) -> bool:
+        """Navigate from a confirmed flower-pass page, independently of feedback."""
+        from tasks.Component.daily_feedback_capture_assets import DailyFeedbackCaptureAssets as assets
+
+        timer = Timer(10).start()
+        clicks = 0
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_UI_REWARD, threshold=.6):
+                return False
+            if not self.appear(assets.I_TALISMAN_HEADER):
+                continue
+            if self.appear(self.I_TP_GOTO) or self.appear(self.I_TP_EXP):
+                if self.appear(assets.I_TALISMAN_TODAY_SELECTED):
+                    logger.info('Flower-pass daily task page confirmed')
+                    return True
+                marker = assets.C_TALISMAN_TODAY_TAB
+            else:
+                marker = assets.C_TALISMAN_TASK_TAB
+            if clicks >= 3:
+                break
+            if self.click(marker, interval=1.5):
+                clicks += 1
+                self.device.sleep(0.6)
+        logger.warning('Cannot enter flower-pass task page from the current layout')
+        return False
 
     def in_task(self) -> bool:
         """
