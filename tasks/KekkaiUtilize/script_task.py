@@ -509,6 +509,14 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         self.set_shikigami(shikigami_order, stop_image)
         return True
 
+    def in_shikigami_growth(self, screenshot=False):
+        if screenshot:
+            self.screenshot()
+        # Friend placement screens do not always contain the normal records icon.
+        return (self.appear(self.I_RS_RECORDS_SHIKI)
+                or self.appear(self.I_CHECK_FRIEND_REALM_1)
+                or self.appear(self.I_CHECK_FRIEND_REALM_3))
+
     def _enter_friend_growth(self):
         timer = Timer(20).start()
         stable_frames = 0
@@ -881,8 +889,12 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
     def back_realm(self):
         # 回到寮结界
-        while 1:
+        timer = Timer(20).start()
+        while not timer.reached():
             self.screenshot()
+            if self.appear(self.I_GUILD_INFO) or self.appear(self.I_GUILD_REALM):
+                self.goto_realm()
+                return
             if self.appear(self.I_REALM_SHIN):
                 break
             if self.appear_multi_scale(self.I_SHI_DEFENSE):
@@ -891,6 +903,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 continue
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1):
                 continue
+            if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1):
+                continue
+        else:
+            raise GameStuckError('Could not return from friend realm within 20 seconds')
 
 
 if __name__ == "__main__":

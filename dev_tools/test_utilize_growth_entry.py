@@ -16,6 +16,9 @@ class Harness:
         self.clicks = []
         self.clock = FakeClock(1)
         for name in ('I_U_ENTER_REALM','I_SHI_GROWN','I_CHECK_FRIEND_REALM_2',
+                     'I_CHECK_FRIEND_REALM_1','I_CHECK_FRIEND_REALM_3',
+                     'I_GUILD_INFO','I_GUILD_REALM','I_REALM_SHIN','I_SHI_DEFENSE',
+                     'I_UI_BACK_RED','I_UI_BACK_BLUE','I_UI_BACK_YELLOW',
                      'I_RS_RECORDS_SHIKI','C_SHIKIGAMI_SWITCH_1'):
             setattr(self,name,name)
         for rarity in Rarity:
@@ -25,9 +28,9 @@ class Harness:
         ns = {'Timer':lambda t:FakeTimer(self.clock,t),'logger':FakeLogger(),
               'ShikigamiClass':Rarity,'GameStuckError':RuntimeError}
         methods = extract_methods(ROOT/'tasks/KekkaiUtilize/script_task.py','ScriptTask',
-                                  ('_enter_friend_growth',),ns)
+                                  ('_enter_friend_growth','in_shikigami_growth','back_realm'),ns)
         methods.update(extract_methods(ROOT/'tasks/Component/ReplaceShikigami/replace_shikigami.py',
-                                       'ReplaceShikigami',('switch_shikigami_class','in_shikigami_growth'),ns))
+                                       'ReplaceShikigami',('switch_shikigami_class',),ns))
         for name, method in methods.items():
             setattr(self,name,method.__get__(self))
 
@@ -48,6 +51,10 @@ class Harness:
         return self.appear(name) and self.click(name)
 
     appear_then_click_multi_scale = appear_then_click
+    appear_multi_scale = appear
+
+    def goto_realm(self):
+        self.clicks.append('goto_own_realm')
 
     def wait_animate_stable(self,**kw):
         pass
@@ -57,6 +64,24 @@ class Harness:
 
 
 class GrowthTests(unittest.TestCase):
+    def test_friend_placement_without_records_icon_is_valid(self):
+        for marker in ('I_CHECK_FRIEND_REALM_1','I_CHECK_FRIEND_REALM_3'):
+            h = Harness([{marker}])
+            self.assertTrue(h._enter_friend_growth())
+            self.assertEqual(h.captures,2)
+            self.assertEqual(h.clicks,[])
+
+    def test_yellow_back_returns_through_guild(self):
+        h = Harness([{'I_UI_BACK_YELLOW'},{'I_GUILD_REALM'}])
+        h.back_realm()
+        self.assertEqual(h.clicks,['I_UI_BACK_YELLOW','goto_own_realm'])
+
+    def test_unknown_return_page_is_bounded(self):
+        h = Harness([set()])
+        with self.assertRaisesRegex(RuntimeError,'return from friend realm'):
+            h.back_realm()
+        self.assertEqual(h.clicks,[])
+
     def test_homepage_opens_growth_and_requires_two_frames(self):
         h = Harness([{'I_U_ENTER_REALM'},{'I_SHI_GROWN'},
                      {'I_RS_RECORDS_SHIKI'},{'I_RS_RECORDS_SHIKI'}])
