@@ -1,6 +1,8 @@
 import time
 
 from module.logger import logger
+from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 
 from cached_property import cached_property
 from datetime import datetime, timedelta
@@ -187,6 +189,18 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
                 logger.info('Click lock Boss Team')
                 continue
 
+    def handle_boss_reward(self):
+        # This large reward panel has a different title from the global popup.
+        # Advance only a recognized panel, using blank space below its contents.
+        title = RuleImage(roi_front=(520,119,241,64), roi_back=(470,80,350,140),
+                          threshold=0.85, method='Template matching',
+                          file='./tasks/SixRealms/moon_sea/markers/boss_reward_title.png')
+        dismiss = RuleClick(roi_front=(580,610,100,40), roi_back=(580,610,100,40),
+                            name='moon_sea_reward_dismiss')
+        if self.appear_then_click(title, action=dismiss, interval=1.2):
+            return True
+        return self.ui_reward_appear_click()
+
     def boss_battle(self) -> bool:
         logger.hr('Boss Battle')
         self.ui_click_until_disappear(self.I_BOSS_FIRE, interval=1)
@@ -194,6 +208,8 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
         self.device.stuck_record_add('BATTLE_STATUS_S')
         while 1:
             self.screenshot()
+            if self.handle_boss_reward():
+                continue
             if self.appear(self.I_BOSS_SHARE):
                 break
             if self.appear(self.I_BOSS_BATTLE_GIVEUP):
@@ -202,11 +218,9 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
                 self.ui_click_until_disappear(self.I_BOSS_BATTLE_GIVEUP, interval=1)
                 continue
 
-            if self.appear(self.I_BOSS_USE_DOUBLE, interval=1):
+            if self.appear_then_click(self.I_BOSS_USE_DOUBLE, interval=1):
                 # 双倍奖励
                 logger.info('Double reward')
-                self.ui_get_reward(self.I_BOSS_USE_DOUBLE)
-            if self.ui_reward_appear_click():
                 continue
             if self.appear_then_click(self.I_BOSS_GET_EXP, interval=1):
                 logger.info('Get EXP')

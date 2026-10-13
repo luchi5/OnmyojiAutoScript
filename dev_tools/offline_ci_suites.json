@@ -130,6 +130,11 @@
       "path": "dev_tools/test_activation_smart_fill.py",
       "required": true,
       "scope": "Smart fill with old cached parent, success and timeout without devices"
+    },
+    {
+      "path": "dev_tools/test_six_realms_reward.py",
+      "required": true,
+      "scope": "Double reward, overlay dismissal and summary ordering without devices"
     }
   ],
   "stub_project_logger": true
