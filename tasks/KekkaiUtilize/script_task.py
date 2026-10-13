@@ -208,7 +208,8 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         从寮的主界面进入寮结界
         :return:
         """
-        while 1:
+        timer = Timer(20).start()
+        while not timer.reached():
             self.screenshot()
             if self.appear(self.I_REALM_SHIN):
                 break
@@ -218,6 +219,8 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 continue
             if self.appear_then_click(self.I_GUILD_REALM, interval=1):
                 continue
+        else:
+            raise GameStuckError('Could not enter own realm within 20 seconds')
 
     def check_box_ap_or_exp(self, ap_enable: bool = True, exp_enable: bool = True, exp_waste: bool = True) -> bool:
         """
@@ -353,14 +356,22 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         进入式神育成界面
         :return:
         """
-        while 1:
+        timer = Timer(30).start()
+        while not timer.reached():
             self.screenshot()
+
+            if self.appear(self.I_GUILD_INFO) or self.appear(self.I_GUILD_REALM):
+                logger.warning('Growth entry is still in guild; enter realm first')
+                self.goto_realm()
+                continue
 
             if self.in_shikigami_growth():
                 break
 
             if self.appear_then_click_multi_scale(self.I_SHI_GROWN, interval=1):
                 continue
+        else:
+            raise GameStuckError('Could not enter shikigami growth within 30 seconds')
         logger.info('Enter shikigami grown')
 
     def grown_goto_utilize(self):
@@ -900,10 +911,13 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             if self.appear_multi_scale(self.I_SHI_DEFENSE):
                 break
             if self.appear_then_click(self.I_UI_BACK_RED, interval=1):
+                time.sleep(1)
                 continue
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1):
+                time.sleep(1)
                 continue
             if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1):
+                time.sleep(1)
                 continue
         else:
             raise GameStuckError('Could not return from friend realm within 20 seconds')

@@ -1,6 +1,7 @@
 """Replay friend realm transitions and prevent class clicks on the homepage."""
 from enum import Enum
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
 from dev_tools.test_bondling_battle_entry import FakeClock, FakeTimer, FakeLogger, extract_methods
 
@@ -26,9 +27,10 @@ class Harness:
                 name = 'I_RS_'+rarity.name+suffix
                 setattr(self,name,name)
         ns = {'Timer':lambda t:FakeTimer(self.clock,t),'logger':FakeLogger(),
+              'time':SimpleNamespace(sleep=lambda t:setattr(self.clock,'now',self.clock.now+t)),
               'ShikigamiClass':Rarity,'GameStuckError':RuntimeError}
         methods = extract_methods(ROOT/'tasks/KekkaiUtilize/script_task.py','ScriptTask',
-                                  ('_enter_friend_growth','in_shikigami_growth','back_realm'),ns)
+                                  ('_enter_friend_growth','in_shikigami_growth','back_realm','realm_goto_grown'),ns)
         methods.update(extract_methods(ROOT/'tasks/Component/ReplaceShikigami/replace_shikigami.py',
                                        'ReplaceShikigami',('switch_shikigami_class',),ns))
         for name, method in methods.items():
@@ -64,6 +66,17 @@ class Harness:
 
 
 class GrowthTests(unittest.TestCase):
+    def test_growth_entry_recovers_from_guild(self):
+        h = Harness([{'I_GUILD_REALM'},{'I_SHI_GROWN'},{'I_RS_RECORDS_SHIKI'}])
+        h.realm_goto_grown()
+        self.assertEqual(h.clicks,['goto_own_realm','I_SHI_GROWN'])
+
+    def test_growth_unknown_page_has_bounded_timeout(self):
+        h = Harness([set()])
+        with self.assertRaisesRegex(RuntimeError,'30 seconds'):
+            h.realm_goto_grown()
+        self.assertEqual(h.clicks,[])
+
     def test_friend_placement_without_records_icon_is_valid(self):
         for marker in ('I_CHECK_FRIEND_REALM_1','I_CHECK_FRIEND_REALM_3'):
             h = Harness([{marker}])
