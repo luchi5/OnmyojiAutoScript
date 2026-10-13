@@ -958,6 +958,11 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
     def switch_soul_in_dokan(self):
         if self.switch_soul_done:
             return
+        soul = self.config.dokan.switch_soul_config
+        if not (soul.enable or soul.enable_switch_by_name):
+            logger.info('Dokan soul switching disabled; stay in gathering scene')
+            self.switch_soul_done = True
+            return
         logger.info("start switch soul...")
         self.ui_click_until_disappear(self.I_RYOU_DOKAN_SHIKIGAMI, interval=2)
 
