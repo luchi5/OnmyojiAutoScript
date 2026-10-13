@@ -18,6 +18,7 @@ from tasks.Component.GeneralBuff.general_buff import GeneralBuff
 from tasks.Component.GeneralBattle.battle_wait import BattleWait
 
 from module.logger import logger
+from module.exception import GameStuckError
 
 
 class GeneralBattle(BattleWait, GeneralBuff):
@@ -466,15 +467,21 @@ class GeneralBattle(BattleWait, GeneralBuff):
         # 点击预设确认
         self.wait_until_appear(self.I_PRESET_ENSURE, wait_time=1)
         click_timer = Timer(10).start()
+        confirm_clicks = 0
+        fallback = getattr(self, '_preset_selection_fallback', None)
         while 1:
             self.screenshot()
             if selection_interrupted():
                 return None
-            if click_timer.reached():
-                logger.warning("Switch preset failure")
             if not self.appear(self.I_PRESET_ENSURE):
                 break
+            expired = click_timer.reached() or (fallback is not None and confirm_clicks >= 3)
+            if confirm_clicks and fallback is not None and fallback(timed_out=expired):
+                return None
+            if expired:
+                raise GameStuckError('Preset confirmation rejected or timed out')
             if self.appear_then_click(self.I_PRESET_ENSURE, threshold=0.8, interval=1):
+                confirm_clicks += 1
                 continue
         logger.info("Click preset ensure")
         return None

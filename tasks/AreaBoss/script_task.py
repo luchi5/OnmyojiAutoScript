@@ -24,10 +24,40 @@ from tasks.AreaBoss.config_boss import AreaBossFloor
 from module.logger import logger
 from module.exception import TaskEnd, GamePageUnknownError, GameStuckError, GameTooManyClickError
 from module.atom.image import RuleImage
+from module.atom.ocr import RuleOcr
 from typing import List
 
 
 class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
+
+    O_AB_PRESET_REJECTED = RuleOcr(
+        name='area_preset_rejected', mode='Full', method='Default',
+        roi=(300, 195, 700, 90), area=(300, 195, 700, 90), keyword='不满足',
+    )
+    C_AB_DISMISS_PRESET = RuleClick(
+        roi_front=(960, 100, 60, 40), roi_back=(960, 100, 60, 40),
+        name='area_dismiss_preset',
+    )
+
+    def _preset_selection_fallback(self, timed_out=False):
+        """Keep the fielded team when a restricted encounter rejects a preset."""
+        if not timed_out and not self.ocr_appear(self.O_AB_PRESET_REJECTED):
+            return False
+        logger.warning('Area Boss preset unavailable; keep current team and close preset panel')
+        deadline = time.monotonic() + 8
+        clicks = 0
+        while time.monotonic() < deadline:
+            self.screenshot()
+            if not self.appear(self.I_PRESET_ENSURE):
+                if self.is_in_prepare(False) or self._area_boss_battle_started():
+                    logger.info('Area Boss preset panel closed; continue with current team')
+                    return True
+            elif clicks < 3 and self.click(self.C_AB_DISMISS_PRESET, interval=1):
+                clicks += 1
+            time.sleep(0.2)
+        # A failed close must not be mistaken for successful preset switching.
+        self._defer_battle_preparation()
+        return True
 
     def _area_boss_identity(self):
         # Reuse the existing boss-name reader; list positions are not identities.

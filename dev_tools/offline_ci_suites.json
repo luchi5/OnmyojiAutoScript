@@ -65,6 +65,11 @@
       "path": "dev_tools/test_account_session_guard.py",
       "required": true,
       "scope": "Local image fixtures and AST takeover flow; no ADB or service imports"
+    },
+    {
+      "path": "dev_tools/test_area_boss_preset_rejection.py",
+      "required": true,
+      "scope": "AST preset rejection, bounded close and original-team preparation with fake frames"
     }
   ],
   "stub_project_logger": true
