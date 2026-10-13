@@ -80,6 +80,11 @@
       "path": "dev_tools/test_preset_selection.py",
       "required": true,
       "scope": "Synthetic selected-outline pixels and actual bounded selection method with fake clicks"
+    },
+    {
+      "path": "dev_tools/test_dokan_exit.py",
+      "required": true,
+      "scope": "AST Dokan exit via town and overlay ordering with fake navigation"
     }
   ],
   "stub_project_logger": true

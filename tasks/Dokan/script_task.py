@@ -525,6 +525,10 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 # must not be trapped inside a confirmation-only wait loop.
                 self.click(self.I_RYOU_DOKAN_QUIT_BATTLE_ENSURE, interval=2)
                 continue
+            if self.appear(self.I_CHECK_TOWN):
+                logger.info('Dokan exit reached town; navigate to courtyard')
+                self.goto_page(page_main)
+                return
             if self.appear(self.I_RYOU_DOKAN_DOKAN_QUIT):
                 self.click(self.I_RYOU_DOKAN_DOKAN_QUIT, interval=3)
                 continue
