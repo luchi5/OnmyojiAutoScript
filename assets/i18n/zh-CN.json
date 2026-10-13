@@ -231,9 +231,10 @@
   "max_fish_num": "挂卡斗鱼最高收益",
   "Max Fish Num": "挂卡斗鱼最高收益",
   "max_fish_num_help": "自动选卡时按每小时体力收益筛选，包含上限；0表示不限，其他值不能低于下限。正在生效的卡继续使用至到期。",
-
   "OtherWorldTwilight": "彼世逢魔",
   "other_world_twilight_config": "彼世逢魔配置",
   "green_mark_name": "绿标式神名称",
-  "green_mark_name_help": "彼世逢魔站位可变，开启绿标后填写目标式神名称；识别不到时不点击。"
+  "green_mark_name_help": "彼世逢魔站位可变，开启绿标后填写目标式神名称；识别不到时不点击。",
+  "double_rewards_only": "仅打双倍奖励次数",
+  "double_rewards_only_help": "每轮进入月之海前检查右上角宝箱数量；为0则跳过并保留未完成进度。识别失败不进入。开启后忽略挑战次数上限，仍受运行时间上限限制。"
 }

@@ -11,6 +11,7 @@ from tasks.Component.SwitchSoul.switch_soul_config import SwitchSoulConfig
 class SixRealmsGate(BaseModel):
     # 限制时间
     limit_time: Time = Field(default=Time(minute=30), description='limit_time_help')
+    double_rewards_only: bool = Field(default=False, description="double_rewards_only_help")
     # 限制次数
     limit_count: int = Field(default=1, description='limit_count_help')
 

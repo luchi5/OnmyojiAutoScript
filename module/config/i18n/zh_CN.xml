@@ -413,6 +413,8 @@ window_background >>> DroidCast_raw >  ADB_nc >> DroidCast > uiautomator2 ~= ADB
 	<message><source>Limit Count</source><translation>限制挑战次数</translation></message>
 	<message><source>limit_time_help</source><translation>时间格式:"[hours]:[minutes]:[seconds]"
 注意没有空格，使用英文的冒号 : 不按照格式输入会无法正确设置</translation></message>
+	<message><source>Double Rewards Only</source><translation>仅打双倍奖励次数</translation></message>
+	<message><source>double_rewards_only_help</source><translation>每轮进入月之海前检查右上角宝箱数量；为0则跳过并保留未完成进度。识别失败不进入。开启后忽略挑战次数上限，仍受运行时间上限限制。</translation></message>
 	<message><source>limit_count_help</source><translation>两个限制需要同时设置，最先达到就会退出。
 建议执行时间设置成一个小时足够长，此时基于次数来判定设置为100次</translation></message>
 	<message><source>GeneralClimb</source><translation>通用爬塔</translation></message>

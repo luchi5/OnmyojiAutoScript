@@ -3,6 +3,8 @@ import time
 from module.logger import logger
 from module.atom.image import RuleImage
 from module.atom.click import RuleClick
+from module.atom.ocr import RuleOcr
+from module.exception import GameStuckError
 
 from cached_property import cached_property
 from datetime import datetime, timedelta
@@ -43,20 +45,22 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
         )
         cnt = 0
         while 1:
-            if cnt >= max_cont:
+            if not getattr(self._conf, 'double_rewards_only', False) and cnt >= max_cont:
                 logger.info('Run out of count, exit')
                 break
             if datetime.now() - self.start_time >= max_time:
                 logger.info('Run out of time, exit')
                 break
-            self.one()
+            if self.one() is False:
+                break
             cnt += 1
         logger.info('Exit Moon Sea')
 
 
     def one(self):
         self.cnt_skill101 = 1
-        self._start()
+        if self._start() is False:
+            return False
         while 1:
             self.screenshot()
             if not self.in_main():
@@ -109,18 +113,46 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
             if self.appear_then_click(self.I_MCONINUE, interval=1):
                 continue
 
+    def read_double_reward_count(self):
+        # Single preserves OCR failure as empty text; Digit would turn it into 0.
+        counter = RuleOcr(roi=(1140,15,85,30), area=(1140,15,85,30),
+                          mode='Single', method='Default', keyword='',
+                          name='moon_sea_double_reward_count')
+        previous = None
+        for _ in range(4):
+            self.screenshot()
+            if not (self.appear(self.I_MSTART) or self.appear(self.I_MCONINUE)):
+                previous = None
+                continue
+            text = str(counter.ocr(self.device.image)).strip()
+            if not text or not text.isascii() or not text.isdigit():
+                previous = None
+                continue
+            count = int(text)
+            if count == previous:
+                logger.info('Moon sea double rewards remaining: {}'.format(count))
+                return count
+            previous = count
+            time.sleep(0.3)
+        raise GameStuckError('Cannot confirm moon sea double reward count on entry page')
+
     def _start(self):
         logger.hr('Moon Sea', 1)
         while 1:
             self.screenshot()
-            if self.appear(self.I_MSTART):
+            start = self.appear(self.I_MSTART)
+            resume = self.appear(self.I_MCONINUE)
+            if start or resume:
+                if getattr(self._conf, 'double_rewards_only', False):
+                    if self.read_double_reward_count() == 0:
+                        logger.info('No double rewards; preserve unfinished progress and skip')
+                        return False
+                if resume:
+                    self._continue()
+                    return True
                 break
             if self.appear_then_click(self.I_MENTER, interval=1):
                 continue
-            if self.appear(self.I_MCONINUE):
-                # 继续上一把的
-                self._continue()
-                return
         logger.info("Ensure select ShouZu")
         while 1:
             self.screenshot()

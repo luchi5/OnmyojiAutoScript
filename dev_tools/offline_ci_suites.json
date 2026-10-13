@@ -135,6 +135,11 @@
       "path": "dev_tools/test_six_realms_reward.py",
       "required": true,
       "scope": "Double reward, overlay dismissal and summary ordering without devices"
+    },
+    {
+      "path": "dev_tools/test_six_realms_double_rewards.py",
+      "required": true,
+      "scope": "Reward quota, preserved progress and count/time limits without devices"
     }
   ],
   "stub_project_logger": true

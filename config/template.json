@@ -780,7 +780,8 @@
     },
     "six_realms_gate": {
       "limit_time": "00:30:00",
-      "limit_count": 1
+      "limit_count": 1,
+      "double_rewards_only": false
     }
   },
   "activity_shikigami": {
