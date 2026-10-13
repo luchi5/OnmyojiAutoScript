@@ -140,6 +140,11 @@
       "path": "dev_tools/test_six_realms_double_rewards.py",
       "required": true,
       "scope": "Reward quota, preserved progress and count/time limits without devices"
+    },
+    {
+      "path": "dev_tools/test_bondling_shop_purchase.py",
+      "required": true,
+      "scope": "Wrong product and unreadable quantity rejection; no actual purchases"
     }
   ],
   "stub_project_logger": true

@@ -4,6 +4,8 @@
 import time
 
 from module.logger import logger
+from module.base.timer import Timer
+from module.exception import GameStuckError
 from module.atom.image import RuleImage
 from module.atom.ocr import RuleOcr
 
@@ -99,11 +101,65 @@ class Bondlings(Buy, MallNavbar):
 
         if buy_cycles_number:
             for i in range(buy_cycles_number):
-                self.buy_more(buy_button)
+                self._buy_bondling_checked(buy_button, buy_max, check_class)
                 time.sleep(0.5)
         if buy_res_number:
-            self.buy_more(buy_button, buy_res_number)
+            self._buy_bondling_checked(buy_button, buy_res_number, check_class)
             time.sleep(0.5)
+
+    def _verify_bondling_item(self, check_class):
+        # Verify the dialog's item name, not identical exchange buttons on cards.
+        names = {1: {'随机御魂'}, 2: {'鸣契石'},
+                 3: {'高级契灵盘'}, 4: {'中级契灵盘'}}
+        reader = RuleOcr(roi=(390,130,500,220), area=(390,130,500,220),
+                         mode='Full', method='Default', keyword='', name='bondling_purchase_item')
+        results = reader.detect_and_ocr(self.device.image)
+        texts = {''.join(r.ocr_text.split()) for r in results}
+        if not (names[check_class] & texts):
+            raise GameStuckError('Contract shop item not confirmed; purchase blocked: {}'.format(sorted(texts)))
+
+    def _buy_bondling_checked(self, button, number, check_class):
+        timer = Timer(10).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_BUY_PLUS):
+                break
+            self.appear_then_click(button, interval=1)
+        else:
+            raise GameStuckError('Contract shop purchase dialog not found')
+        self._verify_bondling_item(check_class)
+        # Single mode preserves empty OCR; never interpret it as a quantity.
+        reader = RuleOcr(roi=self.O_BUY_NUMBER.roi, area=self.O_BUY_NUMBER.roi,
+                         mode='Single', method='Default', keyword='', name='bondling_purchase_number')
+        timer = Timer(45).start()
+        confirmed = 0
+        while not timer.reached():
+            self.screenshot()
+            self._verify_bondling_item(check_class)
+            text = str(reader.ocr(self.device.image)).strip()
+            if not text.isascii() or not text.isdigit() or int(text) <= 0:
+                raise GameStuckError('Contract shop quantity unreadable; purchase blocked')
+            current = int(text)
+            if current == number:
+                confirmed += 1
+                if confirmed >= 2:
+                    break
+            else:
+                confirmed = 0
+                control = self.I_BUY_ADD if current < number else self.I_BUY_SUB
+                self.appear_then_click(control, interval=0.8)
+            time.sleep(0.4)
+        else:
+            raise GameStuckError('Contract shop requested quantity not confirmed')
+        # Item and quantity were both checked on this same frame. Submit once.
+        self.click(self.C_BUY_MORE)
+        timer = Timer(12).start()
+        while not timer.reached():
+            self.screenshot()
+            if self.ui_reward_appear_click():
+                logger.info('Verified contract shop purchase completed: class={}, count={}'.format(check_class, number))
+                return True
+        raise GameStuckError('Contract shop purchase result unknown; do not submit again')
 
 
 
