@@ -72,6 +72,10 @@ class GeneralBattle(BattleWait, GeneralBuff):
                             return True
                         self.check_and_open_buff(buff)
                         confed = True
+                        # Opening/selecting a preset can consume the whole entry
+                        # budget. Refresh the frame before handling its dialogs.
+                        timeout_timer = Timer(timeout).start()
+                        continue
                     # 点击准备(锁定阵容自动点准备,不锁定阵容前面也已经配置完毕需要点准备)
                     if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=0.8):
                         continue

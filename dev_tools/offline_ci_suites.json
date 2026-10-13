@@ -70,6 +70,11 @@
       "path": "dev_tools/test_area_boss_preset_rejection.py",
       "required": true,
       "scope": "AST preset rejection, bounded close and original-team preparation with fake frames"
+    },
+    {
+      "path": "dev_tools/test_hunt_preset_dialog.py",
+      "required": true,
+      "scope": "AST Hunt delayed preset modal and fresh preparation budget using fake frames"
     }
   ],
   "stub_project_logger": true

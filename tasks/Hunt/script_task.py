@@ -166,6 +166,11 @@ class ScriptTask(GameUi, GeneralBattle, GeneralInvite, SwitchSoul, HuntAssets):
         stuck_timer.start()
         while 1:
             self.screenshot()
+            # Preset confirmation can arrive after battle_before's deadline.
+            # Handle the modal before clicking preparation behind it.
+            if self.appear_then_click(self.I_CONFIRM_CLOSE_DIFF_SOUL, threshold=0.75, interval=0.6):
+                logger.info('Hunt acknowledged preset soul mismatch')
+                continue
             if self.appear(self.I_WIN):
                 logger.info('Battle win')
                 self.ui_click_until_disappear(self.I_WIN)

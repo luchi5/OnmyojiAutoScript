@@ -211,7 +211,7 @@ class PresetTransitionTests(unittest.TestCase):
 
     def test_normal_preparation_keeps_preset_prepare_and_reward_flow(self):
         h = Harness([prepare(), prepare(), menu(), menu(), menu(), menu(),
-                     prepare(), battle(), frame('I_REWARD')])
+                     prepare(), prepare(), battle(), frame('I_REWARD')])
         self.assertTrue(h.run_general_battle(h.conf))
         self.assertEqual(h.clicks, ['I_PRESET', 'team3', 'I_PRESET_ENSURE', 'I_PREPARE_HIGHLIGHT'])
         self.assertEqual(h.buff_calls, [None])
