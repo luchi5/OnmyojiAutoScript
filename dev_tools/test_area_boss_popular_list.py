@@ -404,6 +404,15 @@ class VisualEvidenceTests(unittest.TestCase):
         h.device.image[120:145, 385:432] = read_template('ab_ji_floor_ten.png')
         self.assertFalse(h._selected_star_visual_match(SimpleNamespace(image=read_template('ab_ji_floor_one.png'))))
 
+    def test_actual_ten_header_rasterization_is_accepted_only_as_ten(self):
+        rows = json.loads((ROOT / 'dev_tools/fixtures/area_boss_ten_header.json').read_text())
+        mask = np.array([[c == '1' for c in row] for row in rows], dtype=np.uint8) * 255
+        h = PixelHarness()
+        h.device.image[118:150, 380:444] = np.repeat(mask[:, :, None], 3, axis=2)
+        self.assertTrue(h._selected_star_visual_match(SimpleNamespace(image=read_template('ab_ji_floor_ten.png'))))
+        self.assertFalse(h._selected_star_visual_match(SimpleNamespace(image=read_template('ab_ji_floor_one.png'))))
+        self.assertFalse(h._selected_star_visual_match(SimpleNamespace(image=read_template('ab_ji_floor_list_check.png'))))
+
     def test_saved_real_menu_and_header_font_match_without_matching_other_numerals(self):
         fixture = json.loads((ROOT / 'dev_tools/fixtures/area_boss_star_masks.json').read_text())
 

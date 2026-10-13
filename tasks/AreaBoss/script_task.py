@@ -738,7 +738,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
                 whole = 2 * np.logical_and(shifted, reference).sum() / (shifted.sum() + reference.sum())
                 number, expected = shifted[:, :47], reference[:, :47]
                 numeral = 2 * np.logical_and(number, expected).sum() / max(1, number.sum() + expected.sum())
-                if whole >= 0.80 and numeral >= 0.78:
+                if whole >= 0.73 and numeral >= 0.73:
                     return True
         return False
 

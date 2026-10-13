@@ -14,6 +14,10 @@ from tests.test_courtyard_affairs_skin import ImageRule, SkinFrames
 
 
 class CompletionFrames(SkinFrames):
+    handle_courtyard_reward = CompletionAwareCourtyardMixin.handle_courtyard_reward
+    _click_courtyard_overlay = CompletionAwareCourtyardMixin._click_courtyard_overlay
+    def appear(self, rule, **kwargs):
+        return super().appear(rule)
     configure_courtyard_skin = CompletionAwareCourtyardMixin.configure_courtyard_skin
     harvest_courtyard_affairs = CompletionAwareCourtyardMixin.harvest_courtyard_affairs
 

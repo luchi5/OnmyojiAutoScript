@@ -59,6 +59,20 @@ class RewardFrames(CourtyardRewardMixin):
 
 
 class CourtyardRewardTests(unittest.TestCase):
+    def test_delayed_classic_success_closes_blank_strip_before_back(self):
+        task = RewardFrames([{'classic-success', 'courtyard'}, {'courtyard', 'back'}, {'main'}])
+        task.I_SUCCESS_CLAIMED = 'classic-success'
+        task.C_BLUE_REWARD_CLOSE = 'blank-strip'
+        self.assertTrue(task.finish())
+        self.assertEqual(task.clicks, ['blank-strip', 'back'])
+
+    def test_throttled_classic_success_does_not_click_underneath(self):
+        task = RewardFrames([{'classic-success', 'courtyard'}], throttled=True)
+        task.I_SUCCESS_CLAIMED = 'classic-success'
+        task.C_BLUE_REWARD_CLOSE = 'blank-strip'
+        self.assertFalse(task.finish(timeout=8))
+        self.assertEqual(task.clicks, [])
+
     def test_az_ordinary_sign_claim_reward_close_and_return(self):
         task = RewardFrames([
             {'I_HARVEST_SIGN'}, {'I_HARVEST_SIGN_2', 'courtyard'},

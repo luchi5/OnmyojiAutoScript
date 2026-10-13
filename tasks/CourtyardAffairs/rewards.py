@@ -18,6 +18,12 @@ class CourtyardRewardMixin:
         return True
 
     def handle_courtyard_reward(self):
+        # The classic claim result also appears late during the exit flow.
+        # Its title is not a dismiss button; use the blank strip at the bottom.
+        if self._click_courtyard_overlay(
+                getattr(self, 'I_SUCCESS_CLAIMED', None),
+                action=getattr(self, 'C_BLUE_REWARD_CLOSE', None)):
+            return True
         rules = getattr(self, '_longyi_rules', None)
         for rule in (rules['reward'] if rules else None,
                      getattr(self, 'I_BLUE_SUCCESS_CLAIMED', None)):

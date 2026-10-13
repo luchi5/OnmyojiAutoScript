@@ -202,6 +202,10 @@ class CompletionAwareCourtyardMixin(CourtyardRewardMixin, SkinAwareCourtyardAffa
                     self.I_BLUE_SUCCESS_CLAIMED, action=self.C_BLUE_REWARD_CLOSE, interval=1):
                 stable_done = 0
                 continue
+            if self._click_courtyard_overlay(
+                    self.I_SUCCESS_CLAIMED, action=self.C_BLUE_REWARD_CLOSE):
+                stable_done = 0
+                continue
             handled = (
                 self.appear_then_click(self.I_HARVEST_SOUL_2, interval=1) or
                 self.appear_then_click(self.I_HARVEST_SOUL_3, interval=1) or
@@ -209,8 +213,6 @@ class CompletionAwareCourtyardMixin(CourtyardRewardMixin, SkinAwareCourtyardAffa
                 self.appear_then_click(self.I_UI_AWARD, interval=.2) or
                 self.appear_then_click(self.I_CONFIRM, interval=1) or
                 self.appear_then_click(self.I_DAILY, interval=1) or
-                (skin != CourtyardSkin.BLUE and
-                 self.appear_then_click(self.I_SUCCESS_CLAIMED, interval=1)) or
                 self.appear_then_click(self.I_SKIP, interval=1) or
                 self.appear_then_click(self.I_LOGIN_RED_CLOSE, interval=1))
             if handled:
