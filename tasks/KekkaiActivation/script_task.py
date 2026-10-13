@@ -163,7 +163,12 @@ class ScriptTask(KU, KekkaiActivationAssets):
         寮结界,前往挂卡界面
         :return:
         """
-        while 1:
+        compact_card = RuleImage(
+            roi_front=(820,420,26,60), roi_back=(760,330,190,210),
+            threshold=0.85, method='Template matching',
+            file='./tasks/KekkaiActivation/a/compact_realm_card.png')
+        entry_timer = Timer(20).start()
+        while not entry_timer.reached():
             self.screenshot()
 
             if self.appear(self.I_A_CHECK_CARD):
@@ -172,6 +177,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 break
             if self.appear_then_click_multi_scale(self.I_SHI_CARD, interval=1):
                 continue
+            if self.appear_then_click(compact_card, interval=1.5):
+                continue
+        else:
+            raise GameStuckError('Realm card page was not confirmed within 20 seconds')
         logger.info('Enter card page')
 
     def check_card_status(self, screenshot=False) -> bool:
