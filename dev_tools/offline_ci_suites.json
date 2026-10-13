@@ -120,6 +120,11 @@
       "path": "dev_tools/test_six_realms_island_entry.py",
       "required": true,
       "scope": "Moving island targets, missing markers and bounded entry without devices"
+    },
+    {
+      "path": "dev_tools/test_expired_realm_card.py",
+      "required": true,
+      "scope": "Expired card collection, transient OCR and retry bound without devices"
     }
   ],
   "stub_project_logger": true

@@ -116,6 +116,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
         self.goto_cards()
         # 太诡异了 为什么有这么长的动画, 那么长的动画先休息一会
         logger.hr('Start activation')
+        expired_retries = 0
         time.sleep(0.5)
         while 1:
             self.screenshot()
@@ -136,6 +137,12 @@ class ScriptTask(KU, KekkaiActivationAssets):
             if card_status and card_effect:
                 logger.info('Card is using')
                 interval = self.ocr_time()
+                if interval == timedelta(0):
+                    if expired_retries >= 2:
+                        raise GameStuckError('Expired realm card remained after two collection attempts')
+                    expired_retries += 1
+                    self.collect_expired_card()
+                    continue
                 self.set_next_run("KekkaiActivation", target=interval+datetime.now())
                 return False
             # 如果已经选中这张卡了， 那就激活这张卡
@@ -151,6 +158,9 @@ class ScriptTask(KU, KekkaiActivationAssets):
                     if self.appear_then_click(self.I_A_ACTIVATE_YELLOW, interval=1):
                         continue
                 interval = self.ocr_time(True)
+                if interval == timedelta(0):
+                    # Re-enter the bounded expired-card branch on a fresh frame.
+                    continue
                 self.set_next_run("KekkaiActivation", target=interval + datetime.now())
                 return True
             # 如果是什么都没有，那就是可以开始挂卡了
@@ -215,18 +225,37 @@ class ScriptTask(KU, KekkaiActivationAssets):
             elif self.appear(self.I_A_ACTIVATE_GRAY):
                 return False
 
-    def ocr_time(self, screenshot=False) -> timedelta or None:
+    def ocr_time(self, screenshot=False) -> timedelta:
         if screenshot:
             self.screenshot()
-        delta = self.O_CARD_ALL_TIME.ocr_duration(self.device.image)
-        if not isinstance(delta, timedelta):
-            logger.warning('OCR error')
-            return None
-        if delta == timedelta(0):
-            logger.error('The remaining time detected for this card is 0')
-            logger.error('This may be due to the fact that the card has not yet been collected')
-            raise GameStuckError
-        return delta
+        zero_reads = 0
+        for attempt in range(3):
+            if attempt:
+                time.sleep(0.5)
+                self.screenshot()
+            delta = self.O_CARD_ALL_TIME.ocr_duration(self.device.image)
+            if isinstance(delta, timedelta):
+                if delta > timedelta(0):
+                    return delta
+                if delta == timedelta(0):
+                    zero_reads += 1
+        if zero_reads == 3:
+            logger.info('Card timer is zero on three frames; collect expired card')
+            return timedelta(0)
+        raise GameStuckError('Unable to read a stable realm card duration')
+
+    def collect_expired_card(self):
+        """Collect from the realm, never unload a potentially active card."""
+        timeout = Timer(12).start()
+        while not timeout.reached():
+            self.screenshot()
+            if self.appear(self.I_REALM_SHIN) or self.appear(self.I_SHI_GROWN):
+                break
+            self.appear_then_click(self.I_UI_BACK_RED, interval=1)
+        else:
+            raise GameStuckError('Cannot return to realm to collect expired card')
+        self.harvest_card()
+        self.goto_cards()
 
     def screening_card(self, rule: str):
         """
@@ -484,22 +513,22 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.I_A_HARVEST_MOON_3,  # 太阴3
             self.I_A_HARVEST_FISH_3,  # 斗鱼三
         ]
-        for i in range(5):
+        timeout = Timer(8).start()
+        while not timeout.reached():
             self.screenshot()
-            if self.appear_then_click_multi_scale(umbrella, threshold=0.8):
-                break
-            appear = [ self.appear_then_click_multi_scale(card, threshold=0.7) for card in cards ]
-            if any(appear):
-                break
-        logger.info("")
-        # self.appear_then_click(self.I_A_HARVEST_EXP)  # 如果到最后没有领的话有下面的一些图片
-        # self.appear_then_click(self.I_A_HARVEST_FISH4)  # 斗鱼4/5区别不大 斗鱼的如果一直没有领的话
-        # self.appear_then_click(self.I_A_HARVEST_KAIKO_4)  # 太鼓4
-        # self.appear_then_click(self.I_A_HARVEST_KAIKO_3)  # 太鼓3
-        # self.appear_then_click(self.I_A_HARVEST_KAIKO_6)  # 太鼓6
-        # self.appear_then_click(self.I_A_HARVEST_FISH_6)  # 斗鱼6
-        # self.appear_then_click(self.I_A_HARVEST_MOON_3)  # 太阴3
-        # self.appear_then_click(self.I_A_HARVEST_FISH_3)  # 斗鱼三
+            if self.ui_reward_appear_click():
+                continue
+            if self.appear_then_click_multi_scale(umbrella, threshold=0.8, interval=1):
+                time.sleep(0.5)
+                continue
+            for card in cards:
+                if self.appear_then_click_multi_scale(card, threshold=0.7, interval=1):
+                    time.sleep(0.5)
+                    break
+            else:
+                time.sleep(0.3)
+        logger.info('Finished realm card collection pass')
+
 
 
 if __name__ == "__main__":
