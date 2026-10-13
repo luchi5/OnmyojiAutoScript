@@ -110,6 +110,11 @@
       "path": "dev_tools/test_activation_card_entry.py",
       "required": true,
       "scope": "AST bounded realm card entry with fake frames and clicks"
+    },
+    {
+      "path": "dev_tools/test_own_growth_fill.py",
+      "required": true,
+      "scope": "AST own-growth max-level and bounded candidate replay without devices"
     }
   ],
   "stub_project_logger": true

@@ -87,6 +87,37 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
                 self.appear_then_click(self.I_RS_LEVEL_MAX, interval=0.5)
         logger.info('Unset all shikigami max lv')
 
+    def _fill_own_growth(self, preferred, slots):
+        # Own growth cannot use max-level cards. Try each visible candidate once,
+        # keeping the configured preference first, instead of alternating 7/6.
+        order = [preferred] + [i for i in range(7, 0, -1) if i != preferred]
+        for index in order:
+            self.screenshot()
+            if not self.in_shikigami_growth():
+                raise GameStuckError('Own growth page lost while filling slots')
+            if not self.appear(self.I_RS_NO_ADD):
+                return True
+            x = max(0, slots[index].roi_front[0] - 15)
+            full = RuleImage(roi_front=(x,487,60,53), roi_back=(x,487,60,53),
+                             threshold=0.8, method='Template matching',
+                             file=self.I_RS_LEVEL_MAX.file)
+            if self.appear(full):
+                continue
+            self.click(slots[index], interval=1.5)
+            time.sleep(1.5)
+            self.screenshot()
+            if (self.appear_then_click(self.I_U_CONFIRM_SMALL, interval=0.5)
+                    or self.appear_then_click(self.I_UI_CONFIRM, interval=1)
+                    or self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1)):
+                time.sleep(1)
+        self.screenshot()
+        if not self.in_shikigami_growth():
+            raise GameStuckError('Own growth page lost after filling slots')
+        filled = not self.appear(self.I_RS_NO_ADD)
+        if not filled:
+            logger.warning('No more usable visible shikigami; leave remaining growth slots empty')
+        return filled
+
     def set_shikigami(self, shikigami_order: int = 7, stop_image: RuleImage = None):
         """
         要求在式神育成的界面
@@ -103,6 +134,8 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
                         5: self.C_SHIKIGAMI_LEFT_5,
                         6: self.C_SHIKIGAMI_LEFT_6,
                         7: self.C_SHIKIGAMI_LEFT_7}
+        if stop_image == self.I_RS_NO_ADD:
+            return self._fill_own_growth(shikigami_order, _click_match)
         click_match = _click_match[shikigami_order]
         TIMEOUT_SEC = 120          # 超时时长（秒）
         start_time = time.time()   # 记录起始时间
