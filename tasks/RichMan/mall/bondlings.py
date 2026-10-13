@@ -2,11 +2,13 @@
 # @author runhey
 # github https://github.com/runhey
 import time
+import re
 
 from module.logger import logger
 from module.base.timer import Timer
 from module.exception import GameStuckError
 from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 from module.atom.ocr import RuleOcr
 
 from tasks.GameUi.page import page_main, page_guild
@@ -57,19 +59,13 @@ class Bondlings(Buy, MallNavbar):
             return
         self.screenshot()
 
-        # if buy_button.name == 'BONDLINGS_BL_BUY_SOULS':
-        #     if self.appear(self.I_ME_SOULS_NEW):
-        #         # 契灵御魂已经买光
-        #         logger.warning('本周契灵御魂已经买光')
-        #         return
-        # pos = self.O_BL_RES_SOULS_new.ocr_full(self.device.image)
-
-        # 检查是否出现了购买按钮
-        if not self.appear(buy_button):
-            logger.warning('Buy button is not appear')
+        # Resolve the current column by product name; sold-out products can
+        # move to the right, so old exchange-button coordinates are unsafe.
+        located = self._locate_bondling_product(check_class)
+        if located is None:
+            logger.info('Requested contract shop product is sold out')
             return
-        # 检查剩余数量
-        _remain = remain_number.ocr(self.device.image)
+        buy_button, _remain = located
         if _remain == 0:
             logger.warning('本周契灵御魂已经买光')
             return
@@ -107,10 +103,40 @@ class Bondlings(Buy, MallNavbar):
             self._buy_bondling_checked(buy_button, buy_res_number, check_class)
             time.sleep(0.5)
 
+    def _locate_bondling_product(self, check_class):
+        names = {1: {'随机御魂'}, 2: {'鸣契石'},
+                 3: {'万象式盘', '高级契灵盘'}, 4: {'千咒式盘', '中级契灵盘'}}
+        roi = (60,400,1110,70)
+        reader = RuleOcr(roi=roi, area=roi, mode='Full', method='Default',
+                         keyword='', name='bondling_shop_names')
+        found = [r for r in reader.detect_and_ocr(self.device.image)
+                 if ''.join(r.ocr_text.split()) in names[check_class]]
+        if len(found) != 1:
+            raise GameStuckError('Contract shop product location not confirmed')
+        center = int((found[0].box[0][0] + found[0].box[1][0]) / 2 + roi[0])
+        stock_roi = (max(0, center-140),175,280,155)
+        for shade in ('dark','red'):
+            sold = RuleImage(roi_front=(0,0,40,140), roi_back=stock_roi,
+                             threshold=0.85, method='Template matching',
+                             file='./tasks/RichMan/mall/bondlings/sold_'+shade+'.png')
+            if self.appear(sold):
+                return None
+        stock = RuleOcr(roi=stock_roi, area=stock_roi, mode='Full', method='Default',
+                        keyword='', name='bondling_product_stock')
+        texts = [r.ocr_text for r in stock.detect_and_ocr(self.device.image)]
+        if '售罄' in ''.join(texts):
+            return None
+        numbers = [int(n) for t in texts for n in re.findall(r'[0-9]+', t)]
+        if len(numbers) != 1 or numbers[0] <= 0:
+            raise GameStuckError('Contract shop stock not confirmed; purchase blocked')
+        button_roi = (center+45,475,70,35)
+        return RuleClick(roi_front=button_roi,roi_back=button_roi,
+                         name='verified_bondling_product'), numbers[0]
+
     def _verify_bondling_item(self, check_class):
         # Verify the dialog's item name, not identical exchange buttons on cards.
         names = {1: {'随机御魂'}, 2: {'鸣契石'},
-                 3: {'高级契灵盘'}, 4: {'中级契灵盘'}}
+                 3: {'万象式盘', '高级契灵盘'}, 4: {'千咒式盘', '中级契灵盘'}}
         reader = RuleOcr(roi=(390,130,500,220), area=(390,130,500,220),
                          mode='Full', method='Default', keyword='', name='bondling_purchase_item')
         results = reader.detect_and_ocr(self.device.image)
@@ -124,7 +150,10 @@ class Bondlings(Buy, MallNavbar):
             self.screenshot()
             if self.appear(self.I_BUY_PLUS):
                 break
-            self.appear_then_click(button, interval=1)
+            if isinstance(button, RuleClick):
+                self.click(button, interval=1)
+            else:
+                self.appear_then_click(button, interval=1)
         else:
             raise GameStuckError('Contract shop purchase dialog not found')
         self._verify_bondling_item(check_class)
