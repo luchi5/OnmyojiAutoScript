@@ -82,15 +82,30 @@ class Script:
     @cached_property
     def device(self) -> "Device":
         try:
-            from module.device.device import Device
-            device = Device(config=self.config)
-            return device
-        except RequestHumanTakeover:
-            logger.critical('Request human takeover')
-            exit(1)
+            return self._create_device()
         except Exception as e:
             logger.exception(e)
             exit(1)
+
+    def _create_device(self) -> "Device":
+        """Stop once device recovery is exhausted, including idle wakeups."""
+        try:
+            return Device(config=self.config)
+        except RequestHumanTakeover as error:
+            logger.critical(error)
+            logger.critical('设备初始化或自动恢复失败，停止本账号脚本')
+            # Do not inspect self.device here: construction failed, so accessing
+            # the cached property would start the same recovery sequence again.
+            try:
+                accepted = self.config.notifier.push(
+                    title=f'{self.config_name} 设备自动恢复失败',
+                    content=f'<{self.config_name}> 设备初始化或自动恢复失败，已停止本账号脚本，请检查模拟器。'
+                )
+                if not accepted:
+                    logger.warning('设备恢复失败通知请求失败；账号仍保持停止')
+            except Exception as notify_error:
+                logger.warning(f'设备恢复失败通知异常：{type(notify_error).__name__}')
+            raise SystemExit(1) from error
 
     @cached_property
     def checker(self):
@@ -512,7 +527,7 @@ class Script:
             logger.info("Wake emulator before next task")
             if not self._try_acquire_queue_token():
                 return False
-            self.device = Device(self.config)
+            self.device = self._create_device()
             self._emulator_down = False
 
         if wake_time < next_run:
@@ -567,7 +582,7 @@ class Script:
     def _wait_goto_main(self, next_run: datetime) -> bool:
         if self._emulator_down:
             logger.info("前往庭院：立即恢复已关闭的模拟器")
-            self.device = Device(self.config)
+            self.device = self._create_device()
             self._emulator_down = False
 
         # Explicitly keeping the courtyard open takes priority over both
@@ -749,7 +764,7 @@ class Script:
         self._stop_when_restart_disabled(command, EmulatorNotRunningError('Emulator closed during wait'))
         logger.info('等待期间模拟器已关闭，重新初始化设备并按正常流程唤醒')
         self._emulator_down = True
-        self.device = Device(self.config)
+        self.device = self._create_device()
         self._emulator_down = False
 
     def run(self, command: str) -> bool:
@@ -853,8 +868,11 @@ class Script:
             logger.critical(e)
             self.exception_handler(e=e, command=command)
             logger.critical('Request human takeover')
-            self.config.notifier.push(title=f'{I18n.trans_zh_cn(command)}{command}', content=f"<{self.config_name}> RequestHumanTakeover")
-            exit(1)
+            try:
+                self.config.notifier.push(title=f'{I18n.trans_zh_cn(command)}{command}', content=f"<{self.config_name}> RequestHumanTakeover: {e}")
+            except Exception as notify_error:
+                logger.warning(f'设备或任务停止通知异常：{type(notify_error).__name__}')
+            raise SystemExit(1) from e
         except Exception as e:
             logger.exception(e)
             self.exception_handler(e=e, command=command)
@@ -886,7 +904,7 @@ class Script:
                 logger.info(f'重新显示: {target_window_name}')
             else:
                 show_window_by_name(target_window_name)
-                
+
         while 1:
             if date.today() > start_day:
                 with _log_switch_lock:
@@ -920,7 +938,7 @@ class Script:
                 continue
 
             if self._emulator_down:
-                self.device = Device(self.config)
+                self.device = self._create_device()
                 self._emulator_down = False
             else:
                 _ = self.device

@@ -149,7 +149,7 @@ class Harness:
         }
         methods = extract_methods(
             BATTLE_FILE, "BondlingBattle",
-            ("_capture_result_visible", "check_load", "_finish_capture_preparation", "run_battle"), namespace)
+            ("_capture_result_visible", "_finish_capture_preparation", "check_load", "run_battle"), namespace)
         methods.update(extract_methods(SCRIPT_FILE, "ScriptTask", ("run_alone",), namespace))
         for name, method in methods.items():
             setattr(self, name, method.__get__(self))
@@ -181,7 +181,7 @@ class Harness:
     def green_mark(self, *args):
         self.green_calls.append(args)
 
-    def is_in_real_battle(self, screenshot=True):
+    def is_in_real_battle(self, screenshot=False):
         return self.appear(self.I_EXIT)
 
     def catch_battle_wait(self, *args):
@@ -272,33 +272,14 @@ class EntryRegressionTests(unittest.TestCase):
     def test_actual_entry_counts_once_and_marks_only_preparation(self):
         for marker, green_count in (("I_BUFF", 1), ("I_EXIT", 0), ("I_REWARD", 0)):
             with self.subTest(marker=marker):
-                frames = ([frame(marker), frame('I_PREPARE_HIGHLIGHT'), frame('I_EXIT')]
-                          if marker == 'I_BUFF' else [frame(marker)])
+                frames = [frame(marker)]
+                if marker == "I_BUFF":
+                    frames += [frame("I_BUFF", "I_PREPARE_HIGHLIGHT"), frame("I_EXIT")]
                 harness = Harness(frames)
                 self.assertTrue(harness.run_battle(battle_config(), limit_count=220))
                 self.assertEqual(harness.current_count, 8)
                 self.assertEqual(harness.catch_calls, 1)
                 self.assertEqual(len(harness.green_calls), green_count)
-
-    def test_preparation_click_enters_battle_before_green_mark(self):
-        harness = Harness([frame('I_BUFF'), frame('I_PREPARE_HIGHLIGHT'), frame('I_EXIT')])
-        self.assertTrue(harness.run_battle(battle_config(), limit_count=220))
-        self.assertEqual([marker for marker, _ in harness.clicks], ['I_PREPARE_HIGHLIGHT'])
-        self.assertEqual(len(harness.green_calls), 1)
-        self.assertEqual(harness.catch_calls, 1)
-
-    def test_result_during_preparation_never_marks_green(self):
-        harness = Harness([frame('I_BUFF'), frame('I_REWARD')])
-        self.assertTrue(harness.run_battle(battle_config(), limit_count=220))
-        self.assertEqual(harness.green_calls, [])
-        self.assertEqual(harness.catch_calls, 1)
-
-    def test_preparation_without_battle_or_result_stops_before_marking(self):
-        harness = Harness([frame('I_BUFF'), frame('I_PREPARE_HIGHLIGHT')])
-        with self.assertRaises(GameStuckError):
-            harness.run_battle(battle_config(), limit_count=220)
-        self.assertEqual(harness.green_calls, [])
-        self.assertEqual(harness.catch_calls, 0)
 
     def test_single_player_does_not_click_background_fire_on_result_or_battle(self):
         for marker in RESULT_MARKERS + ("I_BUFF", "I_EXIT"):

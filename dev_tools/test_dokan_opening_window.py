@@ -83,6 +83,7 @@ class Harness:
             raise AssertionError('Explicit opening check must not use the server override')
 
         scheduler_namespace = {
+            'EXPECTED_UNSET': object(),
             'datetime': FrozenDateTime, 'time': time, 'timedelta': timedelta,
             'random': SimpleNamespace(randint=lambda first, last: 0),
             'convert_to_underscore': lambda name: 'dokan',

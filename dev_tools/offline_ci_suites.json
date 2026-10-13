@@ -1,0 +1,71 @@
+{
+  "project": "OnmyojiAutoScript",
+  "suites": [
+    {
+      "path": "dev_tools/test_config_concurrent_updates.py",
+      "required": true,
+      "scope": "Temporary configs and isolated multiprocessing writers; production logger is stubbed"
+    },
+    {
+      "path": "dev_tools/test_config_transfer.py",
+      "required": true,
+      "scope": "Temporary JSON import/export and fake server manager; no service or device imports"
+    },
+    {
+      "path": "dev_tools/test_config_atomic_updates.py",
+      "scope": "Atomic CAS, serializer and high precision watcher with temporary files and fake logger",
+      "required": true
+    },
+    {
+      "path": "tests/test_script_lifecycle.py",
+      "scope": "AST-loaded lifecycle, fake queues/processes and server manager",
+      "required": true
+    },
+    {
+      "path": "tests/test_mumu_launch.py",
+      "required": true,
+      "scope": "AST CLI routing with fake subprocess calls"
+    },
+    {
+      "path": "tests/test_mumu_process.py",
+      "scope": "Temporary VM identities; fake process enumeration, termination and clock",
+      "required": true
+    },
+    {
+      "path": "tests/test_mumu_recovery.py",
+      "scope": "AST recovery control flow with fake startup and shutdown",
+      "required": true
+    },
+    {
+      "path": "tests/test_emulator_failure_propagation.py",
+      "scope": "AST failure propagation with fake devices and notification callbacks",
+      "required": true
+    },
+    {
+      "path": "dev_tools/test_area_boss_floor_selection.py",
+      "required": true,
+      "scope": "AST star selector and fake UI frames"
+    },
+    {
+      "path": "dev_tools/test_area_boss_normal_level.py",
+      "required": true,
+      "scope": "AST normal difficulty and fake OCR/UI"
+    },
+    {
+      "path": "dev_tools/test_area_boss_battle_prepare.py",
+      "required": true,
+      "scope": "AST battle handoff; no device imports"
+    },
+    {
+      "path": "dev_tools/test_area_boss_popular_list.py",
+      "scope": "Synthetic image pixels and AST popular-list pagination; no OCR runtime",
+      "required": true
+    },
+    {
+      "path": "dev_tools/test_account_session_guard.py",
+      "required": true,
+      "scope": "Local image fixtures and AST takeover flow; no ADB or service imports"
+    }
+  ],
+  "stub_project_logger": true
+}

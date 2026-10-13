@@ -2,11 +2,13 @@
 # @author runhey
 # github https://github.com/runhey
 import asyncio
+import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
 from module.config.utils import convert_to_underscore
+from module.config.config_model import ConfigConflictError, EXPECTED_UNSET
 
 from module.logger import logger
 from module.server.main_manager import mm
@@ -17,6 +19,15 @@ from tasks.Component.daily_closeout import closeout_enabled
 
 
 script_app = APIRouter()
+
+
+def _expected_value(value):
+    if value is None:
+        return EXPECTED_UNSET
+    try:
+        return json.loads(value, parse_constant=lambda _: (_ for _ in ()).throw(ValueError()))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail='expected_value must be valid JSON') from None
 
 
 @script_app.get('/test')
@@ -55,12 +66,15 @@ async def config_rename(old_name: str = '', new_name: str = ''):
     """
     if old_name == new_name or new_name == '':
         return False
-    if old_name in mm.script_process:
-        if mm.script_process[old_name].state != ScriptState.INACTIVE:
-            mm.script_process[old_name].stop()
-        del mm.script_process[old_name]
-    if not mm.rename(old_name, new_name):
+    process = mm.script_process.get(old_name)
+    changed = (await process.retire(lambda: mm.rename(old_name, new_name))
+               if process is not None else mm.rename(old_name, new_name))
+    if not changed:
         raise HTTPException(status_code=400, detail='Rename failed')
+    if process is not None and mm.script_process.get(old_name) is process:
+        del mm.script_process[old_name]
+    mm._all_script_files = [new_name if name == old_name else name
+                            for name in mm._all_script_files]
     return True
 
 
@@ -73,12 +87,14 @@ async def config_delete(name: str = ''):
     """
     if name == '' or name == 'template':
         raise HTTPException(status_code=400, detail='Delete failed')
-    if name in mm.script_process:
-        if mm.script_process[name].state != ScriptState.INACTIVE:
-            mm.script_process[name].stop()
-        del mm.script_process[name]
-    if not mm.delete(name):
+    process = mm.script_process.get(name)
+    changed = (await process.retire(lambda: mm.delete(name))
+               if process is not None else mm.delete(name))
+    if not changed:
         raise HTTPException(status_code=400, detail='Delete failed')
+    if process is not None and mm.script_process.get(name) is process:
+        del mm.script_process[name]
+    mm._all_script_files = [item for item in mm._all_script_files if item != name]
     return True
 
 
@@ -107,7 +123,7 @@ async def task_group_copy(task_name: str, group_name: str, dest_config_name: str
 async def script_start(script_name: str):
     if script_name not in mm.script_process:
         mm.script_process[script_name] = ScriptProcess(script_name)
-    mm.script_process[script_name].start()
+    await mm.script_process[script_name].start()
     return
 
 @script_app.get('/{script_name}/stop')
@@ -115,7 +131,7 @@ async def script_stop(script_name: str):
     if script_name not in mm.script_process:
         logger.warning(f'[{script_name}] script process does not exist')
         return
-    mm.script_process[script_name].stop()
+    await mm.script_process[script_name].stop()
     return
 
 @script_app.get('/{script_name}/{task}/args')
@@ -123,7 +139,8 @@ async def script_task(script_name: str, task: str):
     return mm.config_cache(script_name).model.script_task(task)
 
 @script_app.put('/{script_name}/{task}/{group}/{argument}/value')
-async def script_task(script_name: str, task: str, group: str, argument: str, types: str, value):
+async def script_task(script_name: str, task: str, group: str, argument: str, types: str, value,
+                      expected_value: str | None = None):
     try:
         match types:
             case 'integer':
@@ -153,21 +170,33 @@ async def script_task(script_name: str, task: str, group: str, argument: str, ty
     except Exception as e:
         # 类型不正确
         raise HTTPException(status_code=400, detail=f'Argument type error: {e}')
-    return mm.config_cache(script_name).model.script_set_arg(task, group, argument, value)
+    expected = _expected_value(expected_value)
+    try:
+        model = mm.config_cache(script_name).model
+        if expected is EXPECTED_UNSET:
+            return model.script_set_arg(task, group, argument, value)
+        return model.script_set_arg(task, group, argument, value, expected_value=expected)
+    except ConfigConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
 
 
 @script_app.put('/{script_name}/{task}/sync_next_run')
-async def sync_next_run(script_name: str, task: str, target_dt: str):
+async def sync_next_run(script_name: str, task: str, target_dt: str, expected_value: str | None = None):
     if script_name not in mm.script_process:
         return False
     config = mm.config_cache(script_name)
     target = datetime.strptime(target_dt, '%Y-%m-%d %H:%M:%S') if target_dt else None
-    if (convert_to_underscore(task) == 'talisman_pass' and closeout_enabled(config)
-            and target is not None and target <= datetime.now()):
-        # Preserve explicit immediate-run intent for dynamic closeout as well.
-        config.model.script_set_arg(task, 'scheduler', 'next_run', target)
-    else:
-        config.task_delay(task=task, success=True, target=target)
+    expected = _expected_value(expected_value)
+    expected_args = {} if expected is EXPECTED_UNSET else {'expected_value': expected}
+    try:
+        if (convert_to_underscore(task) == 'talisman_pass' and closeout_enabled(config)
+                and target is not None and target <= datetime.now()):
+            # Preserve explicit immediate-run intent for dynamic closeout as well.
+            config.model.script_set_arg(task, 'scheduler', 'next_run', target, **expected_args)
+        else:
+            config.task_delay(task=task, success=True, target=target, **expected_args)
+    except ConfigConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
     script_process = mm.script_process[script_name]
     config.get_next()
     await script_process.broadcast_state({"schedule": config.get_schedule_data()})
@@ -215,6 +244,7 @@ async def websocket_endpoint(websocket: WebSocket, script_name: str):
     await script_process.connect(websocket)
 
     try:
+        await script_process.refresh_state()
         await script_process.send_json(websocket, {"state": script_process.state})
         config = mm.config_cache(script_name)
         config.get_next()
@@ -224,6 +254,7 @@ async def websocket_endpoint(websocket: WebSocket, script_name: str):
             # 初次进入，广播state schedule
             data = await websocket.receive_text()
             if data == 'get_state':
+                await script_process.refresh_state()
                 await script_process.broadcast_state({"state": script_process.state})
             elif data == 'get_schedule':
                 config = mm.config_cache(script_name)

@@ -9,6 +9,7 @@ import ntpath
 import os
 from pathlib import Path
 import re
+import subprocess
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
@@ -52,8 +53,10 @@ def isolated_platform_class():
     module = ast.fix_missing_locations(ast.Module(body=[test_class], type_ignores=[]))
     namespace = {"Emulator": Emulator, "EmulatorInstance": FakeInstance,
                  "EmulatorUnknown": EmulatorUnknown, "logger": Mock(),
-                 "re": re, "os": os, "ntpath": ntpath, "Path": Path}
+                 "re": re, "os": os, "ntpath": ntpath, "Path": Path,
+                 "subprocess": subprocess, "MuMuProcessGuard": Mock()}
     exec(compile(module, str(source), "exec"), namespace)
+    namespace["IsolatedPlatform"].guard_factory = namespace["MuMuProcessGuard"]
     return namespace["IsolatedPlatform"]
 
 
@@ -66,7 +69,10 @@ class MuMuLaunchTests(unittest.TestCase):
         self.platform = self.platform_class()
         self.platform.config = SimpleNamespace(script=SimpleNamespace(device=SimpleNamespace(
             emulator_window_minimize=False, run_background_only=False)))
+        self.platform.guard_factory.reset_mock()
+        self.platform.guard_factory.return_value.ensure_stopped.reset_mock(side_effect=True)
         self.process = Mock()
+        self.process.wait.return_value = 0
         self.platform.execute = Mock(return_value=self.process)
         self.platform.kill_process_by_regex = Mock(side_effect=AssertionError("must not kill unrelated processes"))
         Emulator.single_to_console.reset_mock()
@@ -117,6 +123,7 @@ class MuMuLaunchTests(unittest.TestCase):
                 self.platform.execute.assert_called_once_with(
                     f'"C:\\Synthetic MuMu\\shell\\MuMuManager.exe" control -v {index} --version 12 shutdown', show_window=False)
                 self.process.wait.assert_called_once_with(timeout=30)
+                self.platform.guard_factory.return_value.ensure_stopped.assert_called()
                 self.platform.kill_process_by_regex.assert_not_called()
 
     def test_mumu15_shutdown_preserves_version_and_wait(self):
@@ -127,6 +134,12 @@ class MuMuLaunchTests(unittest.TestCase):
     def test_legacy12_shutdown_preserves_api_command(self):
         self.platform._emulator_stop(FakeInstance(r"C:\Synthetic MuMu\shell\MuMuPlayer.exe", 0))
         self.platform.execute.assert_called_once_with(r'"C:\Synthetic MuMu\shell\MuMuManager.exe" api -v 0 shutdown_player')
+
+    def test_legacy15_shutdown_does_not_use_nx_process_layout(self):
+        self.platform._emulator_stop(FakeInstance(r"C:\Synthetic MuMu\shell\MuMuPlayer.exe", 8, version=15))
+        self.assert_command(r'"C:\Synthetic MuMu\shell\MuMuManager.exe" control -v 8 --version 15 shutdown')
+        self.process.wait.assert_called_once_with(timeout=30)
+        self.platform.guard_factory.assert_not_called()
 
     def test_restart_sequence_cannot_launch_before_shutdown_wait_finishes(self):
         events = []

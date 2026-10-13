@@ -37,7 +37,8 @@ def retry(func):
             except EmulatorNotRunningError:
                 logger.error('Emulator not running, attempting to restart')
                 if hasattr(self, 'emulator_start'):
-                    self.emulator_start()
+                    if self.emulator_start() is False:
+                        raise RequestHumanTakeover('Emulator recovery failed after bounded retries')
 
                 def init():
                     self.adb_reconnect()

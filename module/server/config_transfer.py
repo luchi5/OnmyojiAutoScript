@@ -15,6 +15,7 @@ from typing import get_args, get_origin
 
 from pydantic import BaseModel, ValidationError
 from pydantic_core import SchemaValidator
+from filelock import FileLock
 
 MAX_BYTES = 2 * 1024 * 1024
 REDACTED = "__OAS_REDACTED__"
@@ -318,18 +319,21 @@ class ConfigTransferService:
                 stream.write(content)
                 stream.flush()
                 os.fsync(stream.fileno())
-            self._inactive(name)
-            self._name(name, write=True)
-            if previous is None:
-                # Atomic creation must never replace a config created by another request.
-                try:
-                    os.link(temporary, path)
-                except FileExistsError:
-                    raise ConfigTransferError("此配置名称已存在，请使用新名称", 409) from None
-            else:
-                if not path.exists() or hashlib.sha256(path.read_bytes()).digest() != previous:
-                    raise ConfigTransferError("配置刚刚被修改，请刷新后重试", 409)
-                os.replace(temporary, path)
+            # Share the same file lock used by normal/script saves. The digest
+            # check and replacement must be one transaction across processes.
+            with FileLock(f'{path}.lock'):
+                self._inactive(name)
+                self._name(name, write=True)
+                if previous is None:
+                    # Atomic creation must never replace a concurrent new config.
+                    try:
+                        os.link(temporary, path)
+                    except FileExistsError:
+                        raise ConfigTransferError("此配置名称已存在，请使用新名称", 409) from None
+                else:
+                    if not path.exists() or hashlib.sha256(path.read_bytes()).digest() != previous:
+                        raise ConfigTransferError("配置刚刚被修改，请刷新后重试", 409)
+                    os.replace(temporary, path)
         except ConfigTransferError:
             raise
         except OSError:

@@ -10,6 +10,7 @@ from module.base.timer import Timer
 from module.device.handle import Handle
 from module.device.platform2.platform_base import PlatformBase
 from module.device.platform2.emulator_windows import Emulator, EmulatorInstance, EmulatorManager
+from module.device.platform2.mumu_process import MuMuProcessGuard
 from module.logger import logger
 
 import ctypes
@@ -31,7 +32,7 @@ def minimize_by_name(window_name, convert_hidden=True):
         if window_name.lower() in title.lower():
             # 检查窗口当前状态
             is_visible = ctypes.windll.user32.IsWindowVisible(hwnd)
-            
+
             if is_visible:
                 # 可见窗口 → 最小化
                 minimize_window(hwnd)
@@ -41,7 +42,7 @@ def minimize_by_name(window_name, convert_hidden=True):
                 ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_SHOWMINNOACTIVE
                 logger.info(f'隐藏窗口改为最小化: {title}')
         return True
-    
+
     WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, ctypes.POINTER(ctypes.c_int))
     ctypes.windll.user32.EnumWindows(WNDENUMPROC(callback), None)
 
@@ -246,9 +247,21 @@ class PlatformWindows(PlatformBase, EmulatorManager):
             engine15 = bool(re.search(r'MuMuPlayer(?:Global)?-15\.0-\d+', instance.name))
             modern_cli = bool(re.search(r'(?:^|[/\\])MuMuNxMain\.exe$', exe, re.IGNORECASE))
             if engine15 or modern_cli:
-                # Finish shutdown before emulator_start() launches the same instance.
+                # A successful manager command only acknowledges the request.
+                # Verify the actual VM exits before allowing another launch.
+                # The process layout below is specific to the modern Nx shell.
+                guard = MuMuProcessGuard(instance.name, exe, logger) if modern_cli else None
                 engine = 15 if engine15 else 12
-                self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version {engine} shutdown', show_window=False).wait(timeout=30)
+                command = self.execute(f'"{Emulator.single_to_console(exe)}" control -v {instance.MuMuPlayer12_id} --version {engine} shutdown', show_window=False)
+                try:
+                    if command.wait(timeout=30) != 0:
+                        logger.warning('MuMu shutdown command failed; checking instance processes')
+                except subprocess.TimeoutExpired:
+                    logger.warning('MuMu shutdown command timed out; checking instance processes')
+                    command.kill()
+                    command.wait(timeout=5)
+                if guard is not None:
+                    guard.ensure_stopped()
             else:
                 self.execute(f'"{Emulator.single_to_console(exe)}" api -v {instance.MuMuPlayer12_id} shutdown_player')
         elif instance == Emulator.LDPlayerFamily:
@@ -438,7 +451,12 @@ class PlatformWindows(PlatformBase, EmulatorManager):
             # Start
             if self._emulator_function_wrapper(self._emulator_start):
                 # Success
-                if self.emulator_start_watch():
+                try:
+                    ready = self.emulator_start_watch()
+                except Exception as error:
+                    logger.warning(f'Emulator readiness check failed: {error}')
+                    ready = False
+                if ready:
                     return True
                 logger.attr(2 - i, f'Failed to connect or start, try again')
                 continue
@@ -449,6 +467,10 @@ class PlatformWindows(PlatformBase, EmulatorManager):
                 else:
                     return False
 
+        # The final failed attempt also needs cleanup, not just the next retry.
+        if self.emulator_instance == Emulator.MuMuPlayer12:
+            if not self._emulator_function_wrapper(self._emulator_stop):
+                logger.error('Failed to clear MuMu instance after startup failure; manual intervention required')
         logger.error('Failed to start emulator 3 times, stopped')
         return False
 
@@ -460,6 +482,9 @@ class PlatformWindows(PlatformBase, EmulatorManager):
                 # Success
                 return True
             else:
+                if self.emulator_instance == Emulator.MuMuPlayer12:
+                    # Never launch another VM when shutdown cannot be verified.
+                    return False
                 # Failed to stop, start and stop again
                 if self._emulator_function_wrapper(self._emulator_start):
                     continue

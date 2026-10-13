@@ -109,6 +109,7 @@ class FakeConfig:
         self.snapshots = []
         self.queue_calls = []
         environment = {
+            'EXPECTED_UNSET': object(),
             'datetime': Clock, 'time': time, 'timedelta': timedelta,
             'logger': self.logger, 'convert_to_underscore': underscore,
             'nearest_future': min, 'dict_to_kv': lambda values, allow_none=False: str(values),

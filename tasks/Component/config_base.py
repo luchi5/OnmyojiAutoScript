@@ -71,14 +71,14 @@ Time = Annotated[time,
 # ---------------------------------------------------------------------------------------------------------------------
 
 @classmethod
-def serializer_exclude(cls, value: any, info: SerializationInfo):
+def serializer_exclude(cls, value: any, handler, info: SerializationInfo):
     if info.context and info.context.get('hide', False):
         return 0xABCDEF
-    return value
+    return handler(value)
 
 
 def dynamic_hide(*fields: str,):
-    return field_serializer(*fields)(serializer_exclude)
+    return field_serializer(*fields, mode='wrap')(serializer_exclude)
 
 
 class ConfigBase(BaseModel):
@@ -87,8 +87,8 @@ class ConfigBase(BaseModel):
             super().__init__(*args, **kwargs)
         except ValidationError as exc:
             """
-            During the initialization of the ConfigBase class, 
-            if a ValidationError occurs, the default value of the field is used to initialize the field, 
+            During the initialization of the ConfigBase class,
+            if a ValidationError occurs, the default value of the field is used to initialize the field,
             and the exception is re-raised after the initialization is complete.
             """
             exc_info = exc.errors()[0]

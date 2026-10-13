@@ -16,7 +16,7 @@ from module.config.config_updater import ConfigUpdater
 from module.config.config_manual import ConfigManual
 from module.config.config_watcher import ConfigWatcher
 from module.config.config_menu import ConfigMenu
-from module.config.config_model import ConfigModel
+from module.config.config_model import ConfigModel, EXPECTED_UNSET
 from module.config.config_state import ConfigState
 from module.config.scheduler import TaskScheduler
 from module.config.utils import *
@@ -296,7 +296,8 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
             return False
 
     def task_delay(self, task: str, start_time: datetime = None,
-                   success: bool = None, server: bool = True, target: datetime = None) -> None:
+                   success: bool = None, server: bool = True, target: datetime = None,
+                   *, expected_value=EXPECTED_UNSET) -> None:
         """
         设置下次运行时间  当然这个也是可以重写的
         :param target: 可以自定义的下次运行时间
@@ -320,6 +321,8 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
         if not scheduler:
             logger.warning(f'No scheduler in {task}')
             return
+        expected = (None if expected_value is EXPECTED_UNSET else
+                    self.model.expect_argument(task, 'scheduler', 'next_run', expected_value))
 
         # 任务开始时间
         if not start_time:
@@ -382,7 +385,10 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
         self.lock_config.acquire()
         try:
             scheduler.next_run = next_run
-            self.save()
+            if expected is None:
+                self.save()
+            else:
+                self.model.save(expected=expected)
         finally:
             self.lock_config.release()
         # 设置

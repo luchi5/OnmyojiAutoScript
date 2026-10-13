@@ -25,10 +25,10 @@ class IdleHarness:
         self._time_to_timedelta = lambda value: timedelta(hours=value.hour, minutes=value.minute, seconds=value.second)
         self.wait_until = lambda future: self.wait('wait', interrupted)
         self._wait_until_with_emulator_preheat = lambda future: self.wait('preheat', interrupted)
+        self._create_device = self.wake_device
         methods = extract_methods(SOURCE, 'Script',
             ('_handle_wait_during_idle', '_wait_goto_main', '_wait_close_game', '_wait_stay_there'),
-            {'logger': FakeLogger(), 'datetime': datetime, 'timedelta': timedelta,
-             'Device': lambda config: self.wake_device()})
+            {'logger': FakeLogger(), 'datetime': datetime, 'timedelta': timedelta})
         for name, method in methods.items():
             setattr(self, name, method.__get__(self))
 

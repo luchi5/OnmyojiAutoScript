@@ -18,14 +18,20 @@ class ConfigWatcher:
     start_mtime = DEFAULT_TIME
 
     def start_watching(self) -> None:
-        self.start_mtime = self.get_mtime()
+        stat = os.stat(filepath_config(self.config_name))
+        self._start_signature = self._signature(stat)
+        self.start_mtime = datetime.fromtimestamp(stat.st_mtime)
+
+    @staticmethod
+    def _signature(stat):
+        return (stat.st_mtime_ns, stat.st_size, stat.st_dev, stat.st_ino)
 
     def get_mtime(self) -> datetime:
         """
         Last modify time of the file
         """
         timestamp = os.stat(filepath_config(self.config_name)).st_mtime
-        mtime = datetime.fromtimestamp(timestamp).replace(microsecond=0)
+        mtime = datetime.fromtimestamp(timestamp)
         return mtime
 
     def should_reload(self) -> bool:
@@ -33,9 +39,12 @@ class ConfigWatcher:
         Returns:
             bool: Whether the file has been modified and configs should reload
         """
-        mtime = self.get_mtime()
-        if mtime > self.start_mtime:
-            logger.info(f'Config "{self.config_name}" changed at {mtime}')
+        stat = os.stat(filepath_config(self.config_name))
+        mtime = datetime.fromtimestamp(stat.st_mtime)
+        previous = getattr(self, '_start_signature', None)
+        changed = self._signature(stat) != previous if previous is not None else mtime != self.start_mtime
+        if changed:
+            logger.info(f'Config "{self.config_name}" changed at {mtime.replace(microsecond=0)}')
             return True
         else:
             return False

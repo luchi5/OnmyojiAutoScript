@@ -88,8 +88,16 @@ from tasks.Duel.config import Duel
 from tasks.Chess.config import Chess
 # ----------------------------------------------------------------------------------------------------------------------
 
+EXPECTED_UNSET = object()
+
+
+class ConfigConflictError(ValueError):
+    """The field changed after the editor read it; no write was committed."""
+
+
 class ConfigModel(ConfigBase):
     _save_baseline: dict = PrivateAttr(default_factory=dict)
+    _loaded_data: dict = PrivateAttr(default_factory=dict)
 
     config_name: str = "oas"
     running_task: str = ''
@@ -174,9 +182,11 @@ class ConfigModel(ConfigBase):
             self._save_baseline = deepcopy(self._serialized_data())
             return
         data = self.read_json(config_name)
+        loaded_data = deepcopy(data)
         data["config_name"] = config_name
         super().__init__(**data)
         self._save_baseline = deepcopy(self._serialized_data())
+        self._loaded_data = loaded_data
 
     def __setattr__(self, key, value):
         """
@@ -273,7 +283,15 @@ class ConfigModel(ConfigBase):
         for path, deleted, value in changes:
             parent = data
             for key in path[:-1]:
-                if not isinstance(parent.get(key), dict):
+                if isinstance(parent, list):
+                    if key >= len(parent):
+                        if deleted:
+                            parent = None
+                            break
+                        parent.extend({} for _ in range(key - len(parent) + 1))
+                    parent = parent[key]
+                    continue
+                if not isinstance(parent.get(key), (dict, list)):
                     if deleted:
                         parent = None
                         break
@@ -287,7 +305,54 @@ class ConfigModel(ConfigBase):
                 parent[path[-1]] = deepcopy(value)
         return data
 
-    def save(self) -> None:
+    @staticmethod
+    def _path_value(data, path):
+        for part in path:
+            if isinstance(data, dict):
+                data = data.get(part, EXPECTED_UNSET)
+            elif isinstance(data, list) and isinstance(part, int) and 0 <= part < len(data):
+                data = data[part]
+            else:
+                return EXPECTED_UNSET
+        return data
+
+    @staticmethod
+    def _same_value(actual, expected):
+        # JavaScript sends integral JSON numbers without a decimal point.
+        if isinstance(actual, float) and type(expected) in (int, float):
+            return actual == expected
+        return type(actual) is type(expected) and actual == expected
+
+    @staticmethod
+    def _argument_path(data, task, group, argument):
+        path = (task, group, argument)
+        task_data = data.get(task, {})
+        # Mainline exposes list groups as group_1, group_2, etc. If both legacy
+        # array and numbered keys exist, its validator reads array rows first.
+        for key, values in task_data.items():
+            match = re.fullmatch(re.escape(key) + r'_(\d+)', group)
+            if match and isinstance(values, list):
+                index = int(match[1]) - 1
+                if index < len(values) or group not in task_data:
+                    path = (task, key, index, argument)
+                    break
+        return path
+
+    def expect_argument(self, task, group, argument, expected_value):
+        """Prepare a field precondition; save rechecks raw disk data under its lock."""
+        if expected_value is EXPECTED_UNSET:
+            return None
+        task, group, argument = map(convert_to_underscore, (task, group, argument))
+        data = self._serialized_data()
+        path = self._argument_path(data, task, group, argument)
+        actual = self._path_value(data, path)
+        if actual is EXPECTED_UNSET or not self._same_value(actual, expected_value):
+            raise ConfigConflictError('此设置已在其他界面改变，请刷新后再修改')
+        original_path = self._argument_path(self._loaded_data, task, group, argument)
+        original = self._path_value(self._loaded_data, original_path)
+        return (original_path, deepcopy(original) if original is not EXPECTED_UNSET else EXPECTED_UNSET, path)
+
+    def save(self, *, expected=None) -> None:
         """Merge this instance's changes without reverting another writer."""
         current = self._serialized_data()
         changes = list(self._local_changes(self._save_baseline, current))
@@ -302,9 +367,20 @@ class ConfigModel(ConfigBase):
                     latest = json.load(source)
                 if not isinstance(latest, dict):
                     raise ValueError('Config document must be a JSON object')
-                merged = self._apply_local_changes(latest, changes)
             else:
-                merged = deepcopy(current)
+                latest = {}
+            if expected is not None:
+                path, original, serialized_path = expected
+                actual = self._path_value(latest, path)
+                if not exists or not self._same_value(actual, original):
+                    raise ConfigConflictError('此设置已在其他界面改变，请刷新后再修改')
+                # Numbered groups may originate from a legacy JSON array. For
+                # this conditional field write, preserve that disk layout and
+                # update only its leaf, using the latest siblings under lock.
+                if path != serialized_path:
+                    changes = [(path if changed_path == serialized_path else changed_path, deleted, value)
+                               for changed_path, deleted, value in changes]
+            merged = self._apply_local_changes(latest, changes) if exists else deepcopy(current)
             if changes or not exists:
                 with atomic_write(filepath, overwrite=True, encoding='utf-8', newline='') as target:
                     json.dump(merged, target, indent=2, ensure_ascii=False, default=str)
@@ -312,6 +388,8 @@ class ConfigModel(ConfigBase):
             # values load at its normal reload boundary; old values cannot
             # become a new local change on the next save.
             self._save_baseline = deepcopy(current)
+            self._loaded_data = (self._apply_local_changes(self._loaded_data, changes)
+                                 if exists else deepcopy(current))
 
     @staticmethod
     def type(key: str) -> str:
@@ -393,7 +471,7 @@ class ConfigModel(ConfigBase):
             # 将 groups的参数，同导出的json一起合并, 用于前端显示
             result = []
             for key, value in groups["properties"].items():
-                # deal with exclude 
+                # deal with exclude
                 if key in jsons and jsons[key] == 0xABCDEF:
                     continue
 
@@ -434,11 +512,13 @@ class ConfigModel(ConfigBase):
 
         return result
 
-    def script_set_arg(self, task: str, group: str, argument: str, value) -> bool:
+    def script_set_arg(self, task: str, group: str, argument: str, value,
+                       *, expected_value=EXPECTED_UNSET) -> bool:
         # 验证参数
         task = convert_to_underscore(task)
         group = convert_to_underscore(group)
         argument = convert_to_underscore(argument)
+        expected = self.expect_argument(task, group, argument, expected_value)
 
         # pandtic验证
         if isinstance(value, str) and len(value) == 8:
@@ -482,13 +562,16 @@ class ConfigModel(ConfigBase):
         if task == "restart" and group == "task_config" and argument == "reset_task_datetime_enable" and value == True:
             date_time = self.restart.task_config.reset_task_datetime
             logger.info(f"reset_task_datetime={date_time}")
-            self.reset_datetime_for_all_enabled_tasks(date_time)
+            self.reset_datetime_for_all_enabled_tasks(date_time, expected=expected)
 
         # 设置参数
         try:
             setattr(group_object, argument, value)
             logger.info(f'Set arg {self.config_name}.{task}.{group}.{argument}.{value}')
-            self.save()  # 我是没有想到什么方法可以使得属性改变自动保存的
+            if expected is None:
+                self.save()
+            else:
+                self.save(expected=expected)
             if task == 'talisman_pass':
                 from tasks.Component.daily_closeout import arm_daily_closeout, request_manual_talisman
                 if group == 'scheduler' and argument == 'next_run' and isinstance(value, datetime):
@@ -547,7 +630,7 @@ class ConfigModel(ConfigBase):
                 elif isinstance(v, datetime) and v != dt:
                     d[k] = dt.strftime("%Y-%m-%d %H:%M:%S")
 
-    def reset_datetime_for_all_enabled_tasks(self, task_datetime: datetime):
+    def reset_datetime_for_all_enabled_tasks(self, task_datetime: datetime, *, expected=None):
         logger.warn(f"trying to reset datetime of all tasks to: {task_datetime}")
         # logger.info(f"current config: {self.dict()}")
         data = self.dict()
@@ -556,9 +639,11 @@ class ConfigModel(ConfigBase):
 
         # Keep bulk schedule changes on the same merge path as normal saves.
         baseline = deepcopy(self._save_baseline)
+        loaded_data = deepcopy(self._loaded_data)
         super().__init__(**data)
         self._save_baseline = baseline
-        self.save()
+        self._loaded_data = loaded_data
+        self.save(expected=expected)
 
 
 if __name__ == "__main__":

@@ -82,9 +82,11 @@ class Harness:
         self.screenshots = 0
         self.clicks, self.swipes, self.delays, self.navigation = [], [], [], []
         self.battles = 0
+        self.evidence_records = []
         self.logger = FakeLogger()
         self.device = SimpleNamespace(image=None)
         self.O_AB_REPUTATION = Reader(self)
+        self.O_AB_BOSS_NAME = SimpleNamespace(detect_text=lambda image: 'offline-boss')
         self.I_AB_CLOSE_RED = 'close'
         self.I_AB_DIFFICULTY_NORMAL = 'normal'
         self.I_AB_DIFFICULTY_JI = 'ultra'
@@ -96,11 +98,6 @@ class Harness:
             boss=SimpleNamespace(reward_floor=floor)))
         self.exception = self.navigation_exception = None
         self.ranked = False
-        # Daily reporting is observational and is tested independently; it must
-        # not write state while these tests exercise difficulty and battle gates.
-        self.recorded = []
-        self._area_boss_identity = lambda: 'synthetic-boss'
-        self._record_area_boss = lambda *args, **kwargs: self.recorded.append((args, kwargs))
         namespace = {
             'time': SimpleNamespace(monotonic=lambda: self.clock.now, sleep=self.sleep),
             'copy': copy, 're': re, 'datetime': datetime, 'timedelta': timedelta,
@@ -114,12 +111,16 @@ class Harness:
         }
         methods = ('_normal_level', '_normal_mode_visible', '_switch_to_normal_level', 'switch_to_level_1',
                    'switch_to_level_60', 'switch_difficulty', 'setup_normal', 'setup_ultra',
-                   '_defer_difficulty', 'boss_fight')
+                   '_defer_difficulty', 'boss_fight', '_area_boss_identity')
         for name, method in extract_methods(SOURCE, 'ScriptTask', methods, namespace).items():
             setattr(self, name, method.__get__(self))
 
     def sleep(self, seconds):
         self.clock.now += seconds
+
+    def _record_area_boss(self, name=None, basis=None, target=None, reputation=None):
+        # Difficulty tests observe reporting calls without touching real logs.
+        self.evidence_records.append((name, basis, target, reputation))
 
     def screenshot(self):
         if self.exception:

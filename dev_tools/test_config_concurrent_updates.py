@@ -8,9 +8,14 @@ import json
 import multiprocessing
 import os
 from pathlib import Path
+import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import Mock, patch
+
+# Also applies in multiprocessing spawn children, before config imports.
+sys.modules.setdefault('module.logger', types.SimpleNamespace(logger=Mock()))
 
 from module.config.config import Config
 from module.config.config_model import ConfigModel

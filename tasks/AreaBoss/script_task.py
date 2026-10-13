@@ -132,6 +132,110 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             return None
         return target
 
+    def _visible_challenge_buttons(self):
+        """Find enabled buttons at their actual positions, including scrolled rows."""
+        image = self.device.image
+        if image is None or image.shape[:2] != (720, 1280):
+            return []
+        found = []
+        for asset in (self.I_BATTLE_1, self.I_BATTLE_2, self.I_BATTLE_3):
+            rule = copy(asset)
+            rule.roi_front = list(asset.roi_front)
+            rule.roi_back = (1070, 195, 100, 475)
+            for score, x, y, w, h in rule.match_all_any(image):
+                target = copy(rule)
+                target.roi_front = [x, y, w, h]
+                target.roi_back = (x, y, w, h)
+                if target.match_saturation(image, roi=(x, y, w, h)):
+                    found.append((score, target))
+        selected = []
+        for _, target in sorted(found, key=lambda item: item[0], reverse=True):
+            center = target.roi_front[1] + target.roi_front[3] / 2
+            if all(abs(center - (other.roi_front[1] + other.roi_front[3] / 2)) > 40
+                   for other in selected):
+                selected.append(target)
+        return sorted(selected, key=lambda item: item.roi_front[1])[:4]
+
+    def _boss_list_frame(self):
+        image = self.device.image
+        if image is None or image.shape[:2] != (720, 1280):
+            return None
+        # Restrict comparison to the list: the map and scrolling announcements
+        # behind it animate even when the list has reached the bottom.
+        return cv2.resize(cv2.cvtColor(image[195:670, 925:1170], cv2.COLOR_RGB2GRAY),
+                          (98, 190), interpolation=cv2.INTER_AREA)
+
+    @staticmethod
+    def _same_boss_list_frame(first, second):
+        if first is None or second is None:
+            return False
+        difference = np.abs(first.astype(np.int16) - second.astype(np.int16))
+        return float(difference.mean()) < 2 and float((difference > 15).mean()) < 0.005
+
+    def _fight_filter_bosses(self, available, *, scroll):
+        results, pages = [], []
+        seen_names = getattr(self, '_area_boss_seen_names', set())
+        # Daily quota counts unique attempted bosses as before; failures do not
+        # create unlimited retries. Scrolling only expands which rows we inspect.
+        # Returning from a fight may reset the list to its first page. Keep the
+        # inspected positions per visual page, then walk past them without
+        # reopening their details. Bound both distinct pages and total swipes.
+        for step in range(37 if scroll else 13):
+            if len(results) >= available:
+                break
+            self.screenshot()
+            if not self.appear(self.I_AB_FILTER_OPENED):
+                self.open_filter()
+                self.screenshot()
+            frame = self._boss_list_frame()
+            inspected = sum(len(item['handled']) for item in pages)
+            record = next((item for item in pages
+                           if self._same_boss_list_frame(frame, item['frame'])), None)
+            if record is None:
+                if len(pages) >= 13:
+                    logger.info('Area Boss list reached the bounded page limit')
+                    break
+                record = {'frame': frame, 'progress': set(), 'handled': set()}
+                pages.append(record)
+            elif inspected in record['progress']:
+                logger.info('Area Boss list reached the bottom or repeated a page')
+                break
+            record['progress'].add(inspected)
+            refresh = False
+            for battle in self._visible_challenge_buttons():
+                if len(results) >= available:
+                    break
+                position = round(battle.roi_front[1] / 10)
+                if position in record['handled']:
+                    continue
+                self.screenshot()
+                if not self.appear(self.I_AB_FILTER_OPENED):
+                    self.open_filter()
+                    self.screenshot()
+                if not self._same_boss_list_frame(frame, self._boss_list_frame()):
+                    # A return can reset the page or update this page's badges.
+                    # Re-read its targets instead of reusing old coordinates or
+                    # scrolling past the uninspected rows (also for favorites).
+                    refresh = True
+                    break
+                # Never click coordinates from a stale frame without checking
+                # the challenge button is still enabled at that location.
+                target = self._select_challenge_button(battle)
+                if target is None:
+                    continue
+                record['handled'].add(position)
+                result = self.boss_fight(target, seen_names=seen_names)
+                if result is not None:
+                    results.append(result)
+            if refresh:
+                continue
+            if not scroll or len(results) >= available or step == 36:
+                break
+            self.open_filter()
+            self.swipe(self.S_AB_FILTER_UP, interval=1)
+            time.sleep(0.6)
+        return results
+
     def run(self) -> bool:
         """
         运行脚本
@@ -154,6 +258,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
 
         # 已挑战鬼王数量
         boss_fought = 0
+        self._area_boss_seen_names = set()
         if con.boss_reward:
             if self.fight_reward_boss():  # 挑战成功则加一
                 boss_fought += 1
@@ -168,18 +273,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         # 动态获取可挑战次数
         dynamic_count = self._get_dynamic_boss_count()
         available = dynamic_count - boss_fought
-        battle_results = []
-        for battle in (self.I_BATTLE_1, self.I_BATTLE_2, self.I_BATTLE_3):
-            if len(battle_results) >= available:
-                break
-            self.screenshot()
-            if not self.appear(self.I_AB_FILTER_OPENED):
-                self.open_filter()
-            self.screenshot()
-            target = self._select_challenge_button(battle)
-            if target is None:
-                continue
-            battle_results.append(self.boss_fight(target))
+        battle_results = self._fight_filter_bosses(available, scroll=not con.use_collect)
         # 退出
         self.go_back()
         if len(battle_results) < available or any(result is not True for result in battle_results):
@@ -240,7 +334,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         self.wait_until_appear(self.I_AB_CLOSE_RED)
         self.ui_click(self.I_AB_CLOSE_RED, self.I_FILTER)
 
-    def boss_fight(self, battle: RuleImage, fileter_open: bool = True) -> bool:
+    def boss_fight(self, battle: RuleImage, fileter_open: bool = True, seen_names=None) -> bool | None:
         """
             完成挑战一个鬼王的全流程
             从打开筛选界面开始 到关闭鬼王详情界面结束
@@ -258,6 +352,21 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             return False
 
         boss_identity = self._area_boss_identity()
+        if seen_names is not None:
+            # The detail title identifies a boss across scrolling/overlapping
+            # pages; a list position or character portrait does not.
+            identity = boss_identity
+            if identity is None:
+                image = self.device.image
+                if image is not None and image.shape[:2] == (720, 1280):
+                    title = image[36:105, 114:362]
+                    identity = ('title_pixels', (np.min(title, axis=2) > 170).tobytes())
+            if identity is None or identity in seen_names:
+                self.ui_click_until_disappear(self.I_AB_CLOSE_RED, interval=1)
+                return None
+            seen_names.add(identity)
+        elif boss_identity and hasattr(self, '_area_boss_seen_names'):
+            self._area_boss_seen_names.add(boss_identity)
 
         # 如果已经打过该BOSS,直接跳过不打了
         if self.is_group_ranked():
@@ -559,8 +668,52 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
     def switch_to_floor_10(self) -> bool:
         return self._switch_to_floor(self.I_AB_JI_FLOOR_TEN, first=False)
 
+    def _selected_star_visual_match(self, target):
+        """Compare the title's lettering, independent of its red background.
+
+        Selected text and menu text share the glyphs but use different backing
+        panels. Comparing light strokes avoids relying on OCR of this font.
+        The numeral also has its own threshold so the shared 'star' character
+        cannot make a different number look like the requested difficulty.
+        """
+        image = self.device.image
+        if image is None or image.shape[:2] != (720, 1280):
+            return False
+
+        def glyph_mask(pixels):
+            mask = (np.min(pixels, axis=2) > 170).astype(np.uint8)
+            ys, xs = np.nonzero(mask)
+            if len(xs) < 80:
+                return None
+            left, top, right, bottom = xs.min(), ys.min(), xs.max() + 1, ys.max() + 1
+            if not (30 <= right - left <= 58 and 18 <= bottom - top <= 32):
+                return None
+            return cv2.resize(mask[top:bottom, left:right], (94, 50),
+                              interpolation=cv2.INTER_NEAREST).astype(bool)
+
+        # The selector's light horizontal border is at y=116; including it
+        # would overwhelm the lettering's bounding box.
+        actual = glyph_mask(image[118:150, 380:444])
+        reference = glyph_mask(target.image)
+        if actual is None or reference is None:
+            return False
+        # Allow tiny rasterization shifts, never substitutions of a numeral.
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
+                shifted = np.zeros_like(actual)
+                sx, sy = max(0, -dx), max(0, -dy)
+                tx, ty = max(0, dx), max(0, dy)
+                width, height = 94 - abs(dx), 50 - abs(dy)
+                shifted[ty:ty + height, tx:tx + width] = actual[sy:sy + height, sx:sx + width]
+                whole = 2 * np.logical_and(shifted, reference).sum() / (shifted.sum() + reference.sum())
+                number, expected = shifted[:, :47], reference[:, :47]
+                numeral = 2 * np.logical_and(number, expected).sum() / max(1, number.sum() + expected.sum())
+                if whole >= 0.80 and numeral >= 0.78:
+                    return True
+        return False
+
     def _switch_to_floor(self, target: RuleImage, first: bool) -> bool:
-        """Select a visible star, then confirm its dropdown closes."""
+        """Select a visible star, then independently verify the closed title."""
         from copy import copy
 
         def in_area(rule, area):
@@ -593,11 +746,11 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             self.screenshot()
             visible_choice = self.appear(choice)
             list_visible = visible_choice or self.appear(list_first) or self.appear(list_last)
-            # After a real target click, closure is sufficient; do not OCR
-            # differently styled header text. Require the detail page itself
-            # and two fresh closed frames, so a navigation loss is not success.
+            # Closing the menu does not prove the click selected the target.
+            # Require two fresh title matches; visual glyph comparison handles
+            # the different header styling without reinstating an OCR gate.
             menu_closed = not list_visible and self.appear(self.I_AB_CLOSE_RED)
-            confirmed = menu_closed and (selections > 0 or self.appear(selected))
+            confirmed = menu_closed and (self.appear(selected) or self._selected_star_visual_match(selected))
             if confirmed:
                 stable += 1
                 if stable >= 2:

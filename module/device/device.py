@@ -43,7 +43,8 @@ class Device(Platform, Screenshot, Control, AppControl):
                     raise RequestHumanTakeover
                 # Try to start emulator
                 if self.emulator_instance is not None:
-                    self.emulator_start()
+                    if self.emulator_start() is False:
+                        raise RequestHumanTakeover('Emulator recovery failed after bounded retries')
                 else:
                     logger.critical(
                         f'No emulator with serial "{self.config.Emulator_Serial}" found, '
