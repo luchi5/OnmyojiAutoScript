@@ -515,7 +515,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             logger.warning('没有坑位可能是其他人的手速太快了抢占了')
             return True
         # 切换式神的类型
-        self.switch_shikigami_class(shikigami_class, require_growth=True)
+        # Import at execution time so an older cached ReplaceShikigami class
+        # cannot shadow the friend-page guard or reject its new parameters.
+        from tasks.Component.ReplaceShikigami.friend_growth_selection import switch_friend_growth_class
+        switch_friend_growth_class(self, shikigami_class)
         # 上式神
         self.set_shikigami(shikigami_order, stop_image)
         return True

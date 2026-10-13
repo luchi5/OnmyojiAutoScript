@@ -31,8 +31,13 @@ class Harness:
               'ShikigamiClass':Rarity,'GameStuckError':RuntimeError}
         methods = extract_methods(ROOT/'tasks/KekkaiUtilize/script_task.py','ScriptTask',
                                   ('_enter_friend_growth','in_shikigami_growth','back_realm','realm_goto_grown'),ns)
-        methods.update(extract_methods(ROOT/'tasks/Component/ReplaceShikigami/replace_shikigami.py',
-                                       'ReplaceShikigami',('switch_shikigami_class',),ns))
+        import ast
+        source = ROOT/'tasks/Component/ReplaceShikigami/friend_growth_selection.py'
+        tree = ast.parse(source.read_text(encoding='utf-8'))
+        function = next(n for n in tree.body if isinstance(n,ast.FunctionDef)
+                        and n.name == 'switch_friend_growth_class')
+        exec(compile(ast.Module(body=[function],type_ignores=[]),str(source),'exec'),ns)
+        methods['switch_shikigami_class'] = ns['switch_friend_growth_class']
         for name, method in methods.items():
             setattr(self,name,method.__get__(self))
 
