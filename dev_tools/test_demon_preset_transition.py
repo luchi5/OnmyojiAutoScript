@@ -82,7 +82,7 @@ class Harness:
                  'I_PRESENT_LESS_THAN_5', 'O_PRESET', 'O_PRESET_FULL',
                  'I_PREPARE_HIGHLIGHT', 'I_PREPARE_DARK', 'I_BUFF', 'I_BATTLE_INFO',
                  'I_WIN', 'I_DE_WIN', 'I_FALSE', 'I_REWARD', 'I_REWARD_GOLD',
-                 'I_UI_CONFIRM_SAMLL', 'O_DE_BOSS_ESCAPED', 'O_DE_SETTLEMENT_CONTINUE',
+                 'I_DE_LOCATION', 'I_UI_CONFIRM_SAMLL', 'O_DE_BOSS_ESCAPED', 'O_DE_SETTLEMENT_CONTINUE',
                  'I_DISABLE_7DAYS_DIFF_SOUL', 'I_CONFIRM_CLOSE_DIFF_SOUL')
         for name in names:
             setattr(self, name, Marker(name))
@@ -107,7 +107,7 @@ class Harness:
         for name, method in extract(source, 'GeneralBattle', methods, namespace).items():
             setattr(self, name, method.__get__(self))
         if demon:
-            methods = ('_preset_selection_interrupted', 'battle_wait')
+            methods = ('_preset_selection_interrupted', 'battle_wait', '_finish_failed_settlement')
             for name, method in extract(DEMON, 'ScriptTask', methods, namespace).items():
                 setattr(self, name, method.__get__(self))
 
@@ -190,7 +190,7 @@ class PresetTransitionTests(unittest.TestCase):
         self.assertFalse(h._preset_selection_interrupted())
 
     def test_failed_battle_after_preset_interruption_returns_existing_failure_result(self):
-        h = Harness([prepare(), prepare(), battle(), frame('I_FALSE')])
+        h = Harness([prepare(), prepare(), battle(), frame('I_FALSE'), frame('I_DE_LOCATION')])
         self.assertFalse(h.run_general_battle(h.conf))
         self.assertEqual(h.rewards, ['I_FALSE'])
         self.assertEqual(h.clicks, ['I_PRESET'])

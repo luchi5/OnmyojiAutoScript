@@ -96,7 +96,7 @@ def harness(frames):
     source = next(n for n in tree.body if isinstance(n, ast.ClassDef)
                   and n.name == 'ScriptTask')
     body = [n for n in source.body if (
-        isinstance(n, ast.FunctionDef) and n.name in ('screenshot', 'battle_wait')
+        isinstance(n, ast.FunctionDef) and n.name in ('screenshot', 'battle_wait', '_finish_failed_settlement')
     ) or (isinstance(n, ast.Assign) and any(
         isinstance(t, ast.Name) and t.id.startswith('O_DE_') for t in n.targets
     ))]
@@ -122,7 +122,7 @@ def harness(frames):
     ui = extract_methods(ROOT / 'tasks/base_task.py', 'BaseTask',
                          ('ui_click_until_disappear',), namespace)
     task.ui_click_until_disappear = ui['ui_click_until_disappear'].__get__(task)
-    for name in ('I_DE_WIN', 'I_WIN', 'I_REWARD', 'I_FALSE', 'I_UI_CONFIRM_SAMLL'):
+    for name in ('I_DE_WIN', 'I_WIN', 'I_REWARD', 'I_FALSE', 'I_UI_CONFIRM_SAMLL', 'I_DE_LOCATION'):
         setattr(task, name, name)
     return task
 
@@ -193,9 +193,34 @@ class DemonBattleWaitTests(unittest.TestCase):
 
     def test_unrelated_confirmation_is_not_clicked(self):
         h = harness([frame('I_UI_CONFIRM_SAMLL'), frame('I_FALSE'),
-                     frame('I_FALSE'), frame()])
+                     frame('I_FALSE'), frame(), frame('I_DE_LOCATION')])
         self.assertFalse(h.battle_wait(False))
         self.assertEqual(h.clicks, ['I_FALSE'])
+
+    def test_loss_waits_for_delayed_reward_and_map(self):
+        h = harness([frame('I_FALSE'), frame('I_FALSE'), frame(), frame(),
+                     frame('I_REWARD'), frame('O_DE_SETTLEMENT_CONTINUE'),
+                     frame(), frame('I_DE_LOCATION')])
+        self.assertFalse(h.battle_wait(False))
+        self.assertEqual(h.clicks, ['I_FALSE', 'I_REWARD', 'O_DE_SETTLEMENT_CONTINUE'])
+        self.assertIn('I_DE_LOCATION', h.device.image['visible'])
+
+    def test_failed_settlement_times_out_instead_of_starting_boss(self):
+        h = harness([frame()])
+        capture = h.screenshot
+        def advance():
+            h.clock.now += 1
+            return capture()
+        h.screenshot = advance
+        with self.assertRaisesRegex(GameStuckError, 'settlement'):
+            h._finish_failed_settlement()
+        self.assertEqual(h.clicks, [])
+
+    def test_settlement_does_not_click_reward_markers_during_real_battle(self):
+        h = harness([frame('I_BATTLE_INFO', 'I_REWARD', 'O_DE_SETTLEMENT_CONTINUE'),
+                     frame('I_DE_LOCATION')])
+        h._finish_failed_settlement()
+        self.assertEqual(h.clicks, [])
 
     def test_active_battle_does_not_run_escape_ocr_or_click_confirmation(self):
         h = harness([frame('I_BATTLE_INFO', 'I_UI_CONFIRM_SAMLL', 'O_DE_BOSS_ESCAPED'),

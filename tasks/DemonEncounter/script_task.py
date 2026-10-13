@@ -612,6 +612,23 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         else:
             return True
 
+    def _finish_failed_settlement(self):
+        """Wait through delayed loss rewards before handing control to the map."""
+        timeout = Timer(20).start()
+        while not timeout.reached():
+            self.screenshot()
+            if self.appear(self.I_DE_LOCATION):
+                return
+            if self.is_in_real_battle(False):
+                continue
+            if self.appear_then_click(self.I_FALSE, interval=1):
+                continue
+            if self.appear_then_click(self.I_REWARD, interval=1):
+                continue
+            if self.appear_then_click(self.O_DE_SETTLEMENT_CONTINUE, interval=1):
+                continue
+        raise GameStuckError('Demon failed settlement did not return to map')
+
     def battle_wait(self, random_click_swipt_enable: bool) -> bool:
         # 重写
         self.device.stuck_record_add('BATTLE_STATUS_S')
@@ -628,7 +645,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                     and self.appear(self.O_DE_BOSS_ESCAPED)):
                 logger.warning('Demon encounter boss escaped; close failed settlement')
                 self.ui_click_until_disappear(self.I_UI_CONFIRM_SAMLL)
-                self.ui_click_until_disappear(self.O_DE_SETTLEMENT_CONTINUE)
+                self._finish_failed_settlement()
                 return False
             if self.appear(self.I_DE_WIN):
                 logger.info('Appear [demon encounter] win button')
@@ -650,6 +667,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             if self.appear(self.I_FALSE):
                 logger.warning('False battle')
                 self.ui_click_until_disappear(self.I_FALSE)
+                self._finish_failed_settlement()
                 return False
             # 时间到
             if check_timer and check_timer.reached():
