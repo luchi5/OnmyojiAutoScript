@@ -3,6 +3,9 @@ import re
 import numpy as np
 from numpy import uint8, fromfile
 from module.logger import logger
+from module.atom.image import RuleImage
+from module.base.timer import Timer
+from module.exception import GameStuckError
 
 from tasks.base_task import BaseTask
 from tasks.SixRealms.moon_sea.skills import MoonSeaSkills
@@ -12,6 +15,15 @@ from tasks.SixRealms.oas_ocr import StoneOcr
 
 
 class MoonSeaMap(MoonSeaSkills):
+    # Island markers from AzurTian/OnmyojiAutoScript (GPL-3.0), commit
+    # 49eab5bfa827552aa6bbbff9c05f9de832cd037b. Re-match every frame:
+    # map animations move islands after the OCR-based decision.
+    I_LAND_SHOP = RuleImage(roi_front=(650, 406, 18, 26), roi_back=(124, 140, 1013, 515), threshold=0.8, method="Template matching", file="./tasks/SixRealms/moon_sea/markers/shop.png")
+    I_LAND_MYSTERY = RuleImage(roi_front=(651, 430, 18, 26), roi_back=(124, 140, 1013, 515), threshold=0.8, method="Template matching", file="./tasks/SixRealms/moon_sea/markers/mystery.png")
+    I_LAND_CHAOS = RuleImage(roi_front=(650, 373, 17, 20), roi_back=(124, 140, 1013, 515), threshold=0.8, method="Template matching", file="./tasks/SixRealms/moon_sea/markers/chaos.png")
+    I_LAND_STAR = RuleImage(roi_front=(651, 379, 17, 20), roi_back=(124, 140, 1013, 515), threshold=0.8, method="Template matching", file="./tasks/SixRealms/moon_sea/markers/star.png")
+    I_LAND_FIRE = RuleImage(roi_front=(289, 313, 18, 26), roi_back=(124, 140, 1013, 515), threshold=0.8, method="Template matching", file="./tasks/SixRealms/moon_sea/markers/fire.png")
+
     map_ocr = StoneOcr(
         roi=(0, 0, 1280, 720),
         area=(0, 0, 1280, 720),
@@ -78,39 +90,37 @@ class MoonSeaMap(MoonSeaSkills):
         return isl_type, isl_num, isl_roi
 
     def enter_island(self, isl_type, isl_roi):
-        if isl_type == MoonSeaType.island100:
-            logger.warning('The island type was not recognized')
-            logger.warning('Pick one at random, starting from the right')
-            while 1:
-                self.screenshot()
-                if not self.in_main() and self.appear(self.I_BACK_EXIT):
-                    break
-                if self.appear_then_click(self.I_UI_CANCEL, interval=1):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_1, interval=2):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_2, interval=2):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_3, interval=2):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_4, interval=2):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_5, interval=2):
-                    continue
-                if self.click(self.C_ISLAND_ENTER_6, interval=2):
-                    continue
-            logger.info('Entering island randomly')
-            return
-        isl_roi = [isl_roi[0]-40, isl_roi[1] + 70, isl_roi[2] + 40, isl_roi[3]+40]
-        self.C_ISLAND_ENTER.roi_front = isl_roi
-        while 1:
+        # Keep the caller's island choice, but never reuse its old OCR position.
+        markers = {
+            MoonSeaType.island101: self.I_LAND_SHOP,
+            MoonSeaType.island102: self.I_LAND_MYSTERY,
+            MoonSeaType.island103: self.I_LAND_CHAOS,
+            MoonSeaType.island104: self.I_LAND_FIRE,
+            MoonSeaType.island105: self.I_LAND_STAR,
+        }
+        target = markers.get(isl_type)
+        candidates = [target] if target is not None else list(markers.values())
+        timeout = Timer(18).start()
+        clicks = 0
+        while True:
             self.screenshot()
             if not self.in_main() and self.appear(self.I_BACK_EXIT):
-                break
-            if self.click(self.C_ISLAND_ENTER, interval=2.5):
+                logger.info('Entering island')
+                return
+            if timeout.reached():
+                raise GameStuckError('Moon sea island entry timed out: {}'.format(isl_type))
+            if self.appear_then_click(self.I_UI_CANCEL, interval=1):
                 continue
-        logger.info('Entering island')
-        return
+            if not self.in_main() or clicks >= 6:
+                continue
+            for marker in candidates:
+                if marker is self.I_LAND_SHOP and target is None and self.appear(self.I_M_STORE):
+                    continue
+                if self.appear_then_click(marker, interval=2.5):
+                    # Once selected, don't switch islands during transition frames.
+                    candidates = [marker]
+                    clicks += 1
+                    break
 
     def activate_store(self) -> bool:
         """
@@ -137,25 +147,8 @@ class MoonSeaMap(MoonSeaSkills):
                 continue
 
     def entry_island_random(self, area: list = None):
-        """
-
-        :param area: 搁置
-        :return:
-        """
-        # if not isinstance(area, list):
-        #     area = list(area)
-        logger.info('Entry island randomly')
-        while 1:
-            self.screenshot()
-            if not self.in_main() and self.appear(self.I_BACK_EXIT):
-                break
-            if self.click(self.C_ISLAND_ENTER_4, interval=2):
-                continue
-            if self.click(self.C_ISLAND_ENTER_5, interval=2):
-                continue
-            if self.click(self.C_ISLAND_ENTER_6, interval=2):
-                continue
-        return
+        """Choose a visible island instead of clicking obsolete fixed slots."""
+        return self.enter_island(MoonSeaType.island100, None)
 
 
 if __name__ == '__main__':
