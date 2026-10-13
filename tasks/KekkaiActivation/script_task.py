@@ -69,10 +69,9 @@ class ScriptTask(KU, KekkaiActivationAssets):
         raise TaskEnd('KekkaiActivation')
 
     def check_max_lv(self, shikigami_class=ShikigamiClass.N, auto_fill=False):
-        # Task modules reload independently; the cached KU parent can still have
-        # the old one-argument signature. Keep smart fill local to this task.
+        # One public entry point; preserve manual selection separately.
         if not auto_fill:
-            return super().check_max_lv(shikigami_class)
+            return self._check_max_lv_manual(shikigami_class)
         self.realm_goto_grown()
         fill = RuleImage(roi_front=(1146,505,47,51), roi_back=(1114,478,115,107),
                          threshold=0.8, method='Template matching',
@@ -488,7 +487,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.set_next_run("KekkaiActivation", target=next_run)
         raise TaskEnd
 
-    def check_max_lv(self, shikigami_class: ShikigamiClass = ShikigamiClass.N):
+    def _check_max_lv_manual(self, shikigami_class: ShikigamiClass = ShikigamiClass.N):
         """
         在结界界面，进入式神育成，检查是否有满级的，如果有就换下一个
         退出的时候还是结界界面

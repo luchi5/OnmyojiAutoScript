@@ -8,15 +8,16 @@ from dev_tools.test_bondling_battle_entry import FakeClock, FakeTimer
 ROOT=Path(__file__).resolve().parents[1]
 
 class OldParent:
-    def check_max_lv(self, rarity):
+    def _check_max_lv_manual(self, rarity):
         self.manual=rarity
 
 def harness(frames):
     clock=FakeClock(1)
     tree=ast.parse((ROOT/'tasks/KekkaiActivation/script_task.py').read_text(encoding='utf-8'))
     cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='ScriptTask')
-    method=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='check_max_lv')
-    cls.bases=[ast.Name(id='OldParent',ctx=ast.Load())];cls.body=[method];cls.decorator_list=[]
+    methods=[n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='check_max_lv']
+    assert len(methods)==1, 'Duplicate check_max_lv definitions shadow smart fill'
+    cls.bases=[ast.Name(id='OldParent',ctx=ast.Load())];cls.body=methods;cls.decorator_list=[]
     module=ast.fix_missing_locations(ast.Module(body=[cls],type_ignores=[]))
     ns={'OldParent':OldParent,'ShikigamiClass':SimpleNamespace(N='N'),'logger':Mock(),
         'Timer':lambda t:FakeTimer(clock,t),'GameStuckError':RuntimeError,
@@ -34,6 +35,13 @@ def harness(frames):
     return h
 
 class SmartFillTests(unittest.TestCase):
+    def test_task_has_no_shadowed_methods(self):
+        tree=ast.parse((ROOT/'tasks/KekkaiActivation/script_task.py').read_text(encoding='utf-8'))
+        cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='ScriptTask')
+        names=[n.name for n in cls.body if isinstance(n,ast.FunctionDef)]
+        self.assertEqual(len(names),len(set(names)))
+        self.assertIn('_check_max_lv_manual',names)
+
     def test_old_parent_manual_signature_preserved(self):
         h=harness([set()]);h.check_max_lv('N');self.assertEqual(h.manual,'N')
     def test_smart_fill_does_not_call_old_parent(self):
