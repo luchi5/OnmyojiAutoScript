@@ -75,6 +75,11 @@
       "path": "dev_tools/test_hunt_preset_dialog.py",
       "required": true,
       "scope": "AST Hunt delayed preset modal and fresh preparation budget using fake frames"
+    },
+    {
+      "path": "dev_tools/test_preset_selection.py",
+      "required": true,
+      "scope": "Synthetic selected-outline pixels and actual bounded selection method with fake clicks"
     }
   ],
   "stub_project_logger": true

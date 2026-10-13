@@ -366,6 +366,34 @@ class GeneralBattle(BattleWait, GeneralBuff):
             # 点击绿标
             self.device.click(x, y)
 
+    def _confirm_preset_team(self, target, team, interrupted):
+        from module.atom.click import RuleClick
+        from tasks.Component.GeneralBattle.preset_selection import selected_team
+
+        x, y, width, height = target.roi_front
+        # The title avoids portrait interactions and the edge of adjacent rows.
+        area = (x + 65, y + 8, min(200, width - 70), min(22, height - 10))
+        click_target = RuleClick(roi_front=area, roi_back=area, name=f'preset_team_{team}_title')
+        timeout = Timer(8).start()
+        attempts = stable = 0
+        while not timeout.reached():
+            self.screenshot()
+            if interrupted():
+                return False
+            if not self.appear(self.I_PRESET_ENSURE):
+                stable = 0
+                continue
+            if selected_team(self.device.image) == team:
+                stable += 1
+                if stable >= 2:
+                    logger.info(f'Preset team {team} selected outline confirmed')
+                    return True
+                continue
+            stable = 0
+            if attempts < 3 and self.click(click_target, interval=1):
+                attempts += 1
+        raise GameStuckError(f'Preset team {team} selection not confirmed; refusing deployment')
+
     def switch_preset_team(self, enable: bool = False, preset_group: int = 1, preset_team: int = 1):
         """
         切换预设的队伍， 要求是在不锁定队伍时的情况下
@@ -450,22 +478,8 @@ class GeneralBattle(BattleWait, GeneralBuff):
         tmp = self.__getattribute__("C_PRESET_TEAM_" + str(preset_team))
         if tmp is None:
             tmp = self.C_PRESET_TEAM_1
-        color_size = [5, 5]
-        # unselected_color = get_unselect_color(self.C_PRESET_TEAM_1, self.C_PRESET_TEAM_2, self.C_PRESET_TEAM_3, size=color_size )
-        unselected_color = (216.8, 185.0, 146.8)
-        while True:
-            self.screenshot()
-            if selection_interrupted():
-                return None
-            color_tmp = get_color(self.device.image,
-                                  (tmp.roi_back[0], tmp.roi_back[1], tmp.roi_back[0] + color_size[0],
-                                   tmp.roi_back[1] + color_size[1]))
-            if color_similar(color_tmp, unselected_color):
-                self.click(tmp, interval=0.2)
-                continue
-            break
-
-        self.click(tmp)
+        if not self._confirm_preset_team(tmp, preset_team, selection_interrupted):
+            return None
         logger.info("Select preset team")
 
         # 点击预设确认

@@ -141,6 +141,19 @@ class Harness:
     def wait_until_appear(self, marker, **kwargs):
         return self.appear(marker)
 
+    def _confirm_preset_team(self, target, team, interrupted):
+        # Selection pixels have their own real-method suite; this harness
+        # exercises transitions around that verified-selection boundary.
+        while True:
+            self.screenshot()
+            if interrupted():
+                return False
+            if self.frame.get('colors', {}).get(target.roi_back[0]) == (216.8, 185.0, 146.8):
+                self.click(target)
+                continue
+            self.click(target)
+            return True
+
     def check_and_open_buff(self, buff):
         self.buff_calls.append(buff)
 
