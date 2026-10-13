@@ -68,6 +68,35 @@ class ScriptTask(KU, KekkaiActivationAssets):
 
         raise TaskEnd('KekkaiActivation')
 
+    def check_max_lv(self, shikigami_class=ShikigamiClass.N, auto_fill=False):
+        # Task modules reload independently; the cached KU parent can still have
+        # the old one-argument signature. Keep smart fill local to this task.
+        if not auto_fill:
+            return super().check_max_lv(shikigami_class)
+        self.realm_goto_grown()
+        fill = RuleImage(roi_front=(1146,505,47,51), roi_back=(1114,478,115,107),
+                         threshold=0.8, method='Template matching',
+                         file='./tasks/KekkaiUtilize/realm/realm_auto_fill.png')
+        done = RuleImage(roi_front=(1146,505,47,51), roi_back=(1114,478,115,107),
+                         threshold=0.8, method='Template matching',
+                         file='./tasks/KekkaiUtilize/realm/realm_remove_all.png')
+        timeout = Timer(20).start()
+        while not timeout.reached():
+            self.screenshot()
+            if self.appear(done):
+                logger.info('Smart shikigami fill confirmed by remove-all button')
+                break
+            self.appear_then_click(fill, interval=1.5)
+        else:
+            raise GameStuckError('Smart shikigami fill was not confirmed within 20 seconds')
+        timeout = Timer(15).start()
+        while not timeout.reached():
+            self.screenshot()
+            if self.appear(self.I_REALM_SHIN) or self.appear(self.I_SHI_GROWN):
+                return
+            self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5)
+        raise GameStuckError('Cannot return to realm after smart shikigami fill')
+
     @cached_property
     def dict_card_image(self) -> dict:
         match_targets = {

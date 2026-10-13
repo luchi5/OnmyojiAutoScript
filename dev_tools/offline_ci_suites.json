@@ -125,6 +125,11 @@
       "path": "dev_tools/test_expired_realm_card.py",
       "required": true,
       "scope": "Expired card collection, transient OCR and retry bound without devices"
+    },
+    {
+      "path": "dev_tools/test_activation_smart_fill.py",
+      "required": true,
+      "scope": "Smart fill with old cached parent, success and timeout without devices"
     }
   ],
   "stub_project_logger": true
