@@ -85,6 +85,21 @@
       "path": "dev_tools/test_dokan_exit.py",
       "required": true,
       "scope": "AST Dokan exit via town and overlay ordering with fake navigation"
+    },
+    {
+      "path": "dev_tools/test_wanted_secret_story.py",
+      "required": true,
+      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
+    },
+    {
+      "path": "dev_tools/test_dokan_cheering_entry.py",
+      "required": true,
+      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
+    },
+    {
+      "path": "dev_tools/test_utilize_growth_entry.py",
+      "required": true,
+      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
     }
   ],
   "stub_project_logger": true

@@ -19,9 +19,10 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
         # 判定的依据是是否出现了 式神录 这个图片
         if screenshot:
             self.screenshot()
-        return self.appear(self.I_RS_RECORDS_SHIKI, interval=0.5)
+        return self.appear(self.I_RS_RECORDS_SHIKI)
 
-    def switch_shikigami_class(self, shikigami_class: ShikigamiClass = ShikigamiClass.N):
+    def switch_shikigami_class(self, shikigami_class: ShikigamiClass = ShikigamiClass.N,
+                              require_growth=False):
         """
         要求在式神育成的界面
         切换分类
@@ -46,7 +47,8 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
         check_selected = match_selected[shikigami_class]
         check_click = match_click[shikigami_class]
         # 选择式神的种类
-        while 1:
+        selection_timer = Timer(20).start()
+        while not selection_timer.reached():
             self.screenshot()
 
             if self.appear(check_selected):
@@ -59,9 +61,16 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
                     break
                 self.click(check_click, interval=2)
                 continue
+            if require_growth and not self.in_shikigami_growth():
+                raise GameStuckError('Shikigami growth page lost before class selection')
             self.wait_animate_stable(rule=self.C_SHIKIGAMI_SWITCH_1, interval=0.8)
+            self.screenshot()
+            if require_growth and not self.in_shikigami_growth():
+                raise GameStuckError('Shikigami growth page lost while waiting for class menu')
             if self.click(self.C_SHIKIGAMI_SWITCH_1, interval=3.5):
                 continue
+        else:
+            raise GameStuckError('Shikigami class selection timed out after 20 seconds')
         logger.info('Select shikigami class: %s' % shikigami_class)
 
     def unset_shikigami_max_lv(self):

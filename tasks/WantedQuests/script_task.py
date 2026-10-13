@@ -390,6 +390,10 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 self.screenshot()
                 if self.appear(self.I_WQSE_FIRE):
                     break
+                # 奖励结束后仍可能有剧情，必须处理完才能等到下一次挑战入口。
+                if won_count and self.appear(self.I_SECRET_STORY):
+                    self.click(self.C_SECRET_CHAT, interval=1.5)
+                    continue
                 # 普通秘闻获胜后可能回到本周竞速；其选中层并非悬赏目标。
                 # 返回探索重新读取实际进度，再由原策略前往所需的普通层。
                 if (won_count and self.appear(self.I_UI_BACK_BLUE)
@@ -431,6 +435,9 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             self.screenshot()
             if self.appear(self.I_CHECK_SECRET_ZONES):
                 break
+            if self.appear(self.I_SECRET_STORY):
+                self.click(self.C_SECRET_CHAT, interval=1.5)
+                continue
             if self.appear_then_click(self.I_UI_BACK_RED, interval=1):
                 continue
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5):

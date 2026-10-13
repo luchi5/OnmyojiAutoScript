@@ -113,7 +113,7 @@ class DokanAssets:
 	# 道馆战斗界面 点击退出按钮后 弹出的确认按钮 
 	I_RYOU_DOKAN_QUIT_BATTLE_ENSURE = RuleImage(roi_front=(0,0,1280,720), roi_back=(0,0,1280,720), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/res_ryou_dokan_quit_battle_ensure.png")
 	# 道馆退出确认 
-	I_RYOU_DOKAN_EXIT_ENSURE = RuleImage(roi_front=(678,395,125,56), roi_back=(678,395,125,56), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/res_ryou_dokan_exit_ensure.png")
+	I_RYOU_DOKAN_EXIT_ENSURE = RuleImage(roi_front=(678,395,125,56), roi_back=(660,380,170,90), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/res_ryou_dokan_exit_ensure.png")
 	# 进入加油相关：道馆战报按钮 
 	I_RYOU_DOKAN_CHEERING_SCORES = RuleImage(roi_front=(157,100,35,39), roi_back=(157,100,35,39), threshold=0.8, method="Template matching", file="./tasks/Dokan/res/res_ryou_dokan_cheering_scores.png")
 	# 进入加油相关：前往战斗中的竂友 

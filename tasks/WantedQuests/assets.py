@@ -92,6 +92,8 @@ class WantedQuestsAssets:
 	# Click Rule Assets
 	# 秘闻的挑战对话 
 	C_SECRET_CHAT = RuleClick(roi_front=(597,296,59,100), roi_back=(597,296,59,100), name="secret_chat")
+	# 战后剧情底部对话框的波纹，避开角色、姓名和台词。
+	I_SECRET_STORY = RuleImage(roi_front=(490,550,260,50), roi_back=(480,540,280,70), threshold=0.9, method="Template matching", file="./tasks/WantedQuests/wq/secret_story.png")
 	# 特殊的庭院需要点击，然后才能找到这个悬赏 
 	C_SPECIAL_MAIN = RuleClick(roi_front=(409,572,32,30), roi_back=(404,569,41,35), name="special_main")
 	# 关闭 单个任务追踪界面 所需点击 的  空白区域 

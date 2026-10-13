@@ -98,6 +98,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         # 开始道馆流程
         while is_dokan_activated:
             self.screenshot()
+            if self._cancel_cheering_exit():
+                continue
 
             # 检测当前界面的场景（时间关系，暂时没有做庭院、町中等主界面的场景检测, 应考虑在GameUI.game_ui.ui_get_current_page()里实现）
             in_dokan, current_scene = self.get_current_scene(True)
@@ -791,6 +793,20 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             item.roi_back = self.position_offset(item.roi_back, offset)
         return res_list
 
+    def _cancel_cheering_exit(self):
+        """Recover the accidental leave dialog without forfeiting rewards."""
+        if not self.appear(self.I_RYOU_DOKAN_EXIT_ENSURE):
+            return False
+        warning = RuleOcr(roi=(440,275,410,100), area=(440,275,410,100),
+                          mode='Full', method='Default', keyword='', name='dokan_leave_warning')
+        text = re.sub(r'\s+', '', warning.detect_text(self.device.image))
+        if not all(word in text for word in ('退出', '无法', '奖励')):
+            return False
+        logger.warning('Cancel accidental Dokan leave dialog before cheering')
+        self.click(RuleClick(roi_front=(490,404,100,42), roi_back=(490,404,100,42),
+                             name='dokan_leave_cancel'), interval=1.5)
+        return True
+
     def start_cheering(self):
         cd_text = self.O_DOKEN_FAIL_CD.detect_text(self.device.image)
         match = re.search(r'\d+', cd_text)
@@ -799,23 +815,47 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             logger.info(f'No remain seconds, exit cheering, cd_text[{cd_text}]')
             return
         cheering_timer = Timer(remain_seconds).start()
+        entry_timer = Timer(min(remain_seconds, 20)).start()
         logger.info(f"start cheering, remain seconds:{remain_seconds}s")
-        while not cheering_timer.reached():
+        while not cheering_timer.reached() and not entry_timer.reached():
             self.screenshot()
+            if self._cancel_cheering_exit():
+                continue
+            # Never search or click through an unrecognized confirmation dialog.
+            if self.appear(self.I_RYOU_DOKAN_EXIT_ENSURE):
+                return
+            if self.is_in_battle(False):
+                break
+            if self.appear(self.I_RYOU_DOKAN_TOPPA_RANK) or self.appear(self.I_RYOU_DOKAN_WIN):
+                return
             # 出现观战标志点击观战
             if self.appear_then_click(self.I_RYOU_DOKAN_CD, interval=2.5):
                 sleep(1)  # 等待一下寮排名展示动画
                 continue
-            # 寻找前往按钮并点击
-            if self.list_appear_click(self.L_GOTO_CHEERING, interval=3, max_swipe=3):
-                break
-            # 没有找到前往(全军覆没or没人上)则随机点击其他位置关闭弹窗
-            self.click(random_click(), interval=5)
+            # OCR 空结果可能返回 (0, 0)，只有列表范围内的真实按钮才能点击。
+            target = self.L_GOTO_CHEERING
+            point = target.ocr_appear(self.device.image, name='前往')
+            x, y, w, h = target.roi_back
+            if (isinstance(point, tuple) and len(point) == 2
+                    and x <= point[0] < x+w and y <= point[1] < y+h):
+                self.device.click(*point)
+                sleep(1)
+                continue  # 下一帧必须确认进入战斗，点击成功不等于已进入观战。
+            self.appear_then_click(self.I_RYOU_DOKAN_CHEERING_SCORES, interval=3)
+            sleep(1)
+        else:
+            logger.info('No cheering battle entered before cooldown expired')
+            return
         logger.info('Enter battle to cheer')
         cheer_cnt = 0
         self.device.stuck_record_add('PAUSE')
         while not cheering_timer.reached():
             self.screenshot()
+            if self._cancel_cheering_exit():
+                continue
+            if self.appear(self.I_RYOU_DOKAN_EXIT_ENSURE):
+                self.device.stuck_record_clear()
+                return
             # 道馆成员战斗成功或失败或馆主战结束出现排名, 交给上层处理
             if self.appear(self.I_RYOU_DOKAN_WIN, interval=1) or self.appear(self.I_FALSE) or self.appear(self.I_RYOU_DOKAN_TOPPA_RANK):
                 self.click(random_click(), interval=1)

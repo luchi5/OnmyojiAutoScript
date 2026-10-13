@@ -482,36 +482,16 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             # 可能是滑动的时候出错
             logger.warning('The best reason is that the swipe is wrong')
             return
-        wait_timer = Timer(20)
-        wait_timer.start()
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_U_ADD_1) or self.appear(self.I_U_ADD_2):
-                logger.info('Appear enter friend realm button')
-                break
-            if self.appear(self.I_CHECK_FRIEND_REALM_1):
-                self.wait_until_stable(self.I_CHECK_FRIEND_REALM_1)
-                logger.info('Appear enter friend realm button')
-                break
-            if self.appear(self.I_CHECK_FRIEND_REALM_3):
-                self.wait_until_stable(self.I_CHECK_FRIEND_REALM_3)
-                logger.info('Appear enter friend realm button')
-                break
-            if wait_timer.reached():
-                self.save_image(wait_time=0, push_flag=False, content='进入好友结界超时', image_type='png')
-                logger.warning('Appear friend realm timeout')
-                return
-            if self.appear_then_click(self.I_CHECK_FRIEND_REALM_2, interval=1.5):
-                logger.info('Click too fast to enter the friend\'s realm pool')
-                continue
-            if self.appear_then_click(self.I_U_ENTER_REALM, interval=2.5):
-                time.sleep(0.5)
-                continue
+        if not self._enter_friend_growth():
+            return False
         logger.info('Enter friend realm')
 
         # 判断好友的有两个位置还是一个坑位
         stop_image = None
         self.screenshot()
+        if not self.in_shikigami_growth():
+            logger.warning('Friend growth page disappeared before selecting a slot')
+            return False
         if self.appear(self.I_U_ADD_1):  # 右侧第一个有（无论左侧有没有）
             logger.info('Right side has one')
             stop_image = self.I_U_ADD_1
@@ -524,10 +504,32 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             logger.warning('没有坑位可能是其他人的手速太快了抢占了')
             return True
         # 切换式神的类型
-        self.switch_shikigami_class(shikigami_class)
+        self.switch_shikigami_class(shikigami_class, require_growth=True)
         # 上式神
         self.set_shikigami(shikigami_order, stop_image)
         return True
+
+    def _enter_friend_growth(self):
+        timer = Timer(20).start()
+        stable_frames = 0
+        while not timer.reached():
+            self.screenshot()
+            if self.appear(self.I_U_ENTER_REALM):
+                stable_frames = 0
+                self.appear_then_click(self.I_U_ENTER_REALM, interval=2.5)
+                continue
+            if self.in_shikigami_growth():
+                stable_frames += 1
+                if stable_frames >= 2:
+                    return True
+                continue
+            stable_frames = 0
+            # Some realm skins land on the realm homepage instead of the pool.
+            if self.appear_then_click_multi_scale(self.I_SHI_GROWN, interval=2):
+                continue
+            self.appear_then_click(self.I_CHECK_FRIEND_REALM_2, interval=2)
+        logger.warning('Friend growth page was not confirmed within 20 seconds')
+        return False
 
     def _select_optimal_resource_card(self):
         """整合后的智能选卡主逻辑（无嵌套函数版）"""
