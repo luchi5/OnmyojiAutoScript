@@ -36,58 +36,48 @@ class MoonSeaMap(MoonSeaSkills):
     def contains_any_char(string, chars):
         return not set(string).isdisjoint(set(chars))
 
+    def visible_islands(self, remain_turns=99):
+        # Match Azur's priority and never filter the only available island.
+        markers = [
+            (MoonSeaType.island101, self.I_LAND_SHOP),
+            (MoonSeaType.island102, self.I_LAND_MYSTERY),
+            (MoonSeaType.island103, self.I_LAND_CHAOS),
+            (MoonSeaType.island105, self.I_LAND_STAR),
+            (MoonSeaType.island104, self.I_LAND_FIRE),
+        ]
+        visible = [(kind, marker) for kind, marker in markers if self.appear(marker)]
+        # This version has no reliable map coin counter. The disabled summon
+        # button is usable only when its enabled variant does NOT also match.
+        # Overlapping templates previously excluded the sole shop at 464 coins.
+        if (len(visible) > 1 and remain_turns > 1
+                and self.appear(self.I_M_STORE)
+                and not self.appear(self.I_M_STORE_ACTIVITY)):
+            visible = [(kind, marker) for kind, marker in visible
+                       if kind != MoonSeaType.island101]
+        return visible
+
     def decide(self) -> tuple:
-        """
-        这个玩意，检测不是很准
-        @return: 岛屿的类型，剩余多少回合, (x，y, w, h)
-        """
+        """Read turns with OCR; identify and prioritize islands by their icons."""
         self.screenshot()
         if self.appear(self.I_BOSS_FIRE):
-            # 最后的boss
             return MoonSeaType.island106, 0, (0, 0, 0, 0)
-        isl_type = MoonSeaType.island100
-        isl_roi = (0, 0, 0, 0)
-        isl_num = 0
-        results = self.map_ocr.detect_and_ocr(image=self.device.image)
-        rx1, ry1, rw, rh = self.O_OCR_MAP.roi
-        rx2, ry2 = rx1 + rw, ry1 + rh
-        for result in results:
-            # box 是四个点坐标 左上， 右上， 右下， 左下
-            x1, y1, x2, y2 = result.box[0][0], result.box[0][1], result.box[2][0], result.box[2][1]
-            w, h = x2 - x1, y2 - y1
-            text = result.ocr_text
-
-            if self.contains_any_char(result.ocr_text, chars='回合国') and \
-                    (x1 > 1000 and y1 + h < 300):
-                # if text[1].isdigit():
-                #     isl_num = int(text[:2])
-                # elif text[0].isdigit():
-                #     isl_num = int(text[0])
-                match = re.search(r'\d{1,2}', text)
-                if match:
-                    isl_num = int(match.group())
-            if x1 < rx1 or x2 > rx2 or y1 < ry1 or y2 > ry2:
-                continue
-            if isl_type == MoonSeaType.island100 and self.contains_any_char(result.ocr_text, chars='宁息'):
-                # 如果身上没有达到300块钱就不去了
-                if self.appear(self.I_M_STORE):
-                    continue
-                isl_type = MoonSeaType.island101
-                isl_roi = x1, y1, w, h
-            elif isl_type == MoonSeaType.island100 and self.contains_any_char(result.ocr_text, chars='神秘'):
-                isl_type = MoonSeaType.island102
-                isl_roi = x1, y1, w, h
-            elif isl_type == MoonSeaType.island100 and self.contains_any_char(result.ocr_text, chars='回混范'):
-                isl_type = MoonSeaType.island103
-                isl_roi = x1, y1, w, h
-            elif isl_type == MoonSeaType.island100 and self.contains_any_char(result.ocr_text, chars='蜜馨屡战'):
-                isl_type = MoonSeaType.island104
-                isl_roi = x1, y1, w, h
-            elif isl_type == MoonSeaType.island100 and self.contains_any_char(result.ocr_text, chars='星之'):
-                isl_type = MoonSeaType.island105
-                isl_roi = x1, y1, w, h
-        logger.info('Island type: {}, Residue: {}, ROI: {}'.format(isl_type, isl_num, isl_roi))
-        return isl_type, isl_num, isl_roi
+        remain_turns = 99
+        for result in self.map_ocr.detect_and_ocr(image=self.device.image):
+            x, y = result.box[0]
+            if x > 1000 and result.box[2][1] < 300:
+                if self.contains_any_char(result.ocr_text, '回合国'):
+                    match = re.search(r'\d{1,2}', result.ocr_text)
+                    if match:
+                        remain_turns = int(match.group())
+        self._island_remain_turns = remain_turns
+        visible = self.visible_islands(remain_turns)
+        if visible:
+            kind, marker = visible[0]
+            result = kind, remain_turns, tuple(marker.roi_front)
+        else:
+            result = MoonSeaType.island100, remain_turns, (0, 0, 0, 0)
+        logger.info('Island type: {}, Residue: {}, ROI: {}'.format(*result))
+        return result
 
     def enter_island(self, isl_type, isl_roi):
         # Keep the caller's island choice, but never reuse its old OCR position.
@@ -113,11 +103,13 @@ class MoonSeaMap(MoonSeaSkills):
                 continue
             if not self.in_main() or clicks >= 6:
                 continue
+            if target is None:
+                candidates = [marker for _, marker in self.visible_islands(
+                    getattr(self, '_island_remain_turns', 99))]
             for marker in candidates:
-                if marker is self.I_LAND_SHOP and target is None and self.appear(self.I_M_STORE):
-                    continue
                 if self.appear_then_click(marker, interval=2.5):
                     # Once selected, don't switch islands during transition frames.
+                    target = marker
                     candidates = [marker]
                     clicks += 1
                     break

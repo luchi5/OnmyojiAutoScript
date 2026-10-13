@@ -14,10 +14,11 @@ class Harness:
         for name in ('SHOP', 'MYSTERY', 'CHAOS', 'FIRE', 'STAR'):
             setattr(self, 'I_LAND_' + name, name)
         self.I_BACK_EXIT, self.I_UI_CANCEL, self.I_M_STORE = 'exit', 'cancel', 'poor'
+        self.I_M_STORE_ACTIVITY = 'active'
         ns = {'MoonSeaType': Kinds, 'Timer': lambda t: FakeTimer(self.clock, t),
               'GameStuckError': RuntimeError, 'logger': FakeLogger()}
         for name, method in extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py',
-                'MoonSeaMap', ('enter_island', 'entry_island_random'), ns).items():
+                'MoonSeaMap', ('enter_island', 'entry_island_random', 'visible_islands'), ns).items():
             setattr(self, name, method.__get__(self))
 
     def screenshot(self):
@@ -65,6 +66,28 @@ class EntryTests(unittest.TestCase):
         h = Harness([{'main':False,'MYSTERY':(919,472)}, {'main':False,'exit':True}])
         h.enter_island(Kinds.island102, None)
         self.assertEqual(h.clicks, [])
+
+class ShopTests(unittest.TestCase):
+    def test_only_shop_must_remain_even_without_money(self):
+        h = Harness([{'SHOP':(650,416),'poor':True}, {'main':False,'exit':True}])
+        h.entry_island_random()
+        self.assertEqual(h.clicks, [('SHOP',(650,416))])
+
+    def test_overlapping_summon_templates_do_not_exclude_shop(self):
+        h = Harness([{'SHOP':True,'FIRE':True,'poor':True,'active':True}])
+        h.screenshot()
+        self.assertEqual(h.visible_islands(2)[0][0], Kinds.island101)
+
+    def test_skip_shop_only_with_alternative_and_disabled_summon(self):
+        h = Harness([{'SHOP':True,'FIRE':True,'poor':True}])
+        h.screenshot()
+        self.assertEqual([k for k,_ in h.visible_islands(2)], [Kinds.island104])
+        self.assertEqual(h.visible_islands(1)[0][0], Kinds.island101)
+
+    def test_star_before_normal_battle(self):
+        h = Harness([{'STAR':True,'FIRE':True}])
+        h.screenshot()
+        self.assertEqual(h.visible_islands()[0][0], Kinds.island105)
 
 if __name__ == '__main__':
     unittest.main()
