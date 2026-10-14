@@ -18,7 +18,8 @@ def harness(frames=()):
     h.in_main=lambda: 'main' in h.visible
     h.click=Mock(); h.appear_then_click=Mock()
     ns={'logger':Mock(),'Timer':lambda t:FakeTimer(clock,t), 'GameStuckError':RuntimeError,
-        'RuleImage':lambda **kw:Path(kw['file']).stem}
+        'RuleImage':lambda **kw:Path(kw['file']).stem,
+        'RuleClick':lambda **kw:kw['name']}
     for name,method in extract_methods(ROOT/'tasks/SixRealms/moon_sea/l102.py', 'MoonSeaL102',
                                       ('imitate','leave_mystery_island'),ns).items():
         setattr(h,name,method.__get__(h))
@@ -40,8 +41,20 @@ class MysteryTests(unittest.TestCase):
         h.I_IMITATE_1='skill';h.I_IMITATE='imitate';h.I_IMITATE_SUCCESS='success'
         h.I_UI_CONFIRM_SAMLL='confirm';h.I_UI_CONFIRM='confirm2'
         h.imitate()
-        self.assertEqual([c.args[0] for c in h.click.call_args_list],['skill','imitate','confirm'])
+        self.assertEqual([c.args[0] for c in h.click.call_args_list],['skill','imitate','confirm','imitation_success_dismiss'])
         self.assertEqual(h.cnt_skill101,4)
+
+    def test_success_overlay_is_dismissed_and_island_exited_once(self):
+        h=harness([('skill',),('imitate',),('success',),('success',),('imitate',)])
+        h.cnt_skill101=1
+        h.I_IMITATE_1='skill';h.I_IMITATE='imitate';h.I_IMITATE_SUCCESS='success'
+        h.I_UI_CONFIRM_SAMLL='confirm';h.I_UI_CONFIRM='confirm2'
+        h.leave_mystery_island=Mock()
+        h.imitate()
+        self.assertEqual(h.cnt_skill101,2)
+        h.leave_mystery_island.assert_called_once()
+        self.assertEqual([c.args[0] for c in h.click.call_args_list].count('imitate'),1)
+        self.assertEqual([c.args[0] for c in h.click.call_args_list].count('imitation_success_dismiss'),2)
 
     def test_no_result_does_not_resubmit_or_increment_level(self):
         h=harness([('skill',),('imitate',)]+[('imitate',)]*30)

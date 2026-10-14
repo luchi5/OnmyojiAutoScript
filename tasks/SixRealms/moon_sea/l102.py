@@ -2,6 +2,7 @@
 from module.logger import logger
 from module.base.timer import Timer
 from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 from module.exception import GameStuckError
 from tasks.SixRealms.moon_sea.skills import MoonSeaSkills
 
@@ -63,13 +64,19 @@ class MoonSeaL102(MoonSeaSkills):
         submitted = False
         dialog_clicked = False
         success = False
+        dismiss = RuleClick(roi_front=(550,570,180,50), roi_back=(550,570,180,50),
+                            name='imitation_success_dismiss')
         timeout = Timer(25).start()
         while not timeout.reached():
             self.screenshot()
             if self.in_main():
                 break
             if self.appear(self.I_IMITATE_SUCCESS):
-                success = True
+                if not success:
+                    self.cnt_skill101 = min(5, self.cnt_skill101 + 1)
+                    success = True
+                self.click(dismiss, interval=2)
+                continue
             # Modal dialogs take priority over all background controls.
             confirm = next((rule for rule in (self.I_UI_CONFIRM_SAMLL, self.I_UI_CONFIRM)
                             if self.appear(rule)), None)
@@ -80,6 +87,9 @@ class MoonSeaL102(MoonSeaSkills):
                 continue
             dialog_clicked = False
             if success:
+                if self.appear(self.I_IMITATE):
+                    self.leave_mystery_island()
+                    break
                 continue
             # Each island gets one selection and one submission. A delayed
             # animation is not permission to open a second imitation dialog.
@@ -95,8 +105,6 @@ class MoonSeaL102(MoonSeaSkills):
                 submitted = True
         else:
             raise GameStuckError("Mystery imitation result not confirmed after one submission")
-        if success:
-            self.cnt_skill101 = min(5, self.cnt_skill101 + 1)
         logger.info(f'Skill 101 level: {self.cnt_skill101}')
         logger.info('Finish Imitate')
 
