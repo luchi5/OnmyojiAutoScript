@@ -239,11 +239,14 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
         self.ui_click_until_disappear(self.I_BOSS_FIRE, interval=1)
         self.device.stuck_record_clear()
         self.device.stuck_record_add('BATTLE_STATUS_S')
+        double_requested = False
         while 1:
             self.screenshot()
             if self.handle_boss_reward():
                 continue
             if self.appear(self.I_BOSS_SHARE):
+                if double_requested:
+                    logger.info('Weekly realm chest consumed: 1')
                 break
             if self.appear(self.I_BOSS_BATTLE_GIVEUP):
                 # 打boss失败了
@@ -253,6 +256,7 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
 
             if self.appear_then_click(self.I_BOSS_USE_DOUBLE, interval=1):
                 # 双倍奖励
+                double_requested = True
                 logger.info('Double reward')
                 continue
             if self.appear_then_click(self.I_BOSS_GET_EXP, interval=1):

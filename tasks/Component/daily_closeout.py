@@ -201,6 +201,9 @@ def report_closeout_outcome(config, task_name, outcome, *, now=None, detail='') 
     """
     if task_name not in TASK_FIELDS or outcome not in TERMINAL_OUTCOMES:
         raise ValueError('Unsupported daily closeout task/outcome')
+    if outcome == 'completed':
+        from module.logger import logger
+        logger.info(f'Weekly task completed: {task_name}')
     if not closeout_enabled(config):
         return CloseoutDecision(reason='disabled')
     now = now or datetime.now()
