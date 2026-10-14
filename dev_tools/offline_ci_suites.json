@@ -145,6 +145,11 @@
       "path": "dev_tools/test_bondling_shop_purchase.py",
       "required": true,
       "scope": "Wrong product and unreadable quantity rejection; no actual purchases"
+    },
+    {
+      "path": "dev_tools/test_wanted_challenge_tickets.py",
+      "required": true,
+      "scope": "Zero ticket and unreadable ticket handling without devices"
     }
   ],
   "stub_project_logger": true

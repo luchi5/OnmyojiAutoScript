@@ -282,7 +282,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             类型： 挑战0, 秘闻1， 探索2
             """
             # 获取用户设置的值
-            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value            
+            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value
             # 定义完整的层数后缀顺序
             all_layers = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾", "番外"]
             # 根据用户选择进行截取，生成 layer_limit 集合
@@ -346,7 +346,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             info_wq = extract_info(i)
             if info_wq:
                 info_wq_list.append(info_wq)
-        info_wq_list = [item for item in info_wq_list if item not in self.want_strategy_excluding]
+        info_wq_list = [item for item in info_wq_list if item not in self.want_strategy_excluding
+                        and not (getattr(self, '_challenge_tickets_empty', False) and item[5] == '式神')]
         if not info_wq_list:
             logger.warning('No wanted quests can be challenged')
             self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
@@ -364,10 +365,37 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             logger.warning('The extreme case. The quest only needs to challenge one final boss, so skip it')
             self.want_strategy_excluding.append(info_wq_list[0])
 
+    def enter_shikigami_challenge(self):
+        tickets = RuleOcr(roi=(625,13,60,30), area=(625,13,60,30),
+                          mode='Single', method='Default', keyword='', name='wanted_challenge_tickets')
+        timeout = Timer(15).start()
+        zero_reads = 0
+        clicks = 0
+        while not timeout.reached():
+            self.screenshot()
+            if not self.appear(self.I_WQC_FIRE):
+                return True
+            text = str(tickets.ocr(self.device.image)).strip()
+            if text == '0':
+                zero_reads += 1
+                if zero_reads >= 2:
+                    logger.warning('No shikigami challenge tickets; exclude challenge routes')
+                    return False
+                continue
+            zero_reads = 0
+            if not text.isascii() or not text.isdigit():
+                continue
+            if clicks < 3 and self.appear_then_click(self.I_WQC_FIRE, interval=2):
+                clicks += 1
+        raise GameStuckError('Shikigami challenge ticket count or battle entry not confirmed')
+
     def challenge(self, goto_btn, num):
         self.ui_click(goto_btn, self.I_WQC_FIRE)
         self.ui_click(self.I_WQC_UNLOCK, self.I_WQC_LOCK)
-        self.ui_click_until_disappear(self.I_WQC_FIRE)
+        if not self.enter_shikigami_challenge():
+            self._challenge_tickets_empty = True
+            self.goto_page(page_exploration)
+            return False
         # 锁定阵容进入战斗
         wq_config = GeneralBattleConfig(lock_team_enable=True)
         self.run_general_battle(config=wq_config)
