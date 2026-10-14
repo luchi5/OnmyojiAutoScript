@@ -4,6 +4,7 @@ import numpy as np
 from numpy import uint8, fromfile
 from module.logger import logger
 from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 from module.base.timer import Timer
 from module.exception import GameStuckError
 
@@ -79,6 +80,29 @@ class MoonSeaMap(MoonSeaSkills):
         logger.info('Island type: {}, Residue: {}, ROI: {}'.format(*result))
         return result
 
+    def handle_poor_store_entry(self):
+        if not self.appear(self.I_UI_CANCEL):
+            return False
+        results = self.map_ocr.detect_and_ocr(image=self.device.image)
+        text = ''.join(result.ocr_text for result in results)
+        if '万相铃不足' not in text or '宁息之屿' not in text:
+            return False
+        for result in results:
+            if result.ocr_text.strip() != '进入':
+                continue
+            xs = [float(point[0]) for point in result.box]
+            ys = [float(point[1]) for point in result.box]
+            x, y = int(sum(xs)/len(xs)), int(sum(ys)/len(ys))
+            if not (640 < x < 900 and 350 < y < 510):
+                continue
+            button = RuleClick(roi_front=(x-10,y-8,20,16), roi_back=(x-10,y-8,20,16),
+                               name='poor_store_enter')
+            self.click(button, interval=2)
+            logger.info('Enter summoned store despite insufficient coins')
+            break
+        # Keep this recognized dialog out of the generic cancel branch.
+        return True
+
     def enter_island(self, isl_type, isl_roi):
         # Keep the caller's island choice, but never reuse its old OCR position.
         markers = {
@@ -94,6 +118,10 @@ class MoonSeaMap(MoonSeaSkills):
         clicks = 0
         while True:
             self.screenshot()
+            if timeout.reached():
+                raise GameStuckError('Moon sea island entry timed out: {}'.format(isl_type))
+            if target == self.I_LAND_SHOP and self.handle_poor_store_entry():
+                continue
             if not self.in_main() and self.appear(self.I_BACK_EXIT):
                 logger.info('Entering island')
                 return

@@ -2,6 +2,8 @@
 from enum import Enum
 from pathlib import Path
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 from dev_tools.test_bondling_battle_entry import FakeClock, FakeTimer, FakeLogger, extract_methods
 
 Kinds = Enum('Kinds', 'island100 island101 island102 island103 island104 island105')
@@ -14,6 +16,7 @@ class Harness:
         for name in ('SHOP', 'MYSTERY', 'CHAOS', 'FIRE', 'STAR'):
             setattr(self, 'I_LAND_' + name, name)
         self.I_BACK_EXIT, self.I_UI_CANCEL, self.I_M_STORE = 'exit', 'cancel', 'poor'
+        self.handle_poor_store_entry = lambda: False
         self.I_M_STORE_ACTIVITY = 'active'
         ns = {'MoonSeaType': Kinds, 'Timer': lambda t: FakeTimer(self.clock, t),
               'GameStuckError': RuntimeError, 'logger': FakeLogger()}
@@ -66,6 +69,30 @@ class EntryTests(unittest.TestCase):
         h = Harness([{'main':False,'MYSTERY':(919,472)}, {'main':False,'exit':True}])
         h.enter_island(Kinds.island102, None)
         self.assertEqual(h.clicks, [])
+
+class PoorStoreDialogTests(unittest.TestCase):
+    def make_task(self, texts):
+        h=SimpleNamespace(I_UI_CANCEL='cancel', appear=lambda _:True,
+                          device=SimpleNamespace(image=None),click=Mock())
+        h.map_ocr=SimpleNamespace(detect_and_ocr=lambda **kw:[
+            SimpleNamespace(ocr_text=text,box=[[720,420],[780,420],[780,460],[720,460]]) for text in texts])
+        ns={'RuleClick':lambda **kw:kw['name'],'logger':Mock()}
+        f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('handle_poor_store_entry',),ns)['handle_poor_store_entry']
+        h.handle=lambda:f(h)
+        return h
+
+    def test_insufficient_coins_enters_instead_of_cancel(self):
+        h=self.make_task(['大人的万相铃不足，是否仍要进入宁','息之屿？','取消','进入'])
+        self.assertTrue(h.handle())
+        h.click.assert_called_once_with('poor_store_enter',interval=2)
+
+    def test_other_warning_not_confirmed(self):
+        h=self.make_task(['是否离开神秘之屿','取消','进入'])
+        self.assertFalse(h.handle());h.click.assert_not_called()
+
+    def test_missing_enter_does_not_cancel_known_warning(self):
+        h=self.make_task(['万相铃不足，是否仍要进入宁息之屿','取消'])
+        self.assertTrue(h.handle());h.click.assert_not_called()
 
 class ShopTests(unittest.TestCase):
     def test_only_shop_must_remain_even_without_money(self):
