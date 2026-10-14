@@ -59,7 +59,9 @@ class MoonSeaL102(MoonSeaSkills):
             logger.info('Skill 101 is max level; skip imitation')
             self.leave_mystery_island()
             return
-        cnt_imitate = 0
+        selected = False
+        submitted = False
+        dialog_clicked = False
         success = False
         timeout = Timer(25).start()
         while not timeout.reached():
@@ -68,22 +70,31 @@ class MoonSeaL102(MoonSeaSkills):
                 break
             if self.appear(self.I_IMITATE_SUCCESS):
                 success = True
-            if self.appear_then_click(self.I_IMITATE_1, interval=2.5):
+            # Modal dialogs take priority over all background controls.
+            confirm = next((rule for rule in (self.I_UI_CONFIRM_SAMLL, self.I_UI_CONFIRM)
+                            if self.appear(rule)), None)
+            if confirm is not None:
+                if not dialog_clicked:
+                    self.click(confirm)
+                    dialog_clicked = True
                 continue
-            if self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1):
+            dialog_clicked = False
+            if success:
                 continue
-            if self.appear_then_click(self.I_UI_CONFIRM, interval=1):
+            # Each island gets one selection and one submission. A delayed
+            # animation is not permission to open a second imitation dialog.
+            if submitted:
                 continue
-            if cnt_imitate >= 3:
-                logger.info('Finish Imitate Fail')
-                logger.info('The most possible reason is that the skill is max level')
-                self.leave_mystery_island()
-                break
-            if self.appear_then_click(self.I_IMITATE, interval=1):
-                cnt_imitate += 1
+            if not selected:
+                if self.appear(self.I_IMITATE_1):
+                    self.click(self.I_IMITATE_1)
+                    selected = True
                 continue
+            if self.appear(self.I_IMITATE):
+                self.click(self.I_IMITATE)
+                submitted = True
         else:
-            raise GameStuckError("Mystery imitation timed out")
+            raise GameStuckError("Mystery imitation result not confirmed after one submission")
         if success:
             self.cnt_skill101 = min(5, self.cnt_skill101 + 1)
         logger.info(f'Skill 101 level: {self.cnt_skill101}')

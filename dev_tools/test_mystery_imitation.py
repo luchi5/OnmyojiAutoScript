@@ -32,6 +32,26 @@ class MysteryTests(unittest.TestCase):
         h.appear_then_click.assert_not_called()
         self.assertEqual(h.cnt_skill101,5)
 
+    def test_slow_imitation_does_not_open_a_second_dialog(self):
+        h=harness([('skill','imitate'),('skill','imitate'),
+                   ('skill','imitate'),('skill','imitate','confirm'),
+                   ('skill','imitate','confirm'),('success','confirm'),('main',)])
+        h.cnt_skill101=3
+        h.I_IMITATE_1='skill';h.I_IMITATE='imitate';h.I_IMITATE_SUCCESS='success'
+        h.I_UI_CONFIRM_SAMLL='confirm';h.I_UI_CONFIRM='confirm2'
+        h.imitate()
+        self.assertEqual([c.args[0] for c in h.click.call_args_list],['skill','imitate','confirm'])
+        self.assertEqual(h.cnt_skill101,4)
+
+    def test_no_result_does_not_resubmit_or_increment_level(self):
+        h=harness([('skill',),('imitate',)]+[('imitate',)]*30)
+        h.cnt_skill101=3
+        h.I_IMITATE_1='skill';h.I_IMITATE='imitate';h.I_IMITATE_SUCCESS='success'
+        h.I_UI_CONFIRM_SAMLL='confirm';h.I_UI_CONFIRM='confirm2'
+        with self.assertRaises(RuntimeError):h.imitate()
+        self.assertEqual([c.args[0] for c in h.click.call_args_list],['skill','imitate'])
+        self.assertEqual(h.cnt_skill101,3)
+
     def test_reminder_is_checked_before_confirm(self):
         h=harness([('leave_title','leave_unchecked'),('leave_title',),('main',)])
         h.leave_mystery_island()
