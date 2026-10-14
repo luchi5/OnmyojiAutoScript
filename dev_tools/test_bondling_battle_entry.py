@@ -21,7 +21,7 @@ RESULT_MARKERS = (
     "I_CAP_SUCCESS", "I_CAP_FAILURE", "I_BATTLE_FAIL_ABANDON", "I_CAP_AGAIN",
 )
 LOW_THRESHOLD_MARKERS = set(RESULT_MARKERS[:4])
-MARKERS = RESULT_MARKERS + ("I_BUFF", "I_EXIT", "I_BALL_FIRE", "I_UI_CONFIRM", "I_PREPARE_HIGHLIGHT")
+MARKERS = RESULT_MARKERS + ("I_CAPTURE_TOOLBAR", "I_BUFF", "I_EXIT", "I_BALL_FIRE", "I_UI_CONFIRM", "I_PREPARE_HIGHLIGHT")
 
 
 class GameStuckError(Exception):
@@ -137,6 +137,7 @@ class Harness:
         for marker in MARKERS:
             setattr(self, marker, marker)
         namespace = {
+            "RuleImage": lambda **kw: "I_CAPTURE_TOOLBAR",
             "Timer": lambda limit, count=0: FakeTimer(self.clock, limit, count),
             "logger": self.logger,
             "UserStatus": UserStatus,
@@ -220,6 +221,16 @@ class EntryRegressionTests(unittest.TestCase):
     def test_result_screen_takes_priority_over_background_prepare_and_fire(self):
         harness = Harness([frame("I_REWARD", "I_BUFF", "I_BALL_FIRE")])
         self.assertIs(harness.check_load(), False)
+
+    def test_capture_animation_without_generic_battle_icon(self):
+        h = Harness([frame('I_CAPTURE_TOOLBAR')])
+        self.assertTrue(h._finish_capture_preparation())
+
+    def test_toolbar_does_not_skip_preparation(self):
+        h = Harness([frame('I_CAPTURE_TOOLBAR','I_BUFF','I_PREPARE_HIGHLIGHT'),
+                     frame('I_CAPTURE_TOOLBAR')])
+        self.assertTrue(h._finish_capture_preparation())
+        self.assertTrue(h.clicks)
 
     def test_preparation_and_active_battle_have_distinct_results(self):
         self.assertIs(Harness([frame("I_BUFF")]).check_load(), True)

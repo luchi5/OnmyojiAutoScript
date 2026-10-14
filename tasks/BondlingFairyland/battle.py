@@ -6,6 +6,7 @@ from datetime import timedelta, datetime
 import random
 
 from module.base.timer import Timer
+from module.atom.image import RuleImage
 from module.exception import GameStuckError
 from module.server.i18n import I18n
 from tasks.BondlingFairyland.config import BondlingMode, UserStatus
@@ -49,12 +50,18 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
 
     def _finish_capture_preparation(self) -> bool:
         """Return True for battle, False for results; never skip preparation."""
+        toolbar = RuleImage(roi_front=(14,10,190,45), roi_back=(5,0,210,70),
+                            threshold=0.9, method='Template matching',
+                            file='./tasks/BondlingFairyland/capture_toolbar.png')
         timeout = Timer(30).start()
         while not timeout.reached():
             self.screenshot()
             if self._capture_result_visible():
                 return False
             if self.is_in_real_battle(False):
+                return True
+            if (self.appear(toolbar) and not self.appear(self.I_BUFF)
+                    and not self.appear(self.I_PREPARE_HIGHLIGHT)):
                 return True
             self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1)
         raise GameStuckError('Bondling preparation timed out: battle or result not confirmed')
