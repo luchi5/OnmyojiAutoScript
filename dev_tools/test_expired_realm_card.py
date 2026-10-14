@@ -19,6 +19,27 @@ def harness(values):
     return h
 
 class ExpiredTests(unittest.TestCase):
+    def test_run_does_not_harvest_before_checking_card_timer(self):
+        methods = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py', 'ScriptTask',
+                                  ('run',), {'page_guild': 'guild', 'page_main': 'main',
+                                            'TaskEnd': RuntimeError})
+        h = SimpleNamespace(config=SimpleNamespace(kekkai_activation=SimpleNamespace(
+            activation_config=SimpleNamespace(exchange_before=False, exchange_max=False))))
+        h.goto_page=Mock(); h.goto_realm=Mock(); h.harvest_card=Mock()
+        h.run_activation=Mock(); h.screenshot=Mock(); h.appear=Mock(return_value=True)
+        h.I_REALM_SHIN='realm'
+        with self.assertRaises(RuntimeError): methods['run'](h)
+        h.harvest_card.assert_not_called()
+        h.run_activation.assert_called_once()
+
+    def test_active_card_only_schedules_next_run(self):
+        h=harness([timedelta(hours=2)])
+        h.goto_cards=Mock(); h.check_card_status=lambda:True; h.check_card_effect=lambda:True
+        h.collect_expired_card=Mock(); h.set_next_run=Mock()
+        self.assertFalse(h.run_activation(SimpleNamespace(card_type='不筛选（第一张）')))
+        h.collect_expired_card.assert_not_called()
+        h.set_next_run.assert_called_once()
+
     def test_transient_zero_does_not_collect(self):
         h=harness([timedelta(0),timedelta(hours=2)])
         self.assertEqual(h.ocr_time(),timedelta(hours=2))

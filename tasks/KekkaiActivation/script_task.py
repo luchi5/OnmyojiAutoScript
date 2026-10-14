@@ -44,8 +44,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
             else:
                 # KekkaiUtilize may still be cached with its pre-update method signature.
                 self.check_max_lv(con.shikigami_class)
-        # 收取经验
-        self.harvest_card()
+        # Check the card timer before collecting. The chest can be visible
+        # while the previous card is still active; collect only after expiry.
         # 开始挂卡
         self.run_activation(con)
         while 1:
