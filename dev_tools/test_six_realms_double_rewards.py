@@ -11,7 +11,7 @@ def harness(readings=(),enabled=True,resume=True):
     h=SimpleNamespace(device=SimpleNamespace(image=None),_conf=SimpleNamespace(double_rewards_only=enabled,limit_count=1,limit_time=dt_time(1)),start_time=datetime.now(),
         I_MSTART='start',I_MCONINUE='resume',I_MENTER='enter')
     h.screenshot=Mock();h.appear=lambda name: name==('resume' if resume else 'start')
-    h.appear_then_click=Mock(return_value=False);h._continue=Mock()
+    h.appear_then_click=Mock(return_value=False);h._continue=Mock();h.restore_skill101=Mock()
     ocr=SimpleNamespace(ocr=Mock(side_effect=readings))
     ns={'RuleOcr':lambda **kw:ocr,'logger':Mock(),'time':SimpleNamespace(sleep=lambda _:None),
         'datetime':datetime,'timedelta':timedelta,'GameStuckError':RuntimeError}

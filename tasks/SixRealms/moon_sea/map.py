@@ -119,24 +119,33 @@ class MoonSeaMap(MoonSeaSkills):
         最后打boss前面激活一次商店买东西
         @return: 有钱够就是True
         """
-        logger.info('Activating store')
-        self.screenshot()
-        if self.appear(self.I_M_STORE) and not self.appear(self.I_M_STORE_ACTIVITY):
-            logger.warning('Now you have not money to buy items')
-            logger.warning('Store is not active')
+        if not self.needs_skill101():
+            logger.info('Skip summon: skill is max level or resumed level is unknown')
             return False
-        cnt_act = 0
-        while 1:
+        from tasks.GlobalGame.dialog_buttons import DialogButtonRule
+        confirm = DialogButtonRule(
+            button='confirm', roi_front=(681,392,130,62), roi_back=(558,380,265,99),
+            threshold=0.8, method='Template matching',
+            file='./tasks/GlobalGame/ui/ui_ui_confirm_samll.png')
+        logger.info('Activating store')
+        timeout = Timer(20).start()
+        clicked = False
+        confirmed = False
+        while not timeout.reached():
             self.screenshot()
-            if self.appear(self.I_UI_CONFIRM):
-                self.ui_click_until_disappear(self.I_UI_CONFIRM, interval=2)
-                break
-            if cnt_act >= 3:
-                logger.warning('Store is not active')
-                return False
-            if self.appear_then_click(self.I_M_STORE_ACTIVITY, interval=1.5):
-                cnt_act += 1
+            text = str(self.map_ocr.ocr(self.device.image))
+            if '召唤' in text and '300' in text:
+                if self.appear(confirm):
+                    self.click(confirm, interval=1.5)
+                    confirmed = True
                 continue
+            if confirmed and self.in_main():
+                return True
+            if not clicked and self.appear(self.I_M_STORE) and not self.appear(self.I_M_STORE_ACTIVITY):
+                return False
+            if self.appear_then_click(self.I_M_STORE_ACTIVITY, interval=2):
+                clicked = True
+        raise GameStuckError('Store summon was not confirmed; do not continue with an open dialog')
 
     def entry_island_random(self, area: list = None):
         """Choose a visible island instead of clicking obsolete fixed slots."""

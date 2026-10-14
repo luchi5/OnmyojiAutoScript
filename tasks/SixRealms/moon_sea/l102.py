@@ -55,7 +55,7 @@ class MoonSeaL102(MoonSeaSkills):
     def imitate(self):
         # 仿造
         logger.info('Imitate')
-        if self.cnt_skill101 >= 5:
+        if self.cnt_skill101 == 0 or self.cnt_skill101 >= 5:
             logger.info('Skill 101 is max level; skip imitation')
             self.leave_mystery_island()
             return

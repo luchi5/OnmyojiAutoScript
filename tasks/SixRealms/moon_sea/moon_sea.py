@@ -58,7 +58,6 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
 
 
     def one(self):
-        self.cnt_skill101 = 1
         if self._start() is False:
             return False
         while 1:
@@ -68,7 +67,7 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
             isl_type, isl_num, isl_roi = self.decide()
             if isl_num == 1 and isl_type != MoonSeaType.island106:
                 # 如果前一个，召唤一次宁息
-                if self.cnt_skill101 >= 5:
+                if not self.needs_skill101():
                     # 如果柔风满级就不召唤
                     pass
                 elif self.appear(self.I_M_STORE) and not self.appear(self.I_M_STORE_ACTIVITY):
@@ -148,11 +147,13 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
                         logger.info('No double rewards; preserve unfinished progress and skip')
                         return False
                 if resume:
+                    self.restore_skill101()
                     self._continue()
                     return True
                 break
             if self.appear_then_click(self.I_MENTER, interval=1):
                 continue
+        self.cnt_skill101 = 1
         logger.info("Ensure select ShouZu")
         while 1:
             self.screenshot()
