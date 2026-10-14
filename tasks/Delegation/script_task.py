@@ -175,6 +175,7 @@ class ScriptTask(GameUi, DelegationAssets):
         empty_checks = 0
         awaiting_reward = False
         reward_clicked = False
+        done_clicks = 0
         try:
             while task_time.monotonic() < deadline:
                 self.screenshot()
@@ -186,15 +187,20 @@ class ScriptTask(GameUi, DelegationAssets):
                     attempted.clear()
                     awaiting_reward = False
                     reward_clicked = False
+                    done_clicks = 0
                 if dialog_visible or not on_map:
                     for target in (
                         self.I_REWARDS_GET, self.I_REWARDS_FALSE,
                         self.I_CHAT_1, self.I_CHAT_2, self.I_REWARDS_CHAT,
                         self.I_REWARDS_DONE,
                     ):
+                        if target is self.I_REWARDS_DONE and done_clicks >= 3 and self.appear(target):
+                            logger.warning("Delegation completion did not advance after 3 attempts; leave pending")
+                            return False
                         if self.appear_then_click(target, interval=1):
                             awaiting_reward = True
                             if target is self.I_REWARDS_DONE:
+                                done_clicks += 1
                                 reward_clicked = True
                             break
                     else:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 from module.base.decorator import run_once
 from tasks.Exploration.assets import ExplorationAssets
+from tasks.Delegation.detail_recovery import close_delegation_detail
 from tasks.GlobalGame.assets import GlobalGameAssets
 
 """GameUi 导航运行时。"""
@@ -41,6 +42,7 @@ class GameUi(ChessBattleNavigationMixin, BaseTask, GameUiAssets):
 
     # 全局未知页关闭动作，所有任务共享。
     DEFAULT_UNKNOWN_CLOSERS = [
+        close_delegation_detail,
         GlobalGameAssets.I_UI_BACK_RED,
         GlobalGameAssets.I_CHAT_CLOSE_BUTTON,
         ActivityShikigamiAssets.I_SKIP_BUTTON,

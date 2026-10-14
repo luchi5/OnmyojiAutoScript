@@ -163,7 +163,7 @@ class DelegationHarness:
         self.clicks.append((marker, None, interval))
         if marker == 'I_REWARDS_GET':
             self.state = 'map' if self.mode == 'unconfirmed' else 'done'
-        elif marker == 'I_REWARDS_DONE':
+        elif marker == 'I_REWARDS_DONE' and self.mode != 'done_stuck':
             self.state = 'empty'
         elif marker == 'I_CHAT_1':
             self.state = 'done'
@@ -246,6 +246,13 @@ class DemonHarness:
 
 
 class DelegationRewardTests(unittest.TestCase):
+    def test_unresponsive_completion_is_bounded_and_stays_pending(self):
+        harness = DelegationHarness('done_stuck')
+        self.assertFalse(harness.check_reward())
+        clicks = [item for item in harness.clicks if item[0] == 'I_REWARDS_DONE']
+        self.assertEqual(len(clicks), 3)
+        self.assertEqual(harness.state, 'done')
+
     def test_actual_image_boxes_make_individual_interactive_candidates(self):
         harness = DelegationHarness()
         candidates = harness._completed_reward_candidates()
