@@ -170,6 +170,8 @@ class ScriptTask(GameUi, DelegationAssets):
         return False
 
     def check_reward(self):
+        from tasks.Delegation.resource_preference import ResourcePreference
+        preference = ResourcePreference()
         deadline = task_time.monotonic() + 75
         attempted = set()
         empty_checks = 0
@@ -179,6 +181,9 @@ class ScriptTask(GameUi, DelegationAssets):
         try:
             while task_time.monotonic() < deadline:
                 self.screenshot()
+                if preference.handle(self):
+                    awaiting_reward = True
+                    continue
                 on_map = self.appear(self.I_REWARDS_MIN)
                 dialog_visible = self._reward_dialog_visible()
                 if on_map and not dialog_visible and reward_clicked:

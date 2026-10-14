@@ -246,6 +246,13 @@ class DemonHarness:
 
 
 class DelegationRewardTests(unittest.TestCase):
+    def setUp(self):
+        from unittest.mock import patch
+        module = SimpleNamespace(ResourcePreference=lambda: SimpleNamespace(handle=lambda task:False))
+        guard = patch.dict('sys.modules', {'tasks.Delegation.resource_preference':module})
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def test_unresponsive_completion_is_bounded_and_stays_pending(self):
         harness = DelegationHarness('done_stuck')
         self.assertFalse(harness.check_reward())
