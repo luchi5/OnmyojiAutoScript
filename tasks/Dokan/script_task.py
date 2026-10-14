@@ -829,6 +829,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         return True
 
     def start_cheering(self):
+        from tasks.Dokan.settlement_recovery import handle_settlement
         cd_text = self.O_DOKEN_FAIL_CD.detect_text(self.device.image)
         match = re.search(r'\d+', cd_text)
         remain_seconds = int(match.group()) if match else None
@@ -872,6 +873,9 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         self.device.stuck_record_add('PAUSE')
         while not cheering_timer.reached():
             self.screenshot()
+            if handle_settlement(self):
+                self.device.stuck_record_clear()
+                return
             if self._cancel_cheering_exit():
                 continue
             if self.appear(self.I_RYOU_DOKAN_EXIT_ENSURE):
@@ -904,9 +908,12 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
 
     def exit_cheering(self):
         """A spectator can reach settlement while an exit request is pending."""
+        from tasks.Dokan.settlement_recovery import handle_settlement
         deadline = Timer(20).start()
         while not deadline.reached():
             self.screenshot()
+            if handle_settlement(self):
+                return
             if (self.appear(self.I_RYOU_DOKAN_TOPPA_RANK)
                     or self.appear(self.I_RYOU_DOKAN_WIN)
                     or self.appear(self.I_FALSE)

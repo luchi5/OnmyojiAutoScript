@@ -1,6 +1,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 from dev_tools.test_bondling_battle_entry import FakeClock, FakeTimer, FakeLogger, extract_methods
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,6 +29,17 @@ def run(frames):
     return h
 
 class ExitTests(unittest.TestCase):
+    def test_victory_continue_preempts_exit(self):
+        def settle(task):
+            if 'continue' in task.frame:
+                task.clicks.append('settlement_continue')
+                return True
+            return False
+        module = SimpleNamespace(handle_settlement=settle)
+        with patch.dict('sys.modules', {'tasks.Dokan.settlement_recovery':module}):
+            h = run([['continue','battle','I_EXIT']])
+        self.assertEqual(h.clicks,['settlement_continue'])
+
     def test_rank_arrives_during_exit(self):
         h = run([['battle','I_EXIT'],['I_RYOU_DOKAN_TOPPA_RANK','I_EXIT']])
         self.assertEqual(h.clicks,['I_EXIT'])
