@@ -10,6 +10,7 @@ import cv2
 from cached_property import cached_property
 
 from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 from module.atom.ocr import RuleOcr
 from module.base.timer import Timer
 from module.exception import TaskEnd, GameStuckError
@@ -281,7 +282,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             类型： 挑战0, 秘闻1， 探索2
             """
             # 获取用户设置的值
-            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value
+            user_limit = self.config.model.wanted_quests.wanted_quests_config.layer_limit.value            
             # 定义完整的层数后缀顺序
             all_layers = ["壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖", "拾", "番外"]
             # 根据用户选择进行截取，生成 layer_limit 集合
@@ -380,6 +381,12 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 continue
 
     def secret(self, goto, num=1):
+        # Keep these rules local: running workers may cache the old center click.
+        chat = RuleClick(roi_front=(480,625,340,45), roi_back=(480,625,340,45),
+                         name='secret_chat_dialogue')
+        story = RuleImage(roi_front=(490,560,260,40), roi_back=(480,550,280,60),
+                          threshold=0.9, method='Template matching',
+                          file='./tasks/WantedQuests/wq/secret_story_inugami.png')
         if not self.ui_click(goto, self.I_WQSE_FIRE, timeout=20):
             raise GameStuckError('Wanted secret mission entry did not appear')
         won_count = 0
@@ -391,8 +398,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 if self.appear(self.I_WQSE_FIRE):
                     break
                 # 奖励结束后仍可能有剧情，必须处理完才能等到下一次挑战入口。
-                if won_count and self.appear(self.I_SECRET_STORY):
-                    self.click(self.C_SECRET_CHAT, interval=1.5)
+                if won_count and (self.appear(story) or self.appear(self.I_SECRET_STORY)):
+                    self.click(chat, interval=1.5)
                     continue
                 # 普通秘闻获胜后可能回到本周竞速；其选中层并非悬赏目标。
                 # 返回探索重新读取实际进度，再由原策略前往所需的普通层。
@@ -411,12 +418,15 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             entry_timer = Timer(20).start()
             while not entry_timer.reached():
                 self.screenshot()
+                if self.appear(story) or self.appear(self.I_SECRET_STORY):
+                    self.click(chat, interval=0.8)
+                    continue
                 if not self.appear(self.I_UI_BACK_RED, threshold=0.7):
                     break
                 if self.appear_then_click(self.I_WQSE_FIRE, interval=1):
                     continue
                 if self.appear(self.I_UI_BACK_RED, threshold=0.7) and not self.appear(self.I_WQSE_FIRE):
-                    self.click(self.C_SECRET_CHAT, interval=0.8)
+                    self.click(chat, interval=0.8)
                     click_count += 1
                     if click_count >= 6:
                         logger.warning('Secret mission chat too long, force to close')
@@ -435,8 +445,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             self.screenshot()
             if self.appear(self.I_CHECK_SECRET_ZONES):
                 break
-            if self.appear(self.I_SECRET_STORY):
-                self.click(self.C_SECRET_CHAT, interval=1.5)
+            if (self.appear(story) or self.appear(self.I_SECRET_STORY)):
+                self.click(chat, interval=1.5)
                 continue
             if self.appear_then_click(self.I_UI_BACK_RED, interval=1):
                 continue

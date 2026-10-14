@@ -32,6 +32,8 @@ class Harness:
             'Timer': lambda seconds: FakeTimer(self.clock, seconds),
             'logger': FakeLogger(), 'GameStuckError': RuntimeError,
             'page_exploration': 'exploration',
+            'RuleClick': lambda **kw: 'C_SECRET_CHAT',
+            'RuleImage': lambda **kw: 'inugami_story',
         })
         self.secret = methods['secret'].__get__(self)
 
@@ -74,6 +76,13 @@ class SecretStoryTests(unittest.TestCase):
         self.assertEqual(h.battles, 2)
         self.assertEqual(h.clicks, ['C_SECRET_CHAT']*3)
         self.assertEqual(h.routes, ['exploration'])
+
+    def test_inugami_dialogue_before_battle_is_dismissed_first(self):
+        h = Harness([FIRE, {'inugami_story','I_UI_BACK_RED','I_WQSE_FIRE'},
+                     {'inugami_story','I_UI_BACK_RED'}, set(), ZONES, EXPLORE])
+        self.assertTrue(h.secret('goto'))
+        self.assertEqual(h.clicks,['C_SECRET_CHAT','C_SECRET_CHAT'])
+        self.assertEqual(h.battles,1)
 
     def test_single_battle_also_closes_final_story(self):
         h = Harness([FIRE, set(), STORY, ZONES, EXPLORE])
