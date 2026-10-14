@@ -26,7 +26,7 @@ def harness(frames):
     h.appear_then_click = click
     h.appear_then_click_multi_scale = click
     method = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py','ScriptTask',('goto_cards',),{
-        'RuleImage':lambda **kw:'compact','Timer':lambda t:FakeTimer(clock,t),
+        'RuleImage':lambda **kw:('compact_empty' if kw['file'].endswith('_empty.png') else 'compact'),'Timer':lambda t:FakeTimer(clock,t),
         'GameStuckError':RuntimeError,'logger':FakeLogger(),
     })['goto_cards']
     h.goto_cards = method.__get__(h)
@@ -39,6 +39,16 @@ class CardEntryTests(unittest.TestCase):
         h.goto_cards()
         self.assertEqual(h.clicks,['compact'])
         self.assertEqual(h.captures,3)
+
+    def test_collected_card_plaque_enters_confirmed_page(self):
+        h = harness([{'compact_empty'}, set(), {'card_page'}])
+        h.goto_cards()
+        self.assertEqual(h.clicks, ['compact_empty'])
+
+    def test_empty_plaque_without_transition_is_not_success(self):
+        h = harness([{'compact_empty'}])
+        with self.assertRaisesRegex(RuntimeError, 'not confirmed'):
+            h.goto_cards()
 
     def test_existing_normal_plaque_is_preserved(self):
         h = harness([{'normal'},{'invite'}])
