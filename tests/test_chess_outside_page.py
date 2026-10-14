@@ -57,6 +57,33 @@ class ChessOutsidePageTests(unittest.TestCase):
         task.goto_page.assert_called_once_with(page_chess)
         self.assertFalse(task.clicked)
 
+    def test_rank_progress_overrides_false_courtyard_match(self):
+        task = FrameChess([])
+        task.visible = (task.I_CHESS_RANK_PROGRESS, GameUiAssets.I_CHECK_MAIN)
+        task.goto_page = Mock()
+        self.assertFalse(task._chess_outside_page_visible())
+        self.assertTrue(task.chess_result_page_visible())
+        self.assertFalse(task.chess_lobby_visible())
+        self.assertTrue(task._advance_chess_result_stage())
+        task.goto_page.assert_not_called()
+        self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
+
+    def test_saved_rank_progress_continues_without_global_navigation(self):
+        files = list(Path('log/error/1791958714553').glob('*.png'))
+        if not files:
+            self.skipTest('Local incident screenshot is not part of the public repository')
+        frame = cv2.imdecode(np.fromfile(str(files[0]), dtype=np.uint8), cv2.IMREAD_COLOR)
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        task = FrameChess([])
+        task.appear = lambda marker, **kwargs: marker.match(frame)
+        task.goto_page = Mock()
+        self.assertTrue(task.I_CHESS_RANK_PROGRESS.match(frame))
+        self.assertTrue(task.chess_result_page_visible())
+        self.assertFalse(task.chess_lobby_visible())
+        self.assertTrue(task._advance_chess_result_stage())
+        task.goto_page.assert_not_called()
+        self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
+
     def test_unknown_loading_frame_does_not_trigger_global_navigation(self):
         task = FrameChess([()])
         task.screenshot()
