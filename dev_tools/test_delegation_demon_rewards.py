@@ -1,3 +1,4 @@
+from dev_tools.test_bondling_battle_entry import FakeTimer
 """Offline regressions for account 01 reward errors; no OAS/ADB/OCR session."""
 from collections import deque
 from copy import copy
@@ -200,12 +201,16 @@ class DemonHarness:
         self.clock = FakeClock(step=0.5)
         for marker in ('I_LETTER_CLOSE', 'I_UI_REWARD', 'C_ANSWER_1', 'C_ANSWER_2', 'C_ANSWER_3'):
             setattr(self, marker, marker)
+        self.O_LETTER_COUNT = SimpleNamespace(ocr=lambda image: (self.answers % 3 + 1, 2 - self.answers % 3, 3))
         self.O_LETTER_QUESTION = TextReader(self, 'question')
         for number in range(1, 4):
             setattr(self, f'O_LETTER_ANSWER_{number}', TextReader(self, number))
         namespace = {
             'logger': self.logger,
             'Answer': lambda: SimpleNamespace(answer_one=lambda **kwargs: 1),
+            'RuleImage': lambda **kwargs: 'result',
+            'Timer': lambda seconds: FakeTimer(self.clock, seconds),
+            'GameStuckError': RuntimeError,
             'time': SimpleNamespace(sleep=lambda seconds: setattr(self.clock, 'now', self.clock.now + seconds)),
         }
         self._mail = extract_methods(DEMON, 'ScriptTask', ('_mail',), namespace)['_mail'].__get__(self)
@@ -213,7 +218,7 @@ class DemonHarness:
     def screenshot(self):
         self.clock.advance()
         self.screenshots += 1
-        if self.screenshots > 100:
+        if self.screenshots > 300:
             raise AssertionError('No click guard within a stuck question')
         if self.stuck == 'takeover':
             raise AccountLoggedInElsewhere('Owner online')
@@ -322,6 +327,28 @@ class DelegationRewardTests(unittest.TestCase):
 
 
 class DemonAnswerTests(unittest.TestCase):
+    def test_wrong_answers_without_reward_recheck_each_question_and_close_final(self):
+        harness = DemonHarness()
+        harness.O_LETTER_COUNT = SimpleNamespace(ocr=lambda image: (harness.answers + 1, 2-harness.answers, 3))
+        harness.result = False
+        original_appear = harness.appear
+        harness.appear = lambda marker, **kwargs: harness.result if marker == 'result' else original_appear(marker, **kwargs)
+        clicks = []
+        def click(marker, interval=None):
+            clicks.append(marker)
+            if marker == 'I_LETTER_CLOSE':
+                harness.state = 'map'
+            elif marker == 'C_ANSWER_1':
+                if harness.answers < 2:
+                    harness.answers += 1
+                else:
+                    harness.result = True
+            return True
+        harness.click = click
+        harness._mail('de_2')
+        self.assertEqual(clicks, ['C_ANSWER_1'] * 3 + ['I_LETTER_CLOSE'])
+        self.assertEqual(harness.state, 'map')
+
     def test_two_letter_lanterns_do_not_trigger_history_from_previous_answers(self):
         harness = DemonHarness()
         harness.device.click_record.extend(['de_2', 'answer_1', 'UI_UI_REWARD'])
@@ -331,9 +358,9 @@ class DemonAnswerTests(unittest.TestCase):
         self.assertEqual(harness.answers, 6)
         self.assertEqual(harness.device.clears, 6)
 
-    def test_single_question_without_progress_keeps_duplicate_click_guard(self):
+    def test_single_question_without_progress_stops_without_reclicking(self):
         harness = DemonHarness('question')
-        with self.assertRaises(GameTooManyClickError):
+        with self.assertRaises(RuntimeError):
             harness._mail('de_2')
         self.assertEqual(harness.answers, 0)
         # The actual guard clears its own record once while raising.
@@ -343,7 +370,7 @@ class DemonAnswerTests(unittest.TestCase):
         harness = DemonHarness('reward')
         with self.assertRaises(GameTooManyClickError):
             harness._mail('de_2')
-        self.assertEqual(harness.device.clears, 1)
+        self.assertEqual(harness.device.clears, 2)
 
     def test_owner_takeover_is_never_swallowed_in_answering(self):
         with self.assertRaises(AccountLoggedInElsewhere):

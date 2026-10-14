@@ -12,6 +12,8 @@ from module.logger import logger
 from module.exception import GameStuckError, TaskEnd
 from module.base.timer import Timer
 from module.atom.ocr import RuleOcr
+from module.atom.image import RuleImage
+from module.atom.click import RuleClick
 
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.DemonEncounter.config import BossType, DemonEncounter, convert_to_general_battle_config
@@ -497,41 +499,52 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             if self.click(target_click, interval=1):
                 continue
         logger.info('Question answering Start')
-        for i in range(1, 4):
-            # 还未测试题库无法识别的情况
-            logger.hr(f'Answer {i}', 3)
-            answer_click = answer()
-            # self.ui_get_reward(answer())
-            while 1:
+        result_mark = RuleImage(
+            roi_front=(784, 436, 71, 72), roi_back=(780, 258, 85, 255),
+            threshold=0.85, method='Template matching',
+            file='./tasks/DemonEncounter/demon/letter_answer_result.png')
+        timeout = Timer(90).start()
+        answered = set()
+        last_count = None
+        stable_frames = 0
+        while not timeout.reached():
+            self.screenshot()
+            if self.ui_reward_appear_click():
+                time.sleep(0.5)
+                continue
+            if not self.appear(self.I_LETTER_CLOSE):
+                time.sleep(0.5)
                 self.screenshot()
-                if self.ui_reward_appear_click():
-                    time.sleep(0.5)
-                    while 1:
-                        self.screenshot()
-                        # 等待动画结束
-                        if not self.appear(self.I_UI_REWARD, threshold=0.6):
-                            logger.info('Get reward success')
-                            # A completed answer is real progress. Keep the guard
-                            # within one question, but do not accumulate clicks
-                            # from earlier questions or another letter lantern.
-                            self.device.click_record_clear()
-                            break
-                        # 一直点击
-                        if self.ui_reward_appear_click():
-                            continue
-                    break
-                # 如果没有出现红色关闭按钮，说明答题结束
                 if not self.appear(self.I_LETTER_CLOSE):
-                    time.sleep(2.5)
-                    self.screenshot()
-                    if not self.appear(self.I_LETTER_CLOSE):
-                        self.ui_reward_appear_click()
-                        logger.warning('Answer finish')
-                        return
-
-                # 一直点击
-                self.click(answer_click, interval=1.5)
-            time.sleep(0.5)
+                    logger.info('Question answering finished')
+                    return
+                continue
+            current, _, total = self.O_LETTER_COUNT.ocr(self.device.image)
+            if total != 3 or current not in (1, 2, 3):
+                continue
+            count = int(current)
+            stable_frames = stable_frames + 1 if count == last_count else 1
+            last_count = count
+            # Results may advance directly without a reward overlay.
+            if self.appear(result_mark):
+                if count == 3:
+                    self.click(self.I_LETTER_CLOSE, interval=1.5)
+                else:
+                    self.click(RuleClick(roi_front=(560, 90, 140, 30),
+                        roi_back=(560, 90, 140, 30), name='letter_result_continue'), interval=1.5)
+                continue
+            if stable_frames < 2 or count in answered:
+                continue
+            logger.hr(f'Answer {count}', 3)
+            answer_click = answer()
+            # answer() takes a fresh screenshot: verify it is still this question.
+            now, _, maximum = self.O_LETTER_COUNT.ocr(self.device.image)
+            if now != count or maximum != 3 or self.appear(result_mark):
+                continue
+            self.click(answer_click)
+            answered.add(count)
+            self.device.click_record_clear()
+        raise GameStuckError('Demon letter did not advance after answering; stop repeated clicks')
 
     def _battle(self, target_click):
         while 1:
