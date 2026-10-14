@@ -408,7 +408,19 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1.5):
                 continue
 
+    def advance_secret_story(self, chat, interval=1):
+        reader = RuleOcr(roi=(300,605,710,80), area=(300,605,710,80),
+                         mode='Full', method='Default', keyword='', name='secret_dialogue_text')
+        text = ''.join(r.ocr_text.strip() for r in reader.detect_and_ocr(self.device.image))
+        previous = getattr(self, '_secret_dialogue_text', None)
+        if text and text != previous:
+            # A new spoken line is evidence of progress, not a stuck click.
+            self.device.click_record_clear()
+            self._secret_dialogue_text = text
+        self.click(chat, interval=interval)
+
     def secret(self, goto, num=1):
+        self._secret_dialogue_text = None
         # Keep these rules local: running workers may cache the old center click.
         chat = RuleClick(roi_front=(480,625,340,45), roi_back=(480,625,340,45),
                          name='secret_chat_dialogue')
@@ -419,7 +431,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             raise GameStuckError('Wanted secret mission entry did not appear')
         won_count = 0
         for i in range(num):
-            entry_timer = Timer(20).start()
+            entry_timer = Timer(90).start()
             retry_from_wanted = False
             while not entry_timer.reached():
                 self.screenshot()
@@ -427,7 +439,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                     break
                 # 奖励结束后仍可能有剧情，必须处理完才能等到下一次挑战入口。
                 if won_count and (self.appear(story) or self.appear(self.I_SECRET_STORY)):
-                    self.click(chat, interval=1.5)
+                    self.advance_secret_story(chat, interval=1.5)
                     continue
                 # 普通秘闻获胜后可能回到本周竞速；其选中层并非悬赏目标。
                 # 返回探索重新读取实际进度，再由原策略前往所需的普通层。
@@ -443,23 +455,22 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             # self.ui_click_until_disappear(self.I_WQSE_FIRE)
             # 又臭又长的对话针的是服了这个网易
             click_count = 0
-            entry_timer = Timer(20).start()
+            entry_timer = Timer(90).start()
             while not entry_timer.reached():
                 self.screenshot()
                 if self.appear(story) or self.appear(self.I_SECRET_STORY):
-                    self.click(chat, interval=0.8)
+                    self.advance_secret_story(chat, interval=0.8)
                     continue
                 if not self.appear(self.I_UI_BACK_RED, threshold=0.7):
                     break
                 if self.appear_then_click(self.I_WQSE_FIRE, interval=1):
                     continue
                 if self.appear(self.I_UI_BACK_RED, threshold=0.7) and not self.appear(self.I_WQSE_FIRE):
-                    self.click(chat, interval=0.8)
+                    self.advance_secret_story(chat, interval=0.8)
                     click_count += 1
                     if click_count >= 6:
                         logger.warning('Secret mission chat too long, force to close')
                         click_count = 0
-                        self.device.click_record_clear()
                     continue
             else:
                 raise GameStuckError('Wanted secret mission did not leave the dialogue')
@@ -468,13 +479,13 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 logger.warning('Secret battle lost; recheck wanted progress')
                 break
             won_count += 1
-        exit_timer = Timer(20).start()
+        exit_timer = Timer(90).start()
         while not exit_timer.reached():
             self.screenshot()
             if self.appear(self.I_CHECK_SECRET_ZONES):
                 break
             if (self.appear(story) or self.appear(self.I_SECRET_STORY)):
-                self.click(chat, interval=1.5)
+                self.advance_secret_story(chat, interval=1.5)
                 continue
             if self.appear_then_click(self.I_UI_BACK_RED, interval=1):
                 continue
