@@ -95,6 +95,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
 
         # 是否已击败馆主第一阵容
         first_master_killed = False
+        opening_checked = False
+        opening_attempted = False
         # 开始道馆流程
         while is_dokan_activated:
             self.screenshot()
@@ -134,6 +136,18 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             # 场景状态：寻找合适道馆中
             if current_scene == DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN:
 
+                if not opening_checked or opening_attempted:
+                    self.refresh_opening_state()
+                    opening_checked = True
+                    _, refreshed_scene = self.get_current_scene(False)
+                    if refreshed_scene != DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN:
+                        opening_attempted = False
+                        continue
+                    if opening_attempted:
+                        logger.warning('Opening not confirmed after reentry; retry later instead of selecting repeatedly')
+                        is_dokan_activated = False
+                        break
+
                 # 只有明确识别到零次才视为完成；未知次数保留原记录。
                 count = self.update_remain_attack_count()
                 if count < 0:
@@ -154,6 +168,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     self.creat_dokan()
 
                 # 寻找合适道馆,找不到直接退出
+                opening_attempted = True
                 if not self.find_dokan(self.config.dokan.dokan_config.find_dokan_score):
                     is_dokan_activated = False
                     break
@@ -542,6 +557,12 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 continue
         raise GameStuckError('Dokan exit did not reach the courtyard within 60 seconds')
 
+    def refresh_opening_state(self):
+        """Reenter to pick up a guildmate's opening instead of using a stale map."""
+        logger.info('Reenter Dokan to refresh guild opening state')
+        self.goto_main()
+        self.goto_dokan_scene()
+
     def goto_dokan_scene(self):
         # 截图速度太快会导致在道馆-神社之间一直循环无法退出,故设置截图间隔
         self.device.screenshot_interval_set(0.3)
@@ -718,7 +739,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                     self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
                     self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
                     # 更新可挑战次数
-                    self.config.dokan.attack_count_config.del_attack_count(1, self.config.save)
+                    # Remaining attempts are read from the game; a click is not proof of opening.
                     # 恢复初始位置信息,防止下次使用出错
                     restore_roi()
                     return True
@@ -740,7 +761,7 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             self.ui_click(self.I_CENTER_CHALLENGE, self.I_CHALLENGE_ENSURE, interval=1)
             self.ui_click_until_disappear(self.I_CHALLENGE_ENSURE, interval=1)
             # 更新可挑战次数
-            self.config.dokan.attack_count_config.del_attack_count(1, self.config.save)
+            # Remaining attempts are read from the game; do not decrement on an unverified click.
             return True
         return False
 

@@ -72,12 +72,11 @@ class DokanSceneDetector(DokanAssets, BaseTask, GeneralBattleAssets):
         # 场景检测：神社
         if self.appear(self.I_SCENE_SHENSHE, threshold=0.8):
             return False, DokanScene.RYOU_DOKAN_SHENSHE
-        # 状态, 判断是否正在查找道馆
-        if self.appear(self.I_RYOU_DOKAN_FINDING_DOKAN):
-            return True, DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN
-        # 状态, 判断是否已查找到道馆
+        # An existing target takes precedence over the background search map.
         if self.appear(self.I_RYOU_DOKAN_FOUND_DOKAN):
             return True, DokanScene.RYOU_DOKAN_SCENE_FOUND_DOKAN
+        if self.appear(self.I_RYOU_DOKAN_FINDING_DOKAN):
+            return True, DokanScene.RYOU_DOKAN_SCENE_FINDING_DOKAN
 
         # 状态：判断是否集结中
         if self.appear(self.I_RYOU_DOKAN_GATHERING, threshold=0.95):

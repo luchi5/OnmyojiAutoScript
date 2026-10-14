@@ -141,6 +141,12 @@ class Harness:
             return True, self.scenes.RYOU_DOKAN_SCENE_FINDING_DOKAN
         return False, 'unknown'
 
+    def _cancel_cheering_exit(self):
+        return False
+
+    def refresh_opening_state(self):
+        pass
+
     def goto_dokan_scene(self):
         pass
 
@@ -152,6 +158,23 @@ class Harness:
 
 
 class DokanOpeningWindowTests(unittest.TestCase):
+    def test_reentry_discovers_guildmate_opening_before_selecting(self):
+        h = Harness('2026-10-14T19:03:00')
+        h.scene = 'finding'
+        h.cfg.dokan_config.try_start_dokan = True
+        def current(_):
+            return True, (h.scenes.RYOU_DOKAN_SCENE_FOUND_DOKAN if h.scene == 'found'
+                          else h.scenes.RYOU_DOKAN_SCENE_FINDING_DOKAN)
+        h.get_current_scene = current
+        h.refresh_opening_state = lambda: setattr(h, 'scene', 'found')
+        def enter():
+            raise RuntimeError('entered existing guild target')
+        h.enter_dokan = enter
+        h.find_dokan = lambda _: self.fail('Must not choose another target')
+        with self.assertRaisesRegex(RuntimeError, 'entered existing guild target'):
+            h.run()
+
+
     def assert_explicit_target(self, harness, target):
         self.assertEqual(harness.target, datetime.fromisoformat(target))
         self.assertEqual(len(harness.schedule_calls), 1)
