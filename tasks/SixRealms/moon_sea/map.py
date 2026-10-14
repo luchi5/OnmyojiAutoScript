@@ -122,11 +122,10 @@ class MoonSeaMap(MoonSeaSkills):
         if not self.needs_skill101():
             logger.info('Skip summon: skill is max level or resumed level is unknown')
             return False
-        from tasks.GlobalGame.dialog_buttons import DialogButtonRule
-        confirm = DialogButtonRule(
-            button='confirm', roi_front=(681,392,130,62), roi_back=(558,380,265,99),
-            threshold=0.8, method='Template matching',
-            file='./tasks/GlobalGame/ui/ui_ui_confirm_samll.png')
+        confirm = RuleImage(
+            roi_front=(698,418,114,43), roi_back=(680,400,155,80),
+            threshold=0.9, method='Template matching',
+            file='./tasks/SixRealms/moon_sea/markers/summon_confirm.png')
         logger.info('Activating store')
         timeout = Timer(20).start()
         clicked = False

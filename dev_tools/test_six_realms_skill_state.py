@@ -32,7 +32,8 @@ class SkillStateTests(unittest.TestCase):
                               [SimpleNamespace(ocr_text='月之海')]])))
         h.screenshot=clock.advance;h.appear=Mock(return_value=True);h.click=Mock();h.in_main=lambda:True
         h.appear_then_click=Mock()
-        ns={'Timer':lambda n:FakeTimer(clock,n),'logger':Mock(),'GameStuckError':RuntimeError}
+        ns={'Timer':lambda n:FakeTimer(clock,n),'logger':Mock(),'GameStuckError':RuntimeError,
+            'RuleImage':lambda **kw:'confirm'}
         f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('activate_store',),ns)['activate_store']
         module=ModuleType('tasks.GlobalGame.dialog_buttons');module.DialogButtonRule=lambda **kw:'confirm'
         with patch.dict('sys.modules',{'tasks.GlobalGame.dialog_buttons':module}):self.assertTrue(f(h))
