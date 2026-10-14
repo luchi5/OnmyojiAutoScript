@@ -21,7 +21,7 @@ from module.atom.swipe import RuleSwipe
 from module.base.timer import Timer
 from module.config.config import Config
 from module.device.device import Device
-from module.exception import ScriptError
+from module.exception import GameStuckError, ScriptError
 from module.logger import logger
 from module.ocr.base_ocr import OcrMode
 
@@ -149,6 +149,14 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         self.device.screenshot()
         # 判断勾协
         self._burst()
+        from tasks.GlobalGame.autumn_popup import close_autumn_popup
+        # Do not let task loops click controls behind a still-visible overlay.
+        popup_timeout = Timer(8).start()
+        while close_autumn_popup(self):
+            if popup_timeout.reached():
+                raise GameStuckError('Guild autumn popup did not close within 8 seconds')
+            sleep(0.3)
+            self.device.screenshot()
 
         # # 判断网络异常
         # if self.appear(self.I_NETWORK_ABNORMAL):

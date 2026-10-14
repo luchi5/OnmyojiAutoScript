@@ -87,6 +87,11 @@ class MoonSeaMap(MoonSeaSkills):
         text = ''.join(result.ocr_text for result in results)
         if '万相铃不足' not in text or '宁息之屿' not in text:
             return False
+        if not getattr(self, '_poor_store_route_checked', False):
+            self.click(self.I_UI_CANCEL, interval=2)
+            self._poor_store_reselect = True
+            logger.info('Insufficient coins: cancel and inspect alternative islands')
+            return True
         for result in results:
             if result.ocr_text.strip() != '进入':
                 continue
@@ -98,7 +103,8 @@ class MoonSeaMap(MoonSeaSkills):
             button = RuleClick(roi_front=(x-10,y-8,20,16), roi_back=(x-10,y-8,20,16),
                                name='poor_store_enter')
             self.click(button, interval=2)
-            logger.info('Enter summoned store despite insufficient coins')
+            self._skip_poor_store_purchase = True
+            logger.info('Only store remains: enter and exit without purchasing')
             break
         # Keep this recognized dialog out of the generic cancel branch.
         return True
@@ -112,6 +118,10 @@ class MoonSeaMap(MoonSeaSkills):
             MoonSeaType.island104: self.I_LAND_FIRE,
             MoonSeaType.island105: self.I_LAND_STAR,
         }
+        self._poor_store_route_checked = False
+        self._poor_store_reselect = False
+        self._skip_poor_store_purchase = False
+        poor_scan_frames = 0
         target = markers.get(isl_type)
         candidates = [target] if target is not None else list(markers.values())
         timeout = Timer(18).start()
@@ -129,6 +139,23 @@ class MoonSeaMap(MoonSeaSkills):
                 raise GameStuckError('Moon sea island entry timed out: {}'.format(isl_type))
             if self.appear_then_click(self.I_UI_CANCEL, interval=1):
                 continue
+            if self._poor_store_reselect:
+                if not self.in_main():
+                    continue
+                alternatives = [marker for _, marker in self.visible_islands(
+                    getattr(self, '_island_remain_turns', 99)) if marker != self.I_LAND_SHOP]
+                poor_scan_frames += 1
+                if alternatives:
+                    target = alternatives[0]
+                elif poor_scan_frames < 3:
+                    continue
+                else:
+                    target = self.I_LAND_SHOP
+                    self._skip_poor_store_purchase = True
+                candidates = [target]
+                self._poor_store_route_checked = True
+                self._poor_store_reselect = False
+                clicks = 0
             if not self.in_main() or clicks >= 6:
                 continue
             if target is None:
@@ -151,8 +178,11 @@ class MoonSeaMap(MoonSeaSkills):
             logger.info('Skip summon: skill is max level or resumed level is unknown')
             return False
         # A single animated frame can read 17 as 1. Revalidate before spending.
+        store_frames = 0
         for _ in range(3):
             self.screenshot()
+            if self.appear(self.I_LAND_SHOP):
+                store_frames += 1
             texts = [result.ocr_text for result in
                      self.map_ocr.detect_and_ocr(image=self.device.image)]
             turns = [int(match.group(1)) for text in texts
@@ -160,6 +190,9 @@ class MoonSeaMap(MoonSeaSkills):
             if turns != [1]:
                 logger.info('Skip summon: last-island count is not stable: {}'.format(turns))
                 return False
+        if store_frames >= 2:
+            logger.info('Store island already visible; skip summon')
+            return False
         confirm = RuleImage(
             roi_front=(698,418,114,43), roi_back=(680,400,155,80),
             threshold=0.9, method='Template matching',
@@ -168,6 +201,7 @@ class MoonSeaMap(MoonSeaSkills):
         timeout = Timer(20).start()
         clicked = False
         confirmed = False
+        store_frames = 0
         while not timeout.reached():
             self.screenshot()
             text = ''.join(result.ocr_text for result in
@@ -177,12 +211,19 @@ class MoonSeaMap(MoonSeaSkills):
                     self.click(confirm, interval=1.5)
                     confirmed = True
                 continue
+            store_frames = store_frames + 1 if self.appear(self.I_LAND_SHOP) else 0
+            if store_frames >= 2 and self.in_main():
+                logger.info("Store island is available; continue route selection")
+                return True
             if confirmed and self.in_main():
                 return True
             if not clicked and self.appear(self.I_M_STORE) and not self.appear(self.I_M_STORE_ACTIVITY):
                 return False
             if not clicked and self.appear_then_click(self.I_M_STORE_ACTIVITY, interval=2):
                 clicked = True
+        if self.in_main() and not self.appear(self.I_UI_CANCEL):
+            logger.warning('Optional summon produced no dialog; continue existing routes')
+            return False
         raise GameStuckError('Store summon was not confirmed; do not continue with an open dialog')
 
     def entry_island_random(self, area: list = None):

@@ -32,7 +32,8 @@ class SkillStateTests(unittest.TestCase):
                               *[ [SimpleNamespace(ocr_text='1回合后迎战月读')] for _ in range(3)],
                               [SimpleNamespace(ocr_text='是否消耗300万相铃召唤宁息之屿')],
                               [SimpleNamespace(ocr_text='月之海')]])))
-        h.screenshot=clock.advance;h.appear=Mock(return_value=True);h.click=Mock();h.in_main=lambda:True
+        h.I_LAND_SHOP='shop'
+        h.screenshot=clock.advance;h.appear=lambda rule:rule=='confirm';h.click=Mock();h.in_main=lambda:True
         h.appear_then_click=Mock()
         ns={'Timer':lambda n:FakeTimer(clock,n),'logger':Mock(),'GameStuckError':RuntimeError,
             'RuleImage':lambda **kw:'confirm', 're':re}
@@ -50,9 +51,22 @@ class SkillStateTests(unittest.TestCase):
                           map_ocr=SimpleNamespace(detect_and_ocr=Mock(side_effect=[
                               [SimpleNamespace(ocr_text='1回合后迎战月读')],
                               [SimpleNamespace(ocr_text='17回合后迎战月读')]])))
+        h.I_LAND_SHOP='shop';h.appear=lambda _:False
         h.click=Mock();h.appear_then_click=Mock()
         ns={'re':re,'logger':Mock()}
         f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('activate_store',),ns)['activate_store']
+        self.assertFalse(f(h))
+        h.click.assert_not_called();h.appear_then_click.assert_not_called()
+
+    def test_existing_shop_never_clicks_summon(self):
+        h=SimpleNamespace(needs_skill101=lambda:True, screenshot=Mock(),
+                          I_LAND_SHOP='shop', appear=lambda rule:rule=='shop',
+                          device=SimpleNamespace(image=None),
+                          map_ocr=SimpleNamespace(detect_and_ocr=lambda **kw:[
+                              SimpleNamespace(ocr_text='1回合后迎战月读')]))
+        h.click=Mock();h.appear_then_click=Mock()
+        f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',
+                          ('activate_store',),{'re':re,'logger':Mock()})['activate_store']
         self.assertFalse(f(h))
         h.click.assert_not_called();h.appear_then_click.assert_not_called()
 

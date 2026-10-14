@@ -71,7 +71,9 @@ class MoonSeaL101(MoonSeaSkills):
         if self.appear(self.I_UI_CANCEL):
             # 有时候点击进入商店太快了，就进入会选随机的一个
             self.ui_click_until_disappear(self.I_UI_CANCEL, interval=1)
-        while 1:
+        skip_purchase = getattr(self, '_skip_poor_store_purchase', False)
+        self._skip_poor_store_purchase = False
+        while not skip_purchase:
             self.screenshot()
             coin = self.O_COIN_NUM.ocr(self.device.image)
             if coin < 300:

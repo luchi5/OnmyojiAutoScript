@@ -114,7 +114,7 @@ class MoonSea(MoonSeaMap, MoonSeaL101, MoonSeaL102, MoonSeaL103, MoonSeaL104, Mo
 
     def read_double_reward_count(self):
         # Single preserves OCR failure as empty text; Digit would turn it into 0.
-        counter = RuleOcr(roi=(1140,15,85,30), area=(1140,15,85,30),
+        counter = RuleOcr(roi=(1160,25,52,28), area=(1160,25,52,28),
                           mode='Single', method='Default', keyword='',
                           name='moon_sea_double_reward_count')
         previous = None

@@ -72,7 +72,7 @@ class EntryTests(unittest.TestCase):
 
 class PoorStoreDialogTests(unittest.TestCase):
     def make_task(self, texts):
-        h=SimpleNamespace(I_UI_CANCEL='cancel', appear=lambda _:True,
+        h=SimpleNamespace(I_UI_CANCEL='cancel', _poor_store_route_checked=True, appear=lambda _:True,
                           device=SimpleNamespace(image=None),click=Mock())
         h.map_ocr=SimpleNamespace(detect_and_ocr=lambda **kw:[
             SimpleNamespace(ocr_text=text,box=[[720,420],[780,420],[780,460],[720,460]]) for text in texts])
@@ -86,6 +86,13 @@ class PoorStoreDialogTests(unittest.TestCase):
         self.assertTrue(h.handle())
         h.click.assert_called_once_with('poor_store_enter',interval=2)
 
+    def test_initial_warning_cancels_to_inspect_routes(self):
+        h=self.make_task(['万相铃不足，是否仍要进入宁息之屿','取消','进入'])
+        h._poor_store_route_checked=False
+        self.assertTrue(h.handle())
+        h.click.assert_called_once_with('cancel',interval=2)
+        self.assertTrue(h._poor_store_reselect)
+
     def test_other_warning_not_confirmed(self):
         h=self.make_task(['是否离开神秘之屿','取消','进入'])
         self.assertFalse(h.handle());h.click.assert_not_called()
@@ -95,6 +102,46 @@ class PoorStoreDialogTests(unittest.TestCase):
         self.assertTrue(h.handle());h.click.assert_not_called()
 
 class ShopTests(unittest.TestCase):
+    def test_poor_store_cancel_switches_to_other_island(self):
+        h=Harness([{'SHOP':True}, {'warning':True}, {'SHOP':True,'FIRE':True},
+                   {'main':False,'exit':True}])
+        def warning():
+            if 'warning' in h.frame:
+                h._poor_store_reselect=True
+                h.clicks.append(('cancel',True))
+                return True
+            return False
+        h.handle_poor_store_entry=warning
+        h.enter_island(Kinds.island101,None)
+        self.assertEqual([x[0] for x in h.clicks],['SHOP','cancel','FIRE'])
+        self.assertFalse(h._skip_poor_store_purchase)
+
+    def test_only_store_reenters_with_purchase_disabled(self):
+        h=Harness([{'SHOP':True}, {'warning':True}, {'SHOP':True}, {'SHOP':True},
+                   {'SHOP':True}, {'main':False,'exit':True}])
+        def warning():
+            if 'warning' in h.frame:
+                h._poor_store_reselect=True
+                return True
+            return False
+        h.handle_poor_store_entry=warning
+        h.enter_island(Kinds.island101,None)
+        self.assertEqual([x[0] for x in h.clicks],['SHOP','SHOP'])
+        self.assertTrue(h._skip_poor_store_purchase)
+
+    def test_forced_store_visit_never_reads_coin_or_buys(self):
+        h=SimpleNamespace(_skip_poor_store_purchase=True,
+            I_STORE_EXIT='exit',C_STORE_ANIMATE_KEEP='animate',I_UI_CANCEL='cancel',
+            wait_until_appear=Mock(),wait_animate_stable=Mock(),appear=lambda _:False,
+            screenshot=Mock(),in_main=lambda:True,O_COIN_NUM=SimpleNamespace(ocr=Mock()),
+            buy_skill_101=Mock(),refresh_store=Mock())
+        f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/l101.py','MoonSeaL101',
+                          ('run_l101',),{'logger':Mock()})['run_l101']
+        f(h)
+        h.O_COIN_NUM.ocr.assert_not_called()
+        h.buy_skill_101.assert_not_called();h.refresh_store.assert_not_called()
+        self.assertFalse(h._skip_poor_store_purchase)
+
     def test_only_shop_must_remain_even_without_money(self):
         h = Harness([{'SHOP':(650,416),'poor':True}, {'main':False,'exit':True}])
         h.entry_island_random()
