@@ -122,6 +122,16 @@ class MoonSeaMap(MoonSeaSkills):
         if not self.needs_skill101():
             logger.info('Skip summon: skill is max level or resumed level is unknown')
             return False
+        # A single animated frame can read 17 as 1. Revalidate before spending.
+        for _ in range(3):
+            self.screenshot()
+            texts = [result.ocr_text for result in
+                     self.map_ocr.detect_and_ocr(image=self.device.image)]
+            turns = [int(match.group(1)) for text in texts
+                     for match in [re.search(r'(\d+)回合后迎战', text)] if match]
+            if turns != [1]:
+                logger.info('Skip summon: last-island count is not stable: {}'.format(turns))
+                return False
         confirm = RuleImage(
             roi_front=(698,418,114,43), roi_back=(680,400,155,80),
             threshold=0.9, method='Template matching',
@@ -143,7 +153,7 @@ class MoonSeaMap(MoonSeaSkills):
                 return True
             if not clicked and self.appear(self.I_M_STORE) and not self.appear(self.I_M_STORE_ACTIVITY):
                 return False
-            if self.appear_then_click(self.I_M_STORE_ACTIVITY, interval=2):
+            if not clicked and self.appear_then_click(self.I_M_STORE_ACTIVITY, interval=2):
                 clicked = True
         raise GameStuckError('Store summon was not confirmed; do not continue with an open dialog')
 

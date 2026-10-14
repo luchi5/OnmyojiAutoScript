@@ -1,5 +1,6 @@
 import ast
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,19 +29,32 @@ class SkillStateTests(unittest.TestCase):
         clock=FakeClock(1)
         h=SimpleNamespace(needs_skill101=lambda:True,device=SimpleNamespace(image=None),
                           map_ocr=SimpleNamespace(detect_and_ocr=Mock(side_effect=[
+                              *[ [SimpleNamespace(ocr_text='1回合后迎战月读')] for _ in range(3)],
                               [SimpleNamespace(ocr_text='是否消耗300万相铃召唤宁息之屿')],
                               [SimpleNamespace(ocr_text='月之海')]])))
         h.screenshot=clock.advance;h.appear=Mock(return_value=True);h.click=Mock();h.in_main=lambda:True
         h.appear_then_click=Mock()
         ns={'Timer':lambda n:FakeTimer(clock,n),'logger':Mock(),'GameStuckError':RuntimeError,
-            'RuleImage':lambda **kw:'confirm'}
+            'RuleImage':lambda **kw:'confirm', 're':re}
         f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('activate_store',),ns)['activate_store']
         module=ModuleType('tasks.GlobalGame.dialog_buttons');module.DialogButtonRule=lambda **kw:'confirm'
         with patch.dict('sys.modules',{'tasks.GlobalGame.dialog_buttons':module}):self.assertTrue(f(h))
-        self.assertEqual(h.map_ocr.detect_and_ocr.call_count, 2)
+        self.assertEqual(h.map_ocr.detect_and_ocr.call_count, 5)
         h.map_ocr.detect_and_ocr.assert_called_with(image=None)
         h.click.assert_called_once_with('confirm',interval=1.5)
         h.appear_then_click.assert_not_called()
+
+    def test_misread_seventeen_as_one_never_clicks_summon(self):
+        h=SimpleNamespace(needs_skill101=lambda:True, screenshot=Mock(),
+                          device=SimpleNamespace(image=None),
+                          map_ocr=SimpleNamespace(detect_and_ocr=Mock(side_effect=[
+                              [SimpleNamespace(ocr_text='1回合后迎战月读')],
+                              [SimpleNamespace(ocr_text='17回合后迎战月读')]])))
+        h.click=Mock();h.appear_then_click=Mock()
+        ns={'re':re,'logger':Mock()}
+        f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('activate_store',),ns)['activate_store']
+        self.assertFalse(f(h))
+        h.click.assert_not_called();h.appear_then_click.assert_not_called()
 
     def test_map_ocr_interface_matches_real_base(self):
         # Inspect the real implementation without loading OCR or a device.
