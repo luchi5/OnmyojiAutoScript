@@ -914,9 +914,12 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             3. 馆主战斗过程中,寮友打败馆主,弹出框体,可点击空白区域取消该框体.
             综上,点击左上角退出按钮区域
         """
+        from tasks.Dokan.settlement_recovery import handle_settlement
         logger.info("try to quit battle...")
         while True:
             self.screenshot()
+            if handle_settlement(self):
+                continue
             if self.appear(self.I_RYOU_DOKAN_CENTER_TOP):
                 break
             if self.appear(self.I_RYOU_DOKAN_QUIT_BATTLE_ENSURE):
