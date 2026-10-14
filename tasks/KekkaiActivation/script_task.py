@@ -91,9 +91,13 @@ class ScriptTask(KU, KekkaiActivationAssets):
         timeout = Timer(15).start()
         while not timeout.reached():
             self.screenshot()
+            # Realm plaques remain visible behind the growth overlay. Its
+            # controls take priority over background realm recognition.
+            if self.appear(done) or self.appear(fill) or self.appear(self.I_UI_BACK_BLUE):
+                self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5)
+                continue
             if self.appear(self.I_REALM_SHIN) or self.appear(self.I_SHI_GROWN):
                 return
-            self.appear_then_click(self.I_UI_BACK_BLUE, interval=1.5)
         raise GameStuckError('Cannot return to realm after smart shikigami fill')
 
     @cached_property

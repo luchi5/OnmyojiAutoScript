@@ -52,6 +52,19 @@ class SmartFillTests(unittest.TestCase):
     def test_already_filled_does_not_remove_all(self):
         h=harness([{'realm_remove_all'},{'realm'}]);h.check_max_lv(auto_fill=True)
         self.assertEqual(h.clicks,[])
+    def test_growth_overlay_wins_over_visible_realm_background(self):
+        h=harness([{'realm_remove_all'},
+                   {'realm_remove_all','realm','growth','back'},
+                   {'realm_auto_fill','realm','back'}, {'realm'}])
+        h.check_max_lv(auto_fill=True)
+        self.assertEqual(h.clicks,['back','back'])
+        self.assertEqual(h.index,4)
+
+    def test_growth_overlay_that_does_not_close_is_not_success(self):
+        h=harness([{'realm_remove_all','realm','back'}])
+        with self.assertRaisesRegex(RuntimeError,'Cannot return to realm'):
+            h.check_max_lv(auto_fill=True)
+
     def test_missing_button_times_out(self):
         h=harness([set()])
         with self.assertRaisesRegex(RuntimeError,'20 seconds'):h.check_max_lv(auto_fill=True)
