@@ -541,6 +541,13 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.I_A_HARVEST_MOON_3,  # 太阴3
             self.I_A_HARVEST_FISH_3,  # 斗鱼三
         ]
+        # Compact realm skins put the reward above the card plaque near
+        # (835, 345), outside the normal skin's top-right search rectangles.
+        # Use local rules so other tasks/shared assets keep their own regions.
+        cards = [RuleImage(
+            roi_front=tuple(card.roi_front), roi_back=(780, 120, 240, 285),
+            threshold=card.threshold, method=card.method, file=card.file,
+        ) for card in cards]
         timeout = Timer(8).start()
         while not timeout.reached():
             self.screenshot()
