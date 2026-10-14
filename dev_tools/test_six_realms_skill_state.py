@@ -27,14 +27,30 @@ class SkillStateTests(unittest.TestCase):
     def test_summon_confirms_dialog_instead_of_returning_to_cancel(self):
         clock=FakeClock(1)
         h=SimpleNamespace(needs_skill101=lambda:True,device=SimpleNamespace(image=None),
-                          map_ocr=SimpleNamespace(ocr=Mock(side_effect=['是否消耗300万相铃召唤宁息之屿','月之海'])))
+                          map_ocr=SimpleNamespace(detect_and_ocr=Mock(side_effect=[
+                              [SimpleNamespace(ocr_text='是否消耗300万相铃召唤宁息之屿')],
+                              [SimpleNamespace(ocr_text='月之海')]])))
         h.screenshot=clock.advance;h.appear=Mock(return_value=True);h.click=Mock();h.in_main=lambda:True
         h.appear_then_click=Mock()
         ns={'Timer':lambda n:FakeTimer(clock,n),'logger':Mock(),'GameStuckError':RuntimeError}
         f=extract_methods(ROOT/'tasks/SixRealms/moon_sea/map.py','MoonSeaMap',('activate_store',),ns)['activate_store']
         module=ModuleType('tasks.GlobalGame.dialog_buttons');module.DialogButtonRule=lambda **kw:'confirm'
         with patch.dict('sys.modules',{'tasks.GlobalGame.dialog_buttons':module}):self.assertTrue(f(h))
+        self.assertEqual(h.map_ocr.detect_and_ocr.call_count, 2)
+        h.map_ocr.detect_and_ocr.assert_called_with(image=None)
         h.click.assert_called_once_with('confirm',interval=1.5)
         h.appear_then_click.assert_not_called()
+
+    def test_map_ocr_interface_matches_real_base(self):
+        # Inspect the real implementation without loading OCR or a device.
+        tree=ast.parse((ROOT/'module/ocr/base_ocr.py').read_text(encoding='utf-8'))
+        methods={node.name for node in ast.walk(tree) if isinstance(node,ast.FunctionDef)}
+        self.assertIn('detect_and_ocr',methods)
+        tree=ast.parse((ROOT/'tasks/SixRealms/moon_sea/map.py').read_text(encoding='utf-8'))
+        calls=[node.func.attr for node in ast.walk(tree) if isinstance(node,ast.Call)
+               and isinstance(node.func,ast.Attribute) and isinstance(node.func.value,ast.Attribute)
+               and node.func.value.attr=='map_ocr']
+        self.assertTrue(calls)
+        self.assertEqual(set(calls),{'detect_and_ocr'})
 
 if __name__=='__main__':unittest.main()

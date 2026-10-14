@@ -133,7 +133,8 @@ class MoonSeaMap(MoonSeaSkills):
         confirmed = False
         while not timeout.reached():
             self.screenshot()
-            text = str(self.map_ocr.ocr(self.device.image))
+            text = ''.join(result.ocr_text for result in
+                           self.map_ocr.detect_and_ocr(image=self.device.image))
             if '召唤' in text and '300' in text:
                 if self.appear(confirm):
                     self.click(confirm, interval=1.5)
