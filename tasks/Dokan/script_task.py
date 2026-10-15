@@ -830,6 +830,10 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
 
     def start_cheering(self):
         from tasks.Dokan.settlement_recovery import handle_settlement
+        # A failed optional cheering entry must not restart every outer-loop tick.
+        retry_after = getattr(self, '_cheering_retry_after', None)
+        if retry_after is not None and not retry_after.reached():
+            return
         cd_text = self.O_DOKEN_FAIL_CD.detect_text(self.device.image)
         match = re.search(r'\d+', cd_text)
         remain_seconds = int(match.group()) if match else None
@@ -837,7 +841,10 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             logger.info(f'No remain seconds, exit cheering, cd_text[{cd_text}]')
             return
         cheering_timer = Timer(remain_seconds).start()
-        entry_timer = Timer(min(remain_seconds, 20)).start()
+        self._cheering_retry_after = cheering_timer
+        entry_timer = Timer(min(remain_seconds, 12)).start()
+        opened = False
+        goto_attempts = 0
         logger.info(f"start cheering, remain seconds:{remain_seconds}s")
         while not cheering_timer.reached() and not entry_timer.reached():
             self.screenshot()
@@ -851,8 +858,11 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             if self.appear(self.I_RYOU_DOKAN_TOPPA_RANK) or self.appear(self.I_RYOU_DOKAN_WIN):
                 return
             # 出现观战标志点击观战
-            if self.appear_then_click(self.I_RYOU_DOKAN_CD, interval=2.5):
-                sleep(1)  # 等待一下寮排名展示动画
+            if self.appear(self.I_RYOU_DOKAN_CD):
+                if not opened:
+                    self.click(self.I_RYOU_DOKAN_CD, interval=2.5)
+                    opened = True
+                sleep(1)
                 continue
             # OCR 空结果可能返回 (0, 0)，只有列表范围内的真实按钮才能点击。
             target = self.L_GOTO_CHEERING
@@ -860,10 +870,14 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             x, y, w, h = target.roi_back
             if (isinstance(point, tuple) and len(point) == 2
                     and x <= point[0] < x+w and y <= point[1] < y+h):
+                if goto_attempts >= 2:
+                    logger.info('Cheering entry did not respond; wait for challenge cooldown')
+                    return
                 self.device.click(*point)
+                goto_attempts += 1
                 sleep(1)
                 continue  # 下一帧必须确认进入战斗，点击成功不等于已进入观战。
-            self.appear_then_click(self.I_RYOU_DOKAN_CHEERING_SCORES, interval=3)
+            # Missing list/target is not a reason to toggle the report button.
             sleep(1)
         else:
             logger.info('No cheering battle entered before cooldown expired')

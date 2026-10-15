@@ -90,11 +90,30 @@ class CheeringTests(unittest.TestCase):
         self.assertEqual(h.exits,0)
         self.assertNotIn('result_close',h.clicks)
 
-    def test_missing_list_uses_report_button_without_random_clicks(self):
-        h = Harness([{'I_RYOU_DOKAN_CHEERING_SCORES'}],points=2)
+    def test_missing_list_does_not_toggle_report(self):
+        h = Harness([{'I_RYOU_DOKAN_CHEERING_SCORES'}], points=2)
         h.start_cheering()
-        self.assertTrue(h.clicks)
-        self.assertEqual(set(h.clicks),{'I_RYOU_DOKAN_CHEERING_SCORES'})
+        self.assertEqual(h.clicks, [])
+
+    def test_unopened_spectator_list_clicks_once_and_skips_same_cooldown(self):
+        h = Harness([{'I_RYOU_DOKAN_CD', 'I_RYOU_DOKAN_CHEERING_SCORES'}])
+        h.start_cheering()
+        self.assertEqual(h.clicks, ['I_RYOU_DOKAN_CD'])
+        self.assertEqual(h.scans, 0)
+        captures = h.captures
+        for _ in range(20):
+            h.start_cheering()
+        self.assertEqual(h.captures, captures)
+        h.clock.now += 120
+        h.start_cheering()
+        self.assertEqual(h.clicks, ['I_RYOU_DOKAN_CD'] * 2)
+
+    def test_visible_target_without_transition_has_bounded_clicks(self):
+        h = Harness([set()], (975, 200))
+        h.start_cheering()
+        self.assertEqual(h.clicks, [(975, 200)] * 2)
+        h.start_cheering()
+        self.assertEqual(len(h.clicks), 2)
 
     def test_ranking_returns_to_outer_task_without_scanning(self):
         h = Harness([{'I_RYOU_DOKAN_TOPPA_RANK'}])
