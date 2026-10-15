@@ -215,6 +215,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
             roi_front=(820,420,26,60), roi_back=(760,330,190,210),
             threshold=0.85, method='Template matching',
             file='./tasks/KekkaiActivation/a/compact_realm_card_empty.png')
+        snow_card = RuleImage(
+            roi_front=(821,420,24,66), roi_back=(780,390,120,130),
+            threshold=0.85, method='Template matching',
+            file='./tasks/KekkaiActivation/a/snow_realm_card.png')
         entry_timer = Timer(20).start()
         while not entry_timer.reached():
             self.screenshot()
@@ -228,6 +232,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
             if self.appear_then_click(compact_card, interval=1.5):
                 continue
             if self.appear_then_click(compact_empty, interval=1.5):
+                continue
+            if self.appear_then_click_multi_scale(snow_card, interval=1.5):
                 continue
         else:
             raise GameStuckError('Realm card page was not confirmed within 20 seconds')
