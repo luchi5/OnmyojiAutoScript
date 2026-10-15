@@ -44,8 +44,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
             else:
                 # KekkaiUtilize may still be cached with its pre-update method signature.
                 self.check_max_lv(con.shikigami_class)
-        # Check the card timer before collecting. The chest can be visible
-        # while the previous card is still active; collect only after expiry.
+        # A card-type bubble means expired; a chest means still active.
+        # run_activation checks the bubble before opening the card panel.
         # 开始挂卡
         self.run_activation(con)
         while 1:
@@ -145,6 +145,13 @@ class ScriptTask(KU, KekkaiActivationAssets):
         # Compare the serialized value so an older cached CardType is compatible.
         if _config.card_type != '不筛选（第一张）':
             self._card_reward_limits(_config)
+        self.screenshot()
+        marker, _ = self.realm_card_marker()
+        if marker == 'expired':
+            logger.info('Expired card icon visible; collect before opening card panel')
+            self.harvest_card()
+        elif marker == 'active':
+            logger.info('Active card chest visible; open panel only to read remaining time')
         self.goto_cards()
         # 太诡异了 为什么有这么长的动画, 那么长的动画先休息一会
         logger.hr('Start activation')
@@ -173,7 +180,12 @@ class ScriptTask(KU, KekkaiActivationAssets):
                     if expired_retries >= 2:
                         raise GameStuckError('Expired realm card remained after two collection attempts')
                     expired_retries += 1
-                    self.collect_expired_card()
+                    if self.collect_expired_card() is False:
+                        # A fresh chest overrides a failed/zero OCR reading.
+                        # Leave the card intact and retry the timer later.
+                        self.set_next_run('KekkaiActivation',
+                                          target=datetime.now() + timedelta(minutes=5))
+                        return False
                     continue
                 self.set_next_run("KekkaiActivation", target=interval+datetime.now())
                 return False
@@ -295,13 +307,17 @@ class ScriptTask(KU, KekkaiActivationAssets):
         timeout = Timer(12).start()
         while not timeout.reached():
             self.screenshot()
+            if self.appear(self.I_A_CHECK_CARD) or self.appear(self.I_A_AUTO_INVITE):
+                self.appear_then_click(self.I_UI_BACK_RED, interval=1)
+                continue
             if self.appear(self.I_REALM_SHIN) or self.appear(self.I_SHI_GROWN):
                 break
             self.appear_then_click(self.I_UI_BACK_RED, interval=1)
         else:
             raise GameStuckError('Cannot return to realm to collect expired card')
-        self.harvest_card()
+        collected = self.harvest_card()
         self.goto_cards()
+        return collected
 
     def screening_card(self, rule: str):
         """
@@ -537,11 +553,17 @@ class ScriptTask(KU, KekkaiActivationAssets):
             if self.appear_then_click(self.I_UI_BACK_BLUE, interval=2.5):
                 continue
 
-    def harvest_card(self):
-        """
-        收卡的经验
-        :return:
-        """
+    @cached_property
+    def realm_card_markers(self):
+        """Local rules for bubbles above normal and compact/snow card plaques."""
+        def local(rule):
+            return RuleImage(
+                roi_front=tuple(rule.roi_front), roi_back=(780, 120, 240, 285),
+                threshold=0.8, method=rule.method, file=rule.file)
+
+        # Despite its historical name, HARVEST_EXP is the active-card chest,
+        # not an expired card reward. It must never be a collection target.
+        chest = local(self.I_A_HARVEST_EXP)
         # Running workers may still hold the asset class from before this update.
         umbrella = getattr(self, 'I_A_HARVEST_UMBRELLA', None)
         if umbrella is None:
@@ -550,7 +572,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 threshold=0.8, method='Template matching',
                 file='./tasks/KekkaiActivation/a/a_a_harvest_umbrella.png')
         cards = [
-            self.I_A_HARVEST_EXP,  # 如果到最后没有领的话有下面的一些图片
+            umbrella,
             self.I_A_HARVEST_FISH4,  # 斗鱼4/5区别不大 斗鱼的如果一直没有领的话
             self.I_A_HARVEST_KAIKO_4,  # 太鼓4
             self.I_A_HARVEST_KAIKO_3,   # 太鼓3
@@ -559,28 +581,39 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.I_A_HARVEST_MOON_3,  # 太阴3
             self.I_A_HARVEST_FISH_3,  # 斗鱼三
         ]
-        # Compact realm skins put the reward above the card plaque near
-        # (835, 345), outside the normal skin's top-right search rectangles.
-        # Use local rules so other tasks/shared assets keep their own regions.
-        cards = [RuleImage(
-            roi_front=tuple(card.roi_front), roi_back=(780, 120, 240, 285),
-            threshold=card.threshold, method=card.method, file=card.file,
-        ) for card in cards]
+        return chest, [local(card) for card in cards]
+
+    def realm_card_marker(self):
+        """Inspect the current frame without clicking; unknown uses panel fallback."""
+        if self.appear(self.I_A_CHECK_CARD) or self.appear(self.I_A_AUTO_INVITE):
+            return 'unknown', None
+        chest, cards = self.realm_card_markers
+        # Prioritize the chest even if a card template also matches weakly.
+        if self.appear_multi_scale(chest):
+            return 'active', None
+        for card in cards:
+            if self.appear_multi_scale(card):
+                return 'expired', card
+        return 'unknown', None
+
+    def harvest_card(self):
+        """Collect expired card icons only; False means an active chest blocked it."""
         timeout = Timer(8).start()
         while not timeout.reached():
             self.screenshot()
             if self.ui_reward_appear_click():
                 continue
-            if self.appear_then_click_multi_scale(umbrella, threshold=0.8, interval=1):
+            marker, card = self.realm_card_marker()
+            if marker == 'active':
+                logger.info('Active card chest visible; leave it untouched')
+                return False
+            if marker == 'expired':
+                self.click(card, interval=1)
                 time.sleep(0.5)
-                continue
-            for card in cards:
-                if self.appear_then_click_multi_scale(card, threshold=0.7, interval=1):
-                    time.sleep(0.5)
-                    break
             else:
                 time.sleep(0.3)
         logger.info('Finished realm card collection pass')
+        return True
 
 
 

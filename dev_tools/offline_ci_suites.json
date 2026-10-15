@@ -127,6 +127,11 @@
       "scope": "Expired card collection, transient OCR and retry bound without devices"
     },
     {
+      "path": "dev_tools/test_compact_realm_harvest.py",
+      "required": true,
+      "scope": "Real chest/reward crops, normal and snow card icons, no active-chest collection"
+    },
+    {
       "path": "dev_tools/test_activation_smart_fill.py",
       "required": true,
       "scope": "Smart fill with old cached parent, success and timeout without devices"

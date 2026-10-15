@@ -98,6 +98,7 @@ class Harness:
         )
         self.real.screenshot = self.screenshot
         self.real.goto_cards = lambda: None
+        self.real.realm_card_marker = lambda: ('unknown', None)
         self.real.check_card_status = lambda *args: self.status
         self.real.check_card_effect = lambda *args: self.effect
         self.real.appear = lambda *args, **kwargs: False
