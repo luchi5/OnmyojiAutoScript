@@ -15,13 +15,14 @@ from module.atom.click import RuleClick
 from module.atom.ocr import RuleOcr
 from module.base.protect import random_sleep
 from module.base.timer import Timer
-from module.exception import TaskEnd
+from module.exception import TaskEnd, RequestHumanTakeover
 from module.logger import logger
 
 from tasks.base_task import BaseTask
 from tasks.Component.GeneralBattle.battle_wait import battle_wait_strategy, battle_wait_options
 from tasks.Component.GeneralBattle.battle import Battle
 from tasks.ActivityShikigami.assets import ActivityShikigamiAssets
+from tasks.ActivityShikigami.current_event import CurrentEventTicket
 from tasks.ActivityShikigami.config import SwitchSoulConfig, GeneralBattleConfig, ActivityShikigami
 from tasks.Component.BaseActivity.base_activity import BaseActivity
 from tasks.Component.BaseActivity.config_activity import GeneralClimb
@@ -143,27 +144,29 @@ class StateMachine(BaseTask):
         return True
 
 
-class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, ActivityShikigamiAssets):
+class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, CurrentEventTicket, ActivityShikigamiAssets):
     """
     更新前请先看 ./README.md
     """
 
     def run(self) -> None:
         self.limit_time: timedelta = self.conf.general_climb.limit_time_v
-        #
-        for climb_type in self.conf.general_climb.run_sequence_v:
-            # 进入到活动的主页面，不是具体的战斗页面
-            self.goto_page(game.page_climb_act)
+        sequence = self.conf.general_climb.run_sequence_v
+        if 'pass' not in sequence:
+            raise RequestHumanTakeover('本期暂支持磐长故地活动门票，请在运行顺序中配置 pass')
+        # 旧配置常含全部模式，本期尚未适配的模式不得沿用旧入口消耗其他资源。
+        for index, climb_type in enumerate(sequence):
+            if climb_type != 'pass':
+                logger.warning(f'Current event supports pass only; skip {climb_type}')
+                continue
+            self.run_idx = index
             try:
-                method_func = getattr(self, f'_run_{climb_type}')
-                method_func()
-            except LimitCountOut as e:
-                self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=2.8)
-            except LimitTimeOut as e:
+                self.put_status()
+                self._run_pass()
+            except LimitCountOut:
+                logger.info('Event ticket battle count limit reached')
+            except LimitTimeOut:
                 break
-            finally:
-                # 切换下一个爬塔类型
-                self.switch_next()
 
         # 返回庭院
         logger.hr("Exit Shikigami", 2)
@@ -174,42 +177,17 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Activit
         raise TaskEnd
 
     def _run_pass(self):
-        """
-            更新前请先看 ./README.md
-        """
-        logger.hr(f'Start run climb type PASS', 1)
-        self.ui_clicks([self.I_TO_BATTLE_MAIN, self.I_TO_BATTLE_MAIN_2],
-                       stop=self.I_CHECK_BATTLE_MAIN, interval=1)
-        self.switch_soul(self.I_BATTLE_MAIN_TO_RECORDS, self.I_CHECK_BATTLE_MAIN)
-        self.switch_climb_mode_in_game('pass')
-
-        ocr_limit_timer = Timer(1).start()
-        click_limit_timer = Timer(4).start()
-        while 1:
-            self.screenshot()
+        """磐长故地：保留当前难度，按门票挑战次数限制运行。"""
+        logger.hr('Start event ticket battles: 磐长故地', 1)
+        self.goto_page(game.page_climb_ticket)
+        self.switch_soul(self.I_TICKET_RECORDS, self.I_TICKET_PAGE)
+        self.ticket_lock_team(self.conf.general_battle.enable_pass_preset)
+        while True:
             self.put_status()
-            # --------------------------------------------------------------
-            if (self.appear_then_click(self.I_UI_CONFIRM, interval=0.5)
-                    or self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=0.5)):
-                continue
-            if self.ui_reward_appear_click():
-                continue
-            if not ocr_limit_timer.reached():
-                continue
-            ocr_limit_timer.reset()
-            if not self.ocr_appear(self.O_FIRE):
-                continue
-            #  --------------------------------------------------------------
-            self.lock_team(self.conf.general_battle)
-            if not self.check_tickets_enough():
-                logger.warning(f'No tickets left, wait for next time')
-                break
             if self.conf.general_climb.random_sleep:
                 random_sleep(probability=0.2)
-            if self.start_battle():
-                continue
-
-        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=4.5)
+            if not self.ticket_battle_once():
+                break
 
     def _run_ap(self):
         """

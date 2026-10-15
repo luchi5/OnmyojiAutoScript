@@ -150,6 +150,11 @@
       "path": "dev_tools/test_wanted_challenge_tickets.py",
       "required": true,
       "scope": "Zero ticket and unreadable ticket handling without devices"
+    },
+    {
+      "path": "dev_tools/test_activity_ticket_event.py",
+      "required": true,
+      "scope": "AST ticket flow, fake OCR and sanitized UI crops; no device, account config or server imports"
     }
   ],
   "stub_project_logger": true
