@@ -107,6 +107,11 @@
       "scope": "AST disabled and enabled soul-switch routes with fake UI; no device imports"
     },
     {
+      "path": "dev_tools/test_dokan_soul_transition.py",
+      "required": true,
+      "scope": "Dokan records entry and interrupted soul-switch replay with a real prepare-button crop"
+    },
+    {
       "path": "dev_tools/test_activation_card_entry.py",
       "required": true,
       "scope": "AST bounded realm card entry with fake frames and clicks"

@@ -15,10 +15,12 @@ def run(enable=False, by_name=False, done=False):
     h = SimpleNamespace(switch_soul_done=done,
                         config=SimpleNamespace(dokan=SimpleNamespace(switch_soul_config=soul)),
                         I_RYOU_DOKAN_SHIKIGAMI='records',
+                        _enter_dokan_soul_records=Mock(),
                         ui_click_until_disappear=Mock(),run_switch_soul=Mock(),
                         run_switch_soul_by_name=Mock())
     method = extract(ROOT/'tasks/Dokan/script_task.py','ScriptTask',
-                     ('switch_soul_in_dokan',),{'logger':Logger()})['switch_soul_in_dokan']
+                     ('switch_soul_in_dokan',),{'logger':Logger(),
+                     'DokanSoulSwitchInterrupted': RuntimeError})['switch_soul_in_dokan']
     fake = SimpleNamespace(GameUiAssets=SimpleNamespace(I_BACK_Y='back'))
     with patch.dict(sys.modules,{'tasks.GameUi.assets':fake}):
         method(h)
@@ -29,6 +31,7 @@ class SoulGateTests(unittest.TestCase):
     def test_disabled_does_not_open_records(self):
         h = run()
         h.ui_click_until_disappear.assert_not_called()
+        h._enter_dokan_soul_records.assert_not_called()
         h.run_switch_soul.assert_not_called()
         h.run_switch_soul_by_name.assert_not_called()
         self.assertTrue(h.switch_soul_done)
@@ -36,18 +39,21 @@ class SoulGateTests(unittest.TestCase):
     def test_already_done_does_not_open_records_again(self):
         h = run(enable=True,done=True)
         h.ui_click_until_disappear.assert_not_called()
+        h._enter_dokan_soul_records.assert_not_called()
 
     def test_numbered_switch_is_preserved(self):
         h = run(enable=True)
         h.run_switch_soul.assert_called_once_with('1,2')
         h.run_switch_soul_by_name.assert_not_called()
-        self.assertEqual(h.ui_click_until_disappear.call_count,2)
+        h._enter_dokan_soul_records.assert_called_once_with()
+        h.ui_click_until_disappear.assert_called_once_with('back', interval=2)
 
     def test_named_switch_is_preserved(self):
         h = run(by_name=True)
         h.run_switch_soul_by_name.assert_called_once_with('group','team')
         h.run_switch_soul.assert_not_called()
-        self.assertEqual(h.ui_click_until_disappear.call_count,2)
+        h._enter_dokan_soul_records.assert_called_once_with()
+        h.ui_click_until_disappear.assert_called_once_with('back', interval=2)
 
 
 if __name__ == '__main__':

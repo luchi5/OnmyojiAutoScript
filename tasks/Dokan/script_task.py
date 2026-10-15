@@ -36,6 +36,10 @@ from tasks.GameUi.page import page_shikigami_records, page_guild, page_main, ran
 from tasks.Hyakkiyakou.utils.fast_device import FastDevice
 
 
+class DokanSoulSwitchInterrupted(Exception):
+    """The battle took over while the task was equipping soul presets."""
+
+
 class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
     medal_grid: ImageGrid = None
     attack_priority_selected: bool = False
@@ -196,7 +200,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             # 场景状态：等待馆主战开始
             if current_scene == DokanScene.RYOU_DOKAN_SCENE_BOSS_WAITING:
                 logger.debug(f"Ryou DOKAN boss battle waiting...")
-                self.switch_soul_in_dokan()
+                if not self.switch_soul_in_dokan():
+                    continue
 
                 self.device.stuck_record_clear()
                 if cfg.dokan_config.try_start_dokan and cfg.attack_count_config.attack_dokan_master_count() == 0:
@@ -220,7 +225,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 continue
             # 场景状态：检查右下角有没有挑战？通常是失败了，并退出来到集结界面，可重新开始点击右下角挑战进入战斗
             if current_scene == DokanScene.RYOU_DOKAN_SCENE_START_CHALLENGE:
-                self.switch_soul_in_dokan()
+                if not self.switch_soul_in_dokan():
+                    continue
                 self.click(self.I_RYOU_DOKAN_START_CHALLENGE, interval=1)
                 continue
             # 场景状态：馆主第一阵容 且战斗未开始
@@ -283,7 +289,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 continue
             # 场景状态：如果CD中，开始加油
             if current_scene == DokanScene.RYOU_DOKAN_SCENE_CD:
-                self.switch_soul_in_dokan()
+                if not self.switch_soul_in_dokan():
+                    continue
 
                 self.device.stuck_record_clear()
                 logger.info(f"Fail CD: start cheering={cfg.dokan_config.dokan_auto_cheering_while_cd}..")
@@ -1018,27 +1025,54 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             if self.appear(self.I_RYOU_DOKAN_FAILED_VOTE_KEEP_BOUNTY):
                 self.ui_click_until_disappear(self.I_RYOU_DOKAN_FAILED_VOTE_KEEP_BOUNTY)
 
+    def screenshot(self):
+        image = super().screenshot()
+        # Shared soul-switch loops all capture through this method. Interrupt
+        # them before they can click a stale records control on a battle page.
+        if getattr(self, '_dokan_soul_switching', False):
+            if any(self.appear(marker) for marker in (
+                    self.I_RYOU_DOKAN_IN_FIELD, self.I_PREPARE_HIGHLIGHT,
+                    self.I_BATTLE_INFO, self.I_WIN, self.I_FALSE,
+                    self.I_RYOU_DOKAN_TOPPA_RANK, self.I_RYOU_DOKAN_WIN)):
+                raise DokanSoulSwitchInterrupted()
+        return image
+
+    def _enter_dokan_soul_records(self):
+        deadline = Timer(15).start()
+        while not deadline.reached():
+            self.screenshot()
+            # Use the records marker mapped to the configured shikigami skin.
+            # The gathering button disappearing does not prove arrival.
+            if self.appear(self.I_SOU_CHECK_IN):
+                return
+            self.appear_then_click(self.I_RYOU_DOKAN_SHIKIGAMI, interval=2)
+        raise GameStuckError('Dokan shikigami records were not confirmed within 15 seconds')
+
     def switch_soul_in_dokan(self):
         if self.switch_soul_done:
-            return
+            return True
         soul = self.config.dokan.switch_soul_config
         if not (soul.enable or soul.enable_switch_by_name):
             logger.info('Dokan soul switching disabled; stay in gathering scene')
             self.switch_soul_done = True
-            return
+            return True
         logger.info("start switch soul...")
-        self.ui_click_until_disappear(self.I_RYOU_DOKAN_SHIKIGAMI, interval=2)
-
-        if self.config.dokan.switch_soul_config.enable:
-            self.run_switch_soul(self.config.dokan.switch_soul_config.switch_group_team)
-        if self.config.dokan.switch_soul_config.enable_switch_by_name:
-            self.run_switch_soul_by_name(self.config.dokan.switch_soul_config.group_name,
-                                         self.config.dokan.switch_soul_config.team_name)
-
+        self._dokan_soul_switching = True
+        try:
+            self._enter_dokan_soul_records()
+            if soul.enable:
+                self.run_switch_soul(soul.switch_group_team)
+            if soul.enable_switch_by_name:
+                self.run_switch_soul_by_name(soul.group_name, soul.team_name)
+            from tasks.GameUi.assets import GameUiAssets as gua
+            self.ui_click_until_disappear(gua.I_BACK_Y, interval=2)
+        except DokanSoulSwitchInterrupted:
+            logger.warning('Dokan battle interrupted soul switching; recheck scene, soul switch not confirmed')
+            return False
+        finally:
+            self._dokan_soul_switching = False
         self.switch_soul_done = True
-        # back to dokan
-        from tasks.GameUi.assets import GameUiAssets as gua
-        self.ui_click_until_disappear(gua.I_BACK_Y, interval=2)
+        return True
 
     def next_run(self, skip_today=False, is_dokan_activated=False):
         """Retry an unopened challenge within its visible opening window."""
