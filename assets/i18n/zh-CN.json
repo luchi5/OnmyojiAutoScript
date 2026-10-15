@@ -236,5 +236,10 @@
   "green_mark_name": "绿标式神名称",
   "green_mark_name_help": "彼世逢魔站位可变，开启绿标后填写目标式神名称；识别不到时不点击。",
   "double_rewards_only": "仅打双倍奖励次数",
-  "double_rewards_only_help": "每轮进入月之海前检查右上角宝箱数量；为0则跳过并保留未完成进度。识别失败不进入。开启后忽略挑战次数上限，仍受运行时间上限限制。"
+  "double_rewards_only_help": "每轮进入月之海前检查右上角宝箱数量；为0则跳过并保留未完成进度。识别失败不进入。开启后忽略挑战次数上限，仍受运行时间上限限制。",
+  "pass_difficulty": "活动门票难度",
+  "pass_difficulty_help": "简单每场消耗1张活动门票，困难每场消耗5张；保持当前则沿用游戏中选择的难度。",
+  "ticket_keep_current": "保持当前",
+  "ticket_simple": "简单（1张门票）",
+  "ticket_hard": "困难（5张门票）"
 }

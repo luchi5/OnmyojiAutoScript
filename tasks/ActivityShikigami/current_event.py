@@ -29,6 +29,8 @@ class CurrentEventAssets:
     I_EVENT_MAP_BACK = _image("map_back", (18, 12, 51, 48), (5, 2, 77, 70))
     I_TICKET_PAGE = _image("ticket_page", (151, 20, 131, 34), (141, 10, 151, 54))
     I_TICKET_CHALLENGE = _image("challenge", (1130, 593, 88, 45), (1115, 578, 118, 75))
+    I_TICKET_SIMPLE = _image("simple", (1144, 277, 65, 67), (1134, 267, 85, 87))
+    I_TICKET_HARD = _image("hard", (1144, 386, 65, 67), (1134, 376, 85, 87))
     I_TICKET_RECORDS = _image("records", (1006, 555, 57, 79), (996, 545, 77, 99))
     I_TICKET_LOCK = _image("lock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     I_TICKET_UNLOCK = _image("unlock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
@@ -40,21 +42,22 @@ class CurrentEventAssets:
 
 
 def parse_ticket_budget(balance_text, cost_text):
-    """只接受清晰数字及本期每场 5 张的消耗，空白/混合字符返回未知。"""
+    """本期简单消耗 1 张、困难消耗 5 张，空白/混合字符返回未知。"""
     balance = str(balance_text or "").strip()
     cost = re.sub(r"\s+", "", str(cost_text or ""))
     if not re.fullmatch(r"[0-9]{1,6}", balance):
         return None
-    if not re.fullmatch(r"[xX×]5", cost):
+    match = re.fullmatch(r"[xX×]([15])", cost)
+    if not match:
         return None
-    return int(balance), 5
+    return int(balance), int(match.group(1))
 
 
 class CurrentEventTicket(CurrentEventAssets):
     def ticket_page_visible(self):
         return self.appear(self.I_TICKET_PAGE) and self.appear(self.I_TICKET_CHALLENGE)
 
-    def ticket_read_budget(self):
+    def ticket_read_budget(self, expected_cost=None):
         """同一页面连续两次读到相同数量后才允许挑战或判定不足。"""
         timeout = Timer(8).start()
         interval = Timer(0.6)
@@ -70,11 +73,31 @@ class CurrentEventTicket(CurrentEventAssets):
             balance = self.O_TICKET_BALANCE.ocr_single(self.device.image)
             cost = self.O_TICKET_COST.ocr_single(self.device.image)
             budget = parse_ticket_budget(balance, cost)
+            if budget is not None and expected_cost is not None and budget[1] != expected_cost:
+                budget = None
             if budget is not None and budget == previous:
                 logger.info(f'Event tickets: {budget[0]}, cost per battle: {budget[1]}')
                 return budget
             previous = budget
-        raise GameStuckError('磐长故地门票或挑战消耗识别失败，保留现场，不按 0 张处理')
+        raise GameStuckError(f'磐长故地门票或挑战消耗未确认（预期消耗 {expected_cost or "1 或 5"}），不按 0 张处理')
+
+    def ticket_select_difficulty(self):
+        # 旧配置保持游戏中的选择；选择后固定本轮消耗，防止之后误打另一难度。
+        choice = getattr(self.conf.general_climb, 'pass_difficulty', 'ticket_keep_current')
+        costs = {'ticket_keep_current': None, 'ticket_simple': 1, 'ticket_hard': 5}
+        if choice not in costs:
+            raise RequestHumanTakeover(f'未知的活动门票难度：{choice}')
+        _, current_cost = self.ticket_read_budget()
+        expected = costs[choice]
+        if expected is not None and current_cost != expected:
+            target = self.I_TICKET_SIMPLE if expected == 1 else self.I_TICKET_HARD
+            if not self.appear(target):
+                raise GameStuckError('磐长故地难度按钮未识别，停止挑战')
+            self.click(target)
+            self.ticket_read_budget(expected_cost=expected)
+        self._ticket_expected_cost = expected or current_cost
+        logger.info(f'Event difficulty: {"简单" if self._ticket_expected_cost == 1 else "困难"}; '
+                    f'cost {self._ticket_expected_cost}')
 
     def ticket_lock_team(self, enable_preset):
         target = self.I_TICKET_UNLOCK if enable_preset else self.I_TICKET_LOCK
@@ -99,6 +122,9 @@ class CurrentEventTicket(CurrentEventAssets):
 
     def ticket_battle_once(self):
         before, cost = self.ticket_read_budget()
+        expected = getattr(self, '_ticket_expected_cost', None)
+        if expected is not None and cost != expected:
+            raise GameStuckError(f'磐长故地难度发生变化：预期消耗 {expected}，实际 {cost}，停止挑战')
         self.put_status()
         if before < cost:
             logger.info(f'Event tickets insufficient: {before} < {cost}; stop ticket battles')

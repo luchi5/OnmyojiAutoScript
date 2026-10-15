@@ -2,6 +2,7 @@
 # @author runhey
 # github https://github.com/runhey
 from pydantic import BaseModel, Field, model_validator
+from enum import Enum
 
 from tasks.Component.GeneralBattle.config_general_battle import GreenMarkType
 from tasks.Component.config_scheduler import Scheduler
@@ -96,9 +97,20 @@ class GeneralBattleConfig(BaseModel):
     enable_ap100_anti_detect: bool = Field(default=True, description='enable_ap100_anti_detect_help')
 
 
+class TicketDifficulty(str, Enum):
+    CURRENT = 'ticket_keep_current'
+    SIMPLE = 'ticket_simple'
+    HARD = 'ticket_hard'
+
+
+class EventClimb(GeneralClimb):
+    pass_difficulty: TicketDifficulty = Field(default=TicketDifficulty.CURRENT,
+                                              description='pass_difficulty_help')
+
+
 class ActivityShikigami(ConfigBase):
     scheduler: Scheduler = Field(default_factory=Scheduler)
-    general_climb: GeneralClimb = Field(default_factory=GeneralClimb)
+    general_climb: EventClimb = Field(default_factory=EventClimb)
     switch_soul_config: SwitchSoulConfig = Field(default_factory=SwitchSoulConfig)
     general_battle: GeneralBattleConfig = Field(default_factory=GeneralBattleConfig)
 

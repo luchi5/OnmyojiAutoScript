@@ -53,12 +53,13 @@ class TicketEventTests(unittest.TestCase):
         self.task.click = Mock()
         self.task.put_status = Mock()
         self.task.count_map = {'pass': 0}
+        self.task.conf = SimpleNamespace(general_climb=SimpleNamespace(pass_difficulty='ticket_keep_current'))
 
     def image(self, name):
         return cv2.cvtColor(cv2.imread(str(FIXTURES / (name + '.png'))), cv2.COLOR_BGR2RGB)
 
     def test_real_ticket_and_stamina_pages_are_distinct(self):
-        for name, expected in [('ticket_before', True), ('ticket_after', True),
+        for name, expected in [('simple', True), ('hard_current', True), ('ticket_before', True), ('ticket_after', True),
                                ('ticket_unlock', True), ('stamina', False),
                                ('event_main', False), ('event_list', False), ('event_map', False), ('reward', False)]:
             with self.subTest(name=name):
@@ -82,13 +83,13 @@ class TicketEventTests(unittest.TestCase):
     def test_parse_explicit_zero_and_cost(self):
         parse = self.ns['parse_ticket_budget']
         for count in ['0', '4', '5', '230', '235']:
-            for cost in ['x5', '×5', 'X 5']:
-                self.assertEqual(parse(count, cost), (int(count), 5))
+            for cost, expected in [('x5', 5), ('×5', 5), ('X 5', 5), ('x1', 1), ('×1', 1)]:
+                self.assertEqual(parse(count, cost), (int(count), expected))
 
     def test_unknown_and_other_resource_cost_are_not_zero(self):
         parse = self.ns['parse_ticket_budget']
         for count, cost in [('', 'x5'), (None, 'x5'), ('23?', 'x5'), ('235/300', 'x5'),
-                            ('235', ''), ('235', '5'), ('235', 'x1'), ('235', '6+1')]:
+                            ('235', ''), ('235', '5'), ('235', 'x2'), ('235', '6+1')]:
             self.assertIsNone(parse(count, cost))
 
     def budget_frames(self, counts, visible=None):
@@ -118,8 +119,8 @@ class TicketEventTests(unittest.TestCase):
         self.task.O_TICKET_BALANCE.ocr_single.assert_not_called()
         self.task.click.assert_not_called()
 
-    def prepare_battle(self, before=235, after=230, win=True):
-        self.task.ticket_read_budget = Mock(side_effect=[(before, 5), (after, 5)])
+    def prepare_battle(self, before=235, after=230, win=True, cost=5):
+        self.task.ticket_read_budget = Mock(side_effect=[(before, cost), (after, cost)])
         self.task.I_REWARD = 'reward'
         self.task.I_WIN = 'win'
         self.task.is_in_battle = lambda _: self.clock.now >= 103
@@ -146,6 +147,24 @@ class TicketEventTests(unittest.TestCase):
         self.prepare_battle(before=5, after=0)
         self.assertTrue(self.task.ticket_battle_once())
         self.assertEqual(self.task.count_map['pass'], 1)
+
+    def test_simple_with_one_or_four_tickets_still_runs(self):
+        for balance in (1, 4):
+            self.prepare_battle(before=balance, after=balance - 1, cost=1)
+            self.assertTrue(self.task.ticket_battle_once())
+        self.assertEqual(self.task.count_map['pass'], 2)
+
+    def test_simple_with_zero_tickets_stops(self):
+        self.prepare_battle(before=0, cost=1)
+        self.assertFalse(self.task.ticket_battle_once())
+        self.task.click.assert_not_called()
+
+    def test_difficulty_drift_cannot_start_wrong_battle(self):
+        self.prepare_battle()
+        self.task._ticket_expected_cost = 1
+        with self.assertRaises(GameStuckError):
+            self.task.ticket_battle_once()
+        self.task.click.assert_not_called()
 
     def test_entry_timeout_does_not_repeat_click_or_count(self):
         self.prepare_battle()
@@ -188,6 +207,80 @@ class TicketEventTests(unittest.TestCase):
         self.task.appear_then_click = Mock()
         self.task.ticket_lock_team(False)
         self.task.appear_then_click.assert_not_called()
+
+    def test_real_difficulty_buttons(self):
+        self.assertTrue(self.task.I_TICKET_SIMPLE.match(self.image('hard_current')))
+        self.assertTrue(self.task.I_TICKET_HARD.match(self.image('simple')))
+
+    def test_keep_current_accepts_both_difficulties_without_clicking(self):
+        for cost in (1, 5):
+            self.task.ticket_read_budget = Mock(return_value=(230, cost))
+            self.task.ticket_select_difficulty()
+            self.assertEqual(self.task._ticket_expected_cost, cost)
+        self.task.click.assert_not_called()
+
+    def test_select_difficulty_clicks_once_and_checks_actual_cost(self):
+        for choice, before, after, button in [
+                ('ticket_simple', 5, 1, self.task.I_TICKET_SIMPLE),
+                ('ticket_hard', 1, 5, self.task.I_TICKET_HARD)]:
+            self.task.conf.general_climb.pass_difficulty = choice
+            self.task.ticket_read_budget = Mock(side_effect=[(230, before), (230, after)])
+            self.task.appear = lambda _: True
+            self.task.click.reset_mock()
+            self.task.ticket_select_difficulty()
+            self.task.click.assert_called_once_with(button)
+            self.assertEqual(self.task._ticket_expected_cost, after)
+            self.task.ticket_read_budget.assert_called_with(expected_cost=after)
+
+    def test_already_selected_difficulty_never_clicks(self):
+        self.task.conf.general_climb.pass_difficulty = 'ticket_simple'
+        self.task.ticket_read_budget = Mock(return_value=(230, 1))
+        self.task.ticket_select_difficulty()
+        self.task.click.assert_not_called()
+
+    def test_missing_button_does_not_click(self):
+        self.task.conf.general_climb.pass_difficulty = 'ticket_simple'
+        self.task.ticket_read_budget = Mock(return_value=(230, 5))
+        self.task.appear = lambda _: False
+        with self.assertRaises(GameStuckError):
+            self.task.ticket_select_difficulty()
+        self.task.click.assert_not_called()
+
+    def test_unconfirmed_switch_stops_after_one_click(self):
+        self.task.conf.general_climb.pass_difficulty = 'ticket_simple'
+        self.task.ticket_read_budget = Mock(side_effect=[(230, 5), GameStuckError()])
+        self.task.appear = lambda _: True
+        with self.assertRaises(GameStuckError):
+            self.task.ticket_select_difficulty()
+        self.task.click.assert_called_once()
+
+    def test_stale_cost_cannot_confirm_switch(self):
+        self.budget_frames(['230'])
+        with self.assertRaises(GameStuckError):
+            self.task.ticket_read_budget(expected_cost=1)
+
+    def test_switch_waits_for_two_frames_with_new_cost(self):
+        self.budget_frames(['230'])
+        costs = iter(['x5', 'x1', 'x1'])
+        self.task.O_TICKET_COST = SimpleNamespace(ocr_single=lambda _: next(costs, 'x1'))
+        self.assertEqual(self.task.ticket_read_budget(expected_cost=1), (230, 1))
+
+    def test_gui_schema_exposes_per_account_choice_and_legacy_default(self):
+        logger = ModuleType('module.logger')
+        logger.logger = FakeLogger()
+        with patch.dict(sys.modules, {'module.logger': logger}):
+            from tasks.ActivityShikigami.config import ActivityShikigami
+        import inflection
+        ns = dict(convert_to_underscore=inflection.underscore, inflection=inflection, re=re, logger=FakeLogger())
+        method = extract_methods(ROOT / 'module/config/config_model.py', 'ConfigModel', ['script_task'], ns)['script_task']
+        for choice in ('ticket_keep_current', 'ticket_simple', 'ticket_hard'):
+            task = ActivityShikigami(general_climb={'pass_difficulty': choice})
+            args = method(SimpleNamespace(activity_shikigami=task), 'ActivityShikigami')
+            field = next(x for x in args['general_climb'] if x['name'] == 'pass_difficulty')
+            self.assertEqual(field['type'], 'enum')
+            self.assertEqual(field['enumEnum'], ['ticket_keep_current', 'ticket_simple', 'ticket_hard'])
+            self.assertEqual(field['value'], choice)
+        self.assertEqual(ActivityShikigami().general_climb.pass_difficulty, 'ticket_keep_current')
 
     def test_legacy_sequence_cannot_run_stamina_or_boss(self):
         class TaskEnd(Exception):

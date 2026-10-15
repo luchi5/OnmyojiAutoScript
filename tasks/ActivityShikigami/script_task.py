@@ -180,6 +180,7 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Current
         """磐长故地：保留当前难度，按门票挑战次数限制运行。"""
         logger.hr('Start event ticket battles: 磐长故地', 1)
         self.goto_page(game.page_climb_ticket)
+        self.ticket_select_difficulty()
         self.switch_soul(self.I_TICKET_RECORDS, self.I_TICKET_PAGE)
         self.ticket_lock_team(self.conf.general_battle.enable_pass_preset)
         while True:
