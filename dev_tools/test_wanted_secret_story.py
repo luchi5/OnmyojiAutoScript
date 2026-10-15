@@ -33,7 +33,7 @@ class Harness:
             'logger': FakeLogger(), 'GameStuckError': RuntimeError,
             'page_exploration': 'exploration',
             'RuleClick': lambda **kw: 'C_SECRET_CHAT',
-            'RuleImage': lambda **kw: 'kingyo_story' if 'kingyo' in kw['file'] else 'inugami_story',
+            'RuleImage': lambda **kw: Path(kw['file']).stem.replace('secret_story_', '') + '_story',
         })
         self.secret = methods['secret'].__get__(self)
         self.advance_secret_story = self.click
@@ -73,6 +73,18 @@ class Harness:
 class SecretStoryTests(unittest.TestCase):
     def test_kingyo_story_between_battles_and_at_exit(self):
         h = Harness([FIRE, set(), {'kingyo_story'}, FIRE, set(), {'kingyo_story'}, ZONES, EXPLORE])
+        self.assertTrue(h.secret('goto', num=2))
+        self.assertEqual(h.battles, 2)
+        self.assertEqual(h.clicks, ['C_SECRET_CHAT']*2)
+
+    def test_kingyo_to_enma_dialogue_at_exit(self):
+        h = Harness([FIRE, set(), {'kingyo_story'}, {'enma_story'}, ZONES, EXPLORE])
+        self.assertTrue(h.secret('goto'))
+        self.assertEqual(h.clicks, ['C_SECRET_CHAT']*2)
+
+    def test_enma_dialogue_before_and_between_battles(self):
+        h = Harness([FIRE, {'enma_story'}, set(), {'enma_story'},
+                     FIRE, set(), ZONES, EXPLORE])
         self.assertTrue(h.secret('goto', num=2))
         self.assertEqual(h.battles, 2)
         self.assertEqual(h.clicks, ['C_SECRET_CHAT']*2)
