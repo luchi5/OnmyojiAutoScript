@@ -21,15 +21,16 @@ class SnowEntryTests(unittest.TestCase):
                             I_SHI_CARD='normal', clicks=[])
         h.screenshot = clock.advance
         h.appear = lambda marker: bool(h.clicks)
-        def click(rule, **kw):
+        def click(rule, multi_scale=False, **kw):
             if isinstance(rule, str):
                 return False
-            if rule.match_multi_scale(frame):
+            match = rule.match_multi_scale if multi_scale else rule.match
+            if match(frame):
                 h.clicks.append(tuple(rule.roi_front))
                 return True
             return False
         h.appear_then_click = click
-        h.appear_then_click_multi_scale = click
+        h.appear_then_click_multi_scale = lambda rule, **kw: click(rule, multi_scale=True, **kw)
         fn = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py', 'ScriptTask',
             ('goto_cards',), {'RuleImage':RuleImage, 'Timer':lambda t:FakeTimer(clock,t),
                              'GameStuckError':RuntimeError, 'logger':FakeLogger()})['goto_cards']
@@ -49,6 +50,15 @@ class SnowEntryTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             run()
         self.assertEqual(h.clicks,[])
+
+    def test_freshly_collected_snow_card_enters_without_restart(self):
+        # Account 11, 2026-10-15 18:18:11: the reward was collected, but
+        # none of the old plaque templates reached the 0.85 threshold.
+        h, run = self.replay(4)
+        run()
+        self.assertEqual(len(h.clicks), 1)
+        x,y,w,height = h.clicks[0]
+        self.assertTrue(815 <= x <= 835 and 410 <= y <= 435, h.clicks)
 
 
 if __name__ == '__main__':

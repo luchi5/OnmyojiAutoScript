@@ -26,7 +26,7 @@ def harness(frames):
     h.appear_then_click = click
     h.appear_then_click_multi_scale = click
     method = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py','ScriptTask',('goto_cards',),{
-        'RuleImage':lambda **kw:('snow' if 'snow_' in kw['file'] else 'compact_empty' if kw['file'].endswith('_empty.png') else 'compact'),'Timer':lambda t:FakeTimer(clock,t),
+        'RuleImage':lambda **kw:('snow_collected' if kw['file'].endswith('_collected.png') else 'snow' if 'snow_' in kw['file'] else 'compact_empty' if kw['file'].endswith('_empty.png') else 'compact'),'Timer':lambda t:FakeTimer(clock,t),
         'GameStuckError':RuntimeError,'logger':FakeLogger(),
     })['goto_cards']
     h.goto_cards = method.__get__(h)
@@ -54,6 +54,11 @@ class CardEntryTests(unittest.TestCase):
         h = harness([{'snow'}, set(), {'card_page'}])
         h.goto_cards()
         self.assertEqual(h.clicks, ['snow'])
+
+    def test_freshly_collected_snow_plaque_enters_confirmed_page(self):
+        h = harness([{'snow_collected'}, set(), {'card_page'}])
+        h.goto_cards()
+        self.assertEqual(h.clicks, ['snow_collected'])
 
     def test_existing_normal_plaque_is_preserved(self):
         h = harness([{'normal'},{'invite'}])
