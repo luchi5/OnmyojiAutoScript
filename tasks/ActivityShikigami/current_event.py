@@ -51,7 +51,8 @@ class CurrentEventAssets:
     I_TICKET_LOCK = _image("lock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     I_TICKET_UNLOCK = _image("unlock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     # Single 保留原始识别文本：识别失败不能通过 Digit 的默认值变成 0。
-    O_TICKET_BALANCE = RuleOcr(roi=(1110, 25, 96, 28), area=(1110, 25, 96, 28),
+    # Keep vertical context: the old tight crop added punctuation before 255/385.
+    O_TICKET_BALANCE = RuleOcr(roi=(1110, 23, 96, 32), area=(1110, 23, 96, 32),
                              mode="Single", method="Default", keyword="", name="event_ticket_balance")
     O_TICKET_COST = RuleOcr(roi=(1168, 636, 42, 32), area=(1168, 636, 42, 32),
                           mode="Single", method="Default", keyword="", name="event_ticket_cost")

@@ -118,7 +118,8 @@ class TicketEventTests(unittest.TestCase):
 
     def test_unknown_and_other_resource_cost_are_not_zero(self):
         parse = self.ns['parse_ticket_budget']
-        for count, cost in [('', 'x5'), (None, 'x5'), ('23?', 'x5'), ('235/300', 'x5'),
+        for count, cost in [('', 'x5'), (None, 'x5'), ('23?', 'x5'), (':255', 'x5'), ('：385', 'x1'),
+                            ('_385', 'x1'), ('235/300', 'x5'),
                             ('235', ''), ('235', '5'), ('235', 'x2'), ('235', '6+1')]:
             self.assertIsNone(parse(count, cost))
 
