@@ -25,7 +25,9 @@ def _image(name, front, back=None, threshold=0.85):
 class TicketBalanceOcr(RuleOcr):
     """Digit filtering with an empty result kept distinct from an explicit zero."""
 
-    min_score = 0.6
+    # Match the shared Digit threshold: a real single 0 can score below 0.6.
+    # BaseCor only uses this lower threshold for results containing a digit.
+    min_score = 0.3
 
     def pre_process(self, image):
         # Trim dark padding around the pale ticket digits. In a wide crop the

@@ -41,8 +41,9 @@ class TicketOcrTests(unittest.TestCase):
         x, y, w, h = self.roi
         results, _ = self.recognizer([self.ocr.pre_process(frame[y:y+h, x:x+w])])
         text, score = results[0]
-        # The event's Digit rule retains the 0.6 confidence gate and empty result.
-        filtered = self.ocr.after_process(text if score >= self.ocr.min_score else '')
+        # Match BaseCor's regular gate plus Digit's low-confidence numeric rescue.
+        accepted = score >= 0.6 or (score >= self.ocr.min_score and any(char.isdigit() for char in text))
+        filtered = self.ocr.after_process(text if accepted else '')
         return self.parse(filtered, cost), text, score
 
     def balance_frame(self, value):
@@ -73,6 +74,11 @@ class TicketOcrTests(unittest.TestCase):
     def test_reported_145_remains_readable_after_trimming(self):
         budget, text, score = self.read_budget(self.balance_frame(145))
         self.assertEqual(budget, (145, 5), (text, score))
+
+    def test_real_zero_ticket_counter_is_confirmed_as_empty(self):
+        budget, text, score = self.read_budget(self.balance_frame(0), 'x1')
+        self.assertEqual(text, '0')
+        self.assertEqual(budget, (0, 1), score)
 
     def test_original_failing_crops_are_accepted_after_digit_filtering(self):
         for value, cost in [(255, 'x5'), (385, 'x1')]:
