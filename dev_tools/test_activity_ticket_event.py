@@ -31,6 +31,9 @@ class RequestHumanTakeover(Exception):
 
 
 def load_event(clock):
+    class FakeRuleOcr(SimpleNamespace):
+        pass
+
     logger = ModuleType('module.logger')
     logger.logger = FakeLogger()
     with patch.dict(sys.modules, {'module.logger': logger}):
@@ -38,7 +41,7 @@ def load_event(clock):
         from module.atom.click import RuleClick, RuleClickExclude
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     tree.body = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
-    context = dict(re=re, random=random, RuleClick=RuleClick, RuleClickExclude=RuleClickExclude, RuleImage=RuleImage, RuleOcr=lambda **kwargs: SimpleNamespace(**kwargs),
+    context = dict(re=re, random=random, RuleClick=RuleClick, RuleClickExclude=RuleClickExclude, RuleImage=RuleImage, RuleOcr=FakeRuleOcr,
                    Timer=lambda *a, **k: FakeTimer(clock, *a, **k), logger=FakeLogger(),
                    GameStuckError=GameStuckError, RequestHumanTakeover=RequestHumanTakeover,
                    battle_wait_strategy=lambda **kwargs: nullcontext(),
@@ -112,7 +115,7 @@ class TicketEventTests(unittest.TestCase):
 
     def test_parse_explicit_zero_and_cost(self):
         parse = self.ns['parse_ticket_budget']
-        for count in ['0', '4', '5', '230', '235']:
+        for count in [0, '0', '4', '5', '230', '235']:
             for cost, expected in [('x5', 5), ('×5', 5), ('X 5', 5), ('x1', 1), ('×1', 1)]:
                 self.assertEqual(parse(count, cost), (int(count), expected))
 
@@ -128,13 +131,34 @@ class TicketEventTests(unittest.TestCase):
         last = counts[-1]
         self.task.ticket_page_visible = Mock(side_effect=visible) if visible else lambda: True
         def read(_):
-            return next(frames, last)
+            return self.ns['TicketBalanceOcr']().after_process(next(frames, last))
         self.task.O_TICKET_BALANCE = SimpleNamespace(ocr_single=read)
         self.task.O_TICKET_COST = SimpleNamespace(ocr_single=lambda _: 'x5')
 
     def test_read_retries_unknown_then_confirms_two_equal_values(self):
         self.budget_frames(['', '235', '230', '230'])
         self.assertEqual(self.task.ticket_read_budget(), (230, 5))
+
+    def test_digit_filters_punctuation_before_confirming_two_equal_values(self):
+        for counts, expected in [([':255', '255'], 255), (['：385', '_385'], 385)]:
+            self.budget_frames(counts)
+            self.assertEqual(self.task.ticket_read_budget(), (expected, 5))
+        self.task.click.assert_not_called()
+
+    def test_no_digits_retries_then_explicit_zero_is_confirmed(self):
+        self.budget_frames(['：_', '未识别', None, ':0', '0'])
+        self.assertEqual(self.task.ticket_read_budget(), (0, 5))
+        self.task.click.assert_not_called()
+
+    def test_non_digit_only_result_stays_unknown_without_any_click(self):
+        self.budget_frames(['：_未识别'])
+        with self.assertRaises(GameStuckError):
+            self.task.ticket_read_budget()
+        self.task.click.assert_not_called()
+
+    def test_digit_zero_is_not_replaced_with_one(self):
+        self.budget_frames(['00', '0'])
+        self.assertEqual(self.task.ticket_read_budget(), (0, 5))
 
     def test_persistent_blank_raises_without_any_click(self):
         self.budget_frames([''])

@@ -7,7 +7,9 @@ Only the CPU recognition model is loaded; no device, scheduler or logger starts.
 import ast
 from pathlib import Path
 import re
+from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock
 
 import cv2
 import numpy as np
@@ -28,17 +30,20 @@ class TicketOcrTests(unittest.TestCase):
                                for target in node.targets))
         cls.roi = ast.literal_eval(next(keyword.value for keyword in balance.keywords if keyword.arg == 'roi'))
         parser = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'parse_ticket_budget')
-        ns = {'re': re}
-        exec(compile(ast.Module(body=[parser], type_ignores=[]), '<ticket_parser>', 'exec'), ns)
+        processor = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'TicketBalanceOcr')
+        ns = {'re': re, 'RuleOcr': SimpleNamespace, 'logger': Mock()}
+        exec(compile(ast.Module(body=[processor, parser], type_ignores=[]), '<ticket_parser>', 'exec'), ns)
         cls.parse = staticmethod(ns['parse_ticket_budget'])
+        cls.ocr = ns['TicketBalanceOcr']()
         cls.recognizer = TextRecognizer(ort_providers=['CPUExecutionProvider'])
 
     def read_budget(self, frame, cost='x5'):
         x, y, w, h = self.roi
         results, _ = self.recognizer([frame[y:y+h, x:x+w]])
         text, score = results[0]
-        # Match Single OCR's confidence gate; a blank is never an explicit zero.
-        return self.parse(text if score >= 0.6 else '', cost), text, score
+        # The event's Digit rule retains the 0.6 confidence gate and empty result.
+        filtered = self.ocr.after_process(text if score >= self.ocr.min_score else '')
+        return self.parse(filtered, cost), text, score
 
     def balance_frame(self, value):
         crop = cv2.imread(str(FIXTURES / f'ticket_balance_{value}.png'))
@@ -59,6 +64,15 @@ class TicketOcrTests(unittest.TestCase):
         self.assertEqual(budget, (385, 1), (text, score))
         for text in ('：385', '_385'):
             self.assertIsNone(self.parse(text, 'x1'))
+
+    def test_original_failing_crops_are_accepted_after_digit_filtering(self):
+        for value, cost in [(255, 'x5'), (385, 'x1')]:
+            with self.subTest(value=value):
+                frame = self.balance_frame(value)
+                results, _ = self.recognizer([frame[25:53, 1110:1206]])
+                text, score = results[0]
+                self.assertGreaterEqual(score, self.ocr.min_score)
+                self.assertEqual(self.parse(self.ocr.after_process(text), cost), (value, int(cost[-1])))
 
     def test_existing_ticket_pages_still_recognize_balance(self):
         for name, expected, cost in [('ticket_before', 235, 'x5'), ('ticket_after', 230, 'x5'),

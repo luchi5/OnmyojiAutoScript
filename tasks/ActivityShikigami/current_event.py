@@ -21,6 +21,19 @@ def _image(name, front, back=None, threshold=0.85):
                      file=f"./tasks/ActivityShikigami/event_202610/event_202610_{name}.png")
 
 
+class TicketBalanceOcr(RuleOcr):
+    """Digit filtering with an empty result kept distinct from an explicit zero."""
+
+    min_score = 0.6
+
+    def after_process(self, result):
+        text = '' if result is None else str(result)
+        digits = re.sub(r'[^0-9]', '', text)
+        if digits and digits != text:
+            logger.info(f'Ticket balance OCR filtered: {text!r} -> {digits!r}')
+        return digits
+
+
 class CurrentEventAssets:
     I_EVENT_MAIN = _image("main", (151, 20, 132, 34), (141, 10, 152, 54))
     I_EVENT_VERSION = _image("version", (54, 146, 92, 28), (40, 130, 125, 60))
@@ -50,17 +63,17 @@ class CurrentEventAssets:
     C_TICKET_REWARD_DETAILS = RuleClick((200, 0, 900, 720), (200, 0, 900, 720), 'ticket_reward_details')
     I_TICKET_LOCK = _image("lock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     I_TICKET_UNLOCK = _image("unlock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
-    # Single 保留原始识别文本：识别失败不能通过 Digit 的默认值变成 0。
+    # Digit 过滤非数字；用 ocr_single 保留无数字时的空串，避免默认变成 0。
     # Keep vertical context: the old tight crop added punctuation before 255/385.
-    O_TICKET_BALANCE = RuleOcr(roi=(1110, 23, 96, 32), area=(1110, 23, 96, 32),
-                             mode="Single", method="Default", keyword="", name="event_ticket_balance")
+    O_TICKET_BALANCE = TicketBalanceOcr(roi=(1110, 23, 96, 32), area=(1110, 23, 96, 32),
+                                      mode="Digit", method="Default", keyword="", name="event_ticket_balance")
     O_TICKET_COST = RuleOcr(roi=(1168, 636, 42, 32), area=(1168, 636, 42, 32),
                           mode="Single", method="Default", keyword="", name="event_ticket_cost")
 
 
 def parse_ticket_budget(balance_text, cost_text):
-    """本期简单消耗 1 张、困难消耗 5 张，空白/混合字符返回未知。"""
-    balance = str(balance_text or "").strip()
+    """校验过滤后的门票数字和实际消耗；空白返回未知。"""
+    balance = '' if balance_text is None else str(balance_text).strip()
     cost = re.sub(r"\s+", "", str(cost_text or ""))
     if not re.fullmatch(r"[0-9]{1,6}", balance):
         return None
