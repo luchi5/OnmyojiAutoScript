@@ -2,6 +2,8 @@
 
 import ast
 from contextlib import nullcontext
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from pathlib import Path
 import re
 import random
@@ -33,16 +35,41 @@ def load_event(clock):
     logger.logger = FakeLogger()
     with patch.dict(sys.modules, {'module.logger': logger}):
         from module.atom.image import RuleImage
-        from module.atom.click import RuleClick
+        from module.atom.click import RuleClick, RuleClickExclude
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     tree.body = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
-    context = dict(re=re, random=random, RuleClick=RuleClick, RuleImage=RuleImage, RuleOcr=lambda **kwargs: SimpleNamespace(**kwargs),
+    context = dict(re=re, random=random, RuleClick=RuleClick, RuleClickExclude=RuleClickExclude, RuleImage=RuleImage, RuleOcr=lambda **kwargs: SimpleNamespace(**kwargs),
                    Timer=lambda *a, **k: FakeTimer(clock, *a, **k), logger=FakeLogger(),
                    GameStuckError=GameStuckError, RequestHumanTakeover=RequestHumanTakeover,
                    battle_wait_strategy=lambda **kwargs: nullcontext(),
                    battle_wait_options=lambda **kwargs: nullcontext())
     exec(compile(tree, str(SOURCE), 'exec'), context)
     return context
+
+
+def load_settlement(clock, RuleClickExclude):
+    """Exercise the real shared hooks without importing a device or OCR."""
+    class Timer(FakeTimer):
+        def __init__(self, *args, **kwargs):
+            super().__init__(clock, *args, **kwargs)
+        def reached_and_reset(self):
+            if self.reached():
+                self.reset()
+                return True
+            return False
+    path = ROOT / 'tasks/Component/GeneralBattle/battle_wait.py'
+    tree = ast.parse(path.read_text(encoding='utf-8'))
+    names = {'OptionSuccessDefault', 'OptionCompletionDefault', 'PerBattleSuccess',
+             'PerBattleCompletion', 'HookSignal', 'BattleResult'}
+    tree.body = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name in names]
+    ns = dict(dataclass=dataclass, field=field, Enum=Enum, auto=auto, Timer=Timer,
+              RuleClickExclude=RuleClickExclude, RuleImage=object,
+              GameStuckError=GameStuckError, logger=FakeLogger(),
+              PublicContext=object, PrivateContext=object,
+              runtime=SimpleNamespace(hook_enabled_update=Mock(return_value='completion')))
+    exec(compile(tree, str(path), 'exec'), ns)
+    ns.update(extract_methods(path, 'BattleWait', ('_bw_success_soul', '_bw_completion_default'), ns))
+    return ns
 
 
 class TicketEventTests(unittest.TestCase):
@@ -128,7 +155,8 @@ class TicketEventTests(unittest.TestCase):
         self.task.I_WIN = 'win'
         self.task.is_in_battle = lambda _: self.clock.now >= 103
         self.task.appear = lambda _: False
-        self.task.loadout_from_config = lambda _: ({}, {})
+        self.options = {'success': SimpleNamespace(), 'completion': SimpleNamespace()}
+        self.task.loadout_from_config = lambda _: ({}, self.options)
         self.task.get_general_battle_conf = lambda: None
         self.task.battle_wait = Mock(return_value=win)
         self.task.ticket_wait_return = Mock()
@@ -240,6 +268,116 @@ class TicketEventTests(unittest.TestCase):
         self.assertTrue(self.task.I_TICKET_REWARD_CONTINUE.match(image))
         for name in ('simple','hard_current','event_main','stamina','ticket_after'):
             self.assertFalse(self.task.I_TICKET_REWARD_CONTINUE.match(self.image(name)))
+
+    def configured_settlement(self):
+        self.prepare_battle()
+        shared = load_settlement(self.clock, self.ns['RuleClickExclude'])
+        self.options.update(success=shared['OptionSuccessDefault'](),
+                            completion=shared['OptionCompletionDefault']())
+        strategies = {}
+        self.task.loadout_from_config = lambda _: (strategies, self.options)
+        self.task.ticket_battle_once()
+        self.assertEqual(strategies['success'], 'soul')
+        self.assertEqual(self.options['completion'].check_imgs, [self.task.I_TICKET_PAGE])
+        return shared
+
+    def test_all_shared_reward_clicks_exclude_the_entire_actual_grid(self):
+        shared = self.configured_settlement()
+        factory = shared['PerBattleSuccess'].reward_exclude_click
+        for exclusions in (self.options['success'].excludes_1,
+                           self.options['success'].excludes_2,
+                           self.options['completion'].excludes):
+            rule = factory(self.task, exclusions)
+            self.assertTrue(rule._is_excluded(320,449))  # Actual bad click on 12th loot slot.
+            self.assertTrue(rule._is_excluded(783,502))  # First-stage stale-frame click.
+            for strategy in ('rejection', 'complement'):
+                for distribution in ('uniform', 'normal'):
+                    rule.strategy, rule.distribution = strategy, distribution
+                    for _ in range(250):
+                        x,y = rule.coord()
+                        self.assertFalse(220 <= x < 1090 and 70 <= y < 645)
+                        self.assertGreaterEqual(y,180)
+
+    def test_success_clicks_victory_once_without_an_immediate_reward_click(self):
+        shared = self.configured_settlement()
+        self.task.click.reset_mock()
+        self.task.I_WIN = 'win'
+        self.task.appear_then_click = Mock(return_value=True)
+        pub = SimpleNamespace(per_battle=SimpleNamespace(success=None))
+        pri = SimpleNamespace(per_battle=shared['PerBattleSuccess'](), options=self.options['success'])
+        shared['_bw_success_soul'](self.task,pub,pri)
+        self.task.appear_then_click.assert_called_once_with('win', interval=0.8)
+        self.task.click.assert_not_called()
+
+    def test_completion_closes_details_at_side_then_waits_for_challenge_page(self):
+        shared = self.configured_settlement()
+        pub = SimpleNamespace(per_task=SimpleNamespace(count=0))
+        pri = SimpleNamespace(per_battle=shared['PerBattleCompletion'](), options=self.options['completion'])
+        points=[]
+        self.task.device.click = lambda **kw: points.append((kw['x'],kw['y']))
+        hook = shared['_bw_completion_default']
+        self.task.appear = lambda _: False  # Tooltip covers the continue label.
+        self.assertEqual(hook(self.task,pub,pri),shared['HookSignal'].CONTINUE)
+        self.assertEqual(points,[])
+        self.clock.now += 3.1
+        hook(self.task,pub,pri)
+        self.assertEqual(len(points),1)
+        self.assertTrue(points[0][0] < 200 or points[0][0] >= 1100)
+        self.assertEqual(pub.per_task.count,0)
+        self.task.appear = lambda marker: marker is self.task.I_TICKET_PAGE
+        self.assertEqual(hook(self.task,pub,pri),shared['HookSignal'].DONE)
+        self.assertEqual(pub.per_task.count,1)
+        self.assertEqual(len(points),1)
+
+    def test_reward_stage_uses_safe_clicks_without_item_detail_branch(self):
+        shared = self.configured_settlement()
+        self.task.click.reset_mock()
+        self.task.device.click = Mock()
+        self.task.appear_then_click = lambda *a, **k: False
+        for name in ('I_GREED_GHOST','I_REWARD_GOLD','I_REWARD_GOLD_SNAKE_SKIN'):
+            setattr(self.task,name,name)
+        visible={'reward'}
+        self.task.appear=lambda marker, **kw: marker in visible
+        captures=0
+        def screenshot():
+            nonlocal captures
+            captures+=1
+            self.clock.advance()
+            if captures>1:
+                visible.clear()
+        self.task.screenshot=screenshot
+        pub=SimpleNamespace(per_battle=SimpleNamespace(success=None))
+        pri=SimpleNamespace(per_battle=shared['PerBattleSuccess'](),options=self.options['success'])
+        self.assertEqual(shared['_bw_success_soul'](self.task,pub,pri),'completion')
+        self.task.click.assert_called_once()
+        self.task.device.click.assert_not_called()
+        rule=self.task.click.call_args.args[0]
+        self.assertTrue(rule._is_excluded(320,449))
+        self.assertEqual(pub.per_battle.success,shared['BattleResult'].SUCCESS)
+
+    def test_exhausted_completion_retries_do_not_count_success(self):
+        shared = self.configured_settlement()
+        pub = SimpleNamespace(per_task=SimpleNamespace(count=0))
+        pri = SimpleNamespace(per_battle=shared['PerBattleCompletion'](), options=self.options['completion'])
+        self.task.device.click=Mock()
+        self.task.appear=lambda _: False
+        hook=shared['_bw_completion_default']
+        hook(self.task,pub,pri)
+        for _ in range(5):
+            self.clock.now += 3.1
+            hook(self.task,pub,pri)
+        self.clock.now += 3.1
+        with self.assertRaises(GameStuckError):
+            hook(self.task,pub,pri)
+        self.assertEqual(self.task.device.click.call_count,5)
+        self.assertEqual(pub.per_task.count,0)
+
+    def test_other_tasks_keep_existing_completion_defaults(self):
+        shared = load_settlement(self.clock, self.ns['RuleClickExclude'])
+        options=shared['OptionCompletionDefault']()
+        self.assertIsNone(options.check_imgs)
+        self.assertEqual(options.fallback_interval,8)
+        self.assertIsNone(options.fallback_limit)
 
     def test_already_locked_does_not_toggle(self):
         self.task.ticket_page_visible = lambda: True

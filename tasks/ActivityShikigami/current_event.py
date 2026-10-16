@@ -41,6 +41,13 @@ class CurrentEventAssets:
         RuleClick(roi_front=area, roi_back=area, name='event_ticket_reward_blank')
         for area in ((30, 180, 170, 400), (1100, 180, 140, 400), (350, 665, 650, 45))
     )
+    # Follow upstream 27241886's whole-grid exclusion instead of individual
+    # reward slots. The current ticket grid starts higher than its old layout.
+    C_TICKET_REWARD_BODY = RuleClick((220, 70, 870, 575), (220, 70, 870, 575), 'ticket_reward_body')
+    C_TICKET_REWARD_HEADER = RuleClick((0, 0, 1280, 180), (0, 0, 1280, 180), 'ticket_reward_header')
+    C_TICKET_REWARD_BUFF = RuleClick((0, 620, 350, 100), (0, 620, 350, 100), 'ticket_reward_buff')
+    # A tooltip can cover the bottom prompt: completion clicks only the sides.
+    C_TICKET_REWARD_DETAILS = RuleClick((200, 0, 900, 720), (200, 0, 900, 720), 'ticket_reward_details')
     I_TICKET_LOCK = _image("lock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     I_TICKET_UNLOCK = _image("unlock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     # Single 保留原始识别文本：识别失败不能通过 Digit 的默认值变成 0。
@@ -157,8 +164,18 @@ class CurrentEventTicket(CurrentEventAssets):
                 raise GameStuckError('磐长故地点击挑战后未进入战斗，不重复点击或确认未知弹窗')
 
         strategies, options = self.loadout_from_config(self.get_general_battle_conf())
-        # 本期是普通战利品/达摩奖励袋，不是“获得奖励”弹窗。
-        strategies['success'] = 'default'
+        # Reuse the normal loot handler without deliberate detail clicks or the
+        # default handler's second click immediately after the victory screen.
+        strategies['success'] = 'soul'
+        safe = ['C_TICKET_REWARD_BODY', 'C_TICKET_REWARD_HEADER', 'C_TICKET_REWARD_BUFF']
+        options['success'].excludes_1 = safe.copy()
+        options['success'].excludes_2 = safe.copy()
+        # As upstream does, keep completion active until the challenge page is
+        # actually visible. Exhausting retries must not count a finished run.
+        options['completion'].check_imgs = [self.I_TICKET_PAGE]
+        options['completion'].excludes = safe + ['C_TICKET_REWARD_DETAILS']
+        options['completion'].fallback_interval = 3
+        options['completion'].fallback_limit = 5
         with battle_wait_strategy(**strategies), battle_wait_options(**options):
             win = self.battle_wait()
         if not win:

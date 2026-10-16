@@ -87,6 +87,7 @@ from enum import Enum, auto
 from cached_property import cached_property
 
 from module.logger import logger
+from module.exception import GameStuckError
 from module.base.timer import Timer
 from module.atom.click import RuleClickExclude
 from module.atom.image import RuleImage
@@ -146,6 +147,8 @@ class OptionCompletionDefault:
     check_imgs: list[RuleImage] = None
     # 兜底：check_imgs 都检测不到时，间隔点击的排除位
     excludes: list[str] = field(default_factory=list)
+    fallback_interval: float = 8
+    fallback_limit: int | None = None
 
 
 @dataclass
@@ -364,8 +367,9 @@ class PerBattleSetup:
 @dataclass
 class PerBattleCompletion:
     click_stage_2: RuleClickExclude | None = None
-    # 兜底点击节拍器：进入 completion 起算，满 8s 才首次点击，之后每 8s 一次
+    # 兜底节拍器：默认每 8 秒一次，任务可指定间隔和尝试上限。
     fallback_timer: Timer | None = None
+    fallback_cnt: int = 0
 
 
 @dataclass
@@ -1122,18 +1126,21 @@ class BattleWait(BaseTask, GeneralBattleAssets):
             pub.per_task.count += 1
             # self.current_count += 1  # 兼容旧的计数
             return HookSignal.DONE
-        # check_imgs 全没出现 → 兜底点击回退界面：进入 completion 满 8s 才首次点击，之后每 8s 一次
+        # Wait for the configured interval, including before the first fallback click.
         if state.fallback_timer is None:
-            state.fallback_timer = Timer(8).start()
+            state.fallback_timer = Timer(options.fallback_interval).start()
         if not isinstance(state.fallback_timer, Timer):
             raise
         if not state.fallback_timer.reached():
             return HookSignal.CONTINUE
+        if options.fallback_limit is not None and state.fallback_cnt >= options.fallback_limit:
+            raise GameStuckError('Battle settlement did not return to the configured page; stop fallback clicks')
         state.fallback_timer.reset()
         if state.click_stage_2 is None:
             state.click_stage_2 = PerBattleSuccess.reward_exclude_click(self, options.excludes, name='completion_exclude_click')
         x, y = state.click_stage_2.coord()
         self.device.click(x=x, y=y, control_name='completion_exclude_click')
+        state.fallback_cnt += 1
         return HookSignal.CONTINUE
 
     def _bw_interrupt_default(self, pub: PublicContext, pri: PrivateContext) -> HookSignal:
