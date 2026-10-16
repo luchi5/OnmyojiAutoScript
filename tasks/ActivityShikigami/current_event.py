@@ -32,6 +32,7 @@ class CurrentEventAssets:
     I_TICKET_SIMPLE = _image("simple", (1144, 277, 65, 67), (1134, 267, 85, 87))
     I_TICKET_HARD = _image("hard", (1144, 386, 65, 67), (1134, 376, 85, 87))
     I_TICKET_RECORDS = _image("records", (1006, 555, 57, 79), (996, 545, 77, 99))
+    I_TICKET_REWARD_CONTINUE = _image("reward_continue", (552, 678, 178, 32), (532, 665, 218, 55))
     I_TICKET_LOCK = _image("lock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     I_TICKET_UNLOCK = _image("unlock", (895, 650, 29, 29), (889, 644, 41, 41), 0.9)
     # Single 保留原始识别文本：识别失败不能通过 Digit 的默认值变成 0。
@@ -118,6 +119,10 @@ class CurrentEventTicket(CurrentEventAssets):
             self.screenshot()
             if self.ticket_page_visible():
                 return
+            # A large loot grid can remain after the generic reward handler returns.
+            # Only dismiss its explicit continue prompt, never an unknown dialog.
+            if self.appear(self.I_TICKET_REWARD_CONTINUE):
+                self.click(self.I_TICKET_REWARD_CONTINUE, interval=1.5)
         raise GameStuckError('磐长故地结算后未返回挑战页，停止继续挑战')
 
     def ticket_battle_once(self):

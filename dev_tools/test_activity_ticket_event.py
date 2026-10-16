@@ -51,6 +51,7 @@ class TicketEventTests(unittest.TestCase):
         self.task.device = SimpleNamespace(image=None)
         self.task.screenshot = self.clock.advance
         self.task.click = Mock()
+        self.task.appear = lambda _: False
         self.task.put_status = Mock()
         self.task.count_map = {'pass': 0}
         self.task.conf = SimpleNamespace(general_climb=SimpleNamespace(pass_difficulty='ticket_keep_current'))
@@ -200,6 +201,20 @@ class TicketEventTests(unittest.TestCase):
         with self.assertRaises(GameStuckError):
             self.task.ticket_wait_return()
         self.task.click.assert_not_called()
+
+    def test_reward_continue_then_return_without_challenging_again(self):
+        self.task.ticket_page_visible = Mock(side_effect=[False, True])
+        self.task.appear = lambda rule: rule is self.task.I_TICKET_REWARD_CONTINUE
+        self.task.ticket_wait_return()
+        self.task.click.assert_called_once_with(self.task.I_TICKET_REWARD_CONTINUE, interval=1.5)
+
+    def test_real_reward_footer_matches_but_other_pages_do_not(self):
+        import numpy as np
+        image = np.zeros((720,1280,3), dtype=np.uint8)
+        image[660:720,500:780] = self.image('reward_footer')
+        self.assertTrue(self.task.I_TICKET_REWARD_CONTINUE.match(image))
+        for name in ('simple','hard_current','event_main','stamina','ticket_after'):
+            self.assertFalse(self.task.I_TICKET_REWARD_CONTINUE.match(self.image(name)))
 
     def test_already_locked_does_not_toggle(self):
         self.task.ticket_page_visible = lambda: True
