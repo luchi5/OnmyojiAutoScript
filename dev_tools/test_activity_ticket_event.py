@@ -4,6 +4,7 @@ import ast
 from contextlib import nullcontext
 from pathlib import Path
 import re
+import random
 import sys
 from types import SimpleNamespace, ModuleType
 import unittest
@@ -32,9 +33,10 @@ def load_event(clock):
     logger.logger = FakeLogger()
     with patch.dict(sys.modules, {'module.logger': logger}):
         from module.atom.image import RuleImage
+        from module.atom.click import RuleClick
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     tree.body = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
-    context = dict(re=re, RuleImage=RuleImage, RuleOcr=lambda **kwargs: SimpleNamespace(**kwargs),
+    context = dict(re=re, random=random, RuleClick=RuleClick, RuleImage=RuleImage, RuleOcr=lambda **kwargs: SimpleNamespace(**kwargs),
                    Timer=lambda *a, **k: FakeTimer(clock, *a, **k), logger=FakeLogger(),
                    GameStuckError=GameStuckError, RequestHumanTakeover=RequestHumanTakeover,
                    battle_wait_strategy=lambda **kwargs: nullcontext(),
@@ -206,7 +208,30 @@ class TicketEventTests(unittest.TestCase):
         self.task.ticket_page_visible = Mock(side_effect=[False, True])
         self.task.appear = lambda rule: rule is self.task.I_TICKET_REWARD_CONTINUE
         self.task.ticket_wait_return()
-        self.task.click.assert_called_once_with(self.task.I_TICKET_REWARD_CONTINUE, interval=1.5)
+        self.task.click.assert_called_once()
+        self.assertIn(self.task.click.call_args.args[0], self.task.C_TICKET_REWARD_BLANKS)
+
+    def test_reward_regions_stay_outside_loot_grid_and_banner(self):
+        for rule in self.task.C_TICKET_REWARD_BLANKS:
+            x, y, w, h = rule.roi_front
+            self.assertTrue(x+w < 260 or x > 1050 or y > 625)
+            self.assertGreater(y, 100)
+            self.assertTrue(0 <= x < x+w <= 1280 and 0 <= y < y+h <= 720)
+            for _ in range(50):
+                px, py = rule.coord()
+                self.assertTrue(x <= px <= x+w and y <= py <= y+h)
+
+    def test_rotating_regions_share_click_delay_and_require_visible_prompt(self):
+        self.task.ticket_page_visible = lambda: False
+        self.task.appear = lambda rule: rule is self.task.I_TICKET_REWARD_CONTINUE
+        clicks = []
+        self.task.click = lambda rule: clicks.append((self.clock.now, rule))
+        regions = self.task.C_TICKET_REWARD_BLANKS
+        with patch.object(self.ns['random'], 'choice', side_effect=lambda options: regions[len(clicks) % 3]):
+            with self.assertRaises(GameStuckError):
+                self.task.ticket_wait_return()
+        self.assertEqual([rule for _, rule in clicks[:3]], list(regions))
+        self.assertTrue(all(b[0]-a[0] >= 1.5 for a,b in zip(clicks,clicks[1:])))
 
     def test_real_reward_footer_matches_but_other_pages_do_not(self):
         import numpy as np
