@@ -41,7 +41,7 @@ def load_event(clock):
         from module.atom.click import RuleClick, RuleClickExclude
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))
     tree.body = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
-    context = dict(re=re, random=random, RuleClick=RuleClick, RuleClickExclude=RuleClickExclude, RuleImage=RuleImage, RuleOcr=FakeRuleOcr,
+    context = dict(re=re, random=random, cv2=cv2, RuleClick=RuleClick, RuleClickExclude=RuleClickExclude, RuleImage=RuleImage, RuleOcr=FakeRuleOcr,
                    Timer=lambda *a, **k: FakeTimer(clock, *a, **k), logger=FakeLogger(),
                    GameStuckError=GameStuckError, RequestHumanTakeover=RequestHumanTakeover,
                    battle_wait_strategy=lambda **kwargs: nullcontext(),
@@ -174,8 +174,8 @@ class TicketEventTests(unittest.TestCase):
         self.task.O_TICKET_BALANCE.ocr_single.assert_not_called()
         self.task.click.assert_not_called()
 
-    def prepare_battle(self, before=235, after=230, win=True, cost=5):
-        self.task.ticket_read_budget = Mock(side_effect=[(before, cost), (after, cost)])
+    def prepare_battle(self, before=235, win=True, cost=5):
+        self.task.ticket_read_budget = Mock(return_value=(before, cost))
         self.task.I_REWARD = 'reward'
         self.task.I_WIN = 'win'
         self.task.is_in_battle = lambda _: self.clock.now >= 103
@@ -200,13 +200,16 @@ class TicketEventTests(unittest.TestCase):
         self.assertEqual(self.task.count_map['pass'], 1)
 
     def test_exactly_five_tickets_can_complete_last_battle(self):
-        self.prepare_battle(before=5, after=0)
+        self.prepare_battle(before=5)
+        self.task.ticket_read_budget.side_effect = [(5, 5), (0, 5)]
         self.assertTrue(self.task.ticket_battle_once())
+        self.assertFalse(self.task.ticket_battle_once())
+        self.task.click.assert_called_once()
         self.assertEqual(self.task.count_map['pass'], 1)
 
     def test_simple_with_one_or_four_tickets_still_runs(self):
         for balance in (1, 4):
-            self.prepare_battle(before=balance, after=balance - 1, cost=1)
+            self.prepare_battle(before=balance, cost=1)
             self.assertTrue(self.task.ticket_battle_once())
         self.assertEqual(self.task.count_map['pass'], 2)
 
@@ -245,11 +248,15 @@ class TicketEventTests(unittest.TestCase):
             self.task.ticket_battle_once()
         self.assertEqual(self.task.count_map['pass'], 0)
 
-    def test_unexpected_ticket_change_does_not_count(self):
-        self.prepare_battle(after=235)
-        with self.assertRaises(GameStuckError):
-            self.task.ticket_battle_once()
-        self.assertEqual(self.task.count_map['pass'], 0)
+    def test_positive_balance_continues_without_exact_deduction_check(self):
+        self.prepare_battle(before=100, cost=1)
+        self.task.ticket_read_budget.side_effect = [(100, 1), (199, 1), (0, 1)]
+        self.assertTrue(self.task.ticket_battle_once())
+        self.assertTrue(self.task.ticket_battle_once())
+        self.assertFalse(self.task.ticket_battle_once())
+        self.assertEqual(self.task.count_map['pass'], 2)
+        self.assertEqual(self.task.click.call_count, 2)
+        self.assertEqual(self.task.ticket_read_budget.call_count, 3)
 
     def test_return_timeout_is_bounded(self):
         self.task.ticket_page_visible = lambda: False

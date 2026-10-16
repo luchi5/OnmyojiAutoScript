@@ -5,6 +5,7 @@
 
 import re
 import random
+import cv2
 
 from module.atom.click import RuleClick
 from module.atom.image import RuleImage
@@ -25,6 +26,20 @@ class TicketBalanceOcr(RuleOcr):
     """Digit filtering with an empty result kept distinct from an explicit zero."""
 
     min_score = 0.6
+
+    def pre_process(self, image):
+        # Trim dark padding around the pale ticket digits. In a wide crop the
+        # decorative background can be read as a leading digit (99 -> 199).
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
+        _, mask = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY)
+        points = cv2.findNonZero(mask)
+        if points is None:
+            return image
+        x, y, width, height = cv2.boundingRect(points)
+        if height < 6:
+            return image
+        return image[max(0, y-3):min(image.shape[0], y+height+3),
+                     max(0, x-3):min(image.shape[1], x+width+3)]
 
     def after_process(self, result):
         text = '' if result is None else str(result)
@@ -196,9 +211,9 @@ class CurrentEventTicket(CurrentEventAssets):
             raise RequestHumanTakeover('磐长故地挑战失败，请检查难度和阵容后再继续')
 
         self.ticket_wait_return()
-        after, _ = self.ticket_read_budget()
-        if before - after != cost:
-            raise GameStuckError(f'磐长故地门票变动待核验：{before} -> {after}，预期消耗 {cost}')
+        # Victory and the confirmed return establish a completed battle. Read
+        # the current balance before the next challenge, without a brittle
+        # exact-deduction check on OCR results from two separate frames.
         self.count_map['pass'] += 1
-        logger.info(f"Count pass: {self.count_map['pass']}; tickets {before} -> {after}")
+        logger.info(f"Count pass: {self.count_map['pass']}; victory and return confirmed")
         return True

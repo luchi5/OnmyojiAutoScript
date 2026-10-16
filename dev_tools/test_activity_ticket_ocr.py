@@ -31,7 +31,7 @@ class TicketOcrTests(unittest.TestCase):
         cls.roi = ast.literal_eval(next(keyword.value for keyword in balance.keywords if keyword.arg == 'roi'))
         parser = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'parse_ticket_budget')
         processor = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'TicketBalanceOcr')
-        ns = {'re': re, 'RuleOcr': SimpleNamespace, 'logger': Mock()}
+        ns = {'re': re, 'cv2': cv2, 'RuleOcr': SimpleNamespace, 'logger': Mock()}
         exec(compile(ast.Module(body=[processor, parser], type_ignores=[]), '<ticket_parser>', 'exec'), ns)
         cls.parse = staticmethod(ns['parse_ticket_budget'])
         cls.ocr = ns['TicketBalanceOcr']()
@@ -39,7 +39,7 @@ class TicketOcrTests(unittest.TestCase):
 
     def read_budget(self, frame, cost='x5'):
         x, y, w, h = self.roi
-        results, _ = self.recognizer([frame[y:y+h, x:x+w]])
+        results, _ = self.recognizer([self.ocr.pre_process(frame[y:y+h, x:x+w])])
         text, score = results[0]
         # The event's Digit rule retains the 0.6 confidence gate and empty result.
         filtered = self.ocr.after_process(text if score >= self.ocr.min_score else '')
@@ -64,6 +64,15 @@ class TicketOcrTests(unittest.TestCase):
         self.assertEqual(budget, (385, 1), (text, score))
         for text in ('：385', '_385'):
             self.assertIsNone(self.parse(text, 'x1'))
+
+    def test_two_digit_balance_does_not_gain_a_leading_one(self):
+        budget, text, score = self.read_budget(self.balance_frame(99), 'x1')
+        self.assertEqual(text, '99')
+        self.assertEqual(budget, (99, 1), score)
+
+    def test_reported_145_remains_readable_after_trimming(self):
+        budget, text, score = self.read_budget(self.balance_frame(145))
+        self.assertEqual(budget, (145, 5), (text, score))
 
     def test_original_failing_crops_are_accepted_after_digit_filtering(self):
         for value, cost in [(255, 'x5'), (385, 'x1')]:
