@@ -1,6 +1,5 @@
 
 from collections import deque
-from datetime import datetime
 
 # Patch pkg_resources before importing adbutils and uiautomator2
 from module.device.pkg_resources import get_distribution
@@ -9,7 +8,6 @@ _ = get_distribution
 
 from module.device.env import IS_WINDOWS
 from module.base.timer import Timer
-from module.config.utils import get_server_next_update
 from module.device.app_control import AppControl
 from module.device.control import Control
 from module.device.platform2 import Platform
@@ -78,28 +76,6 @@ class Device(Platform, Screenshot, Control, AppControl):
         self.config.script.device.screenshot_method = method
         self.config.save()
 
-    def handle_night_commission(self, daily_trigger='21:00', threshold=30):
-        """
-        Args:
-            daily_trigger (int): Time for commission refresh.
-            threshold (int): Seconds around refresh time.
-
-        Returns:
-            bool: If handled.
-        """
-        update = get_server_next_update(daily_trigger=daily_trigger)
-        now = datetime.now()
-        diff = (update.timestamp() - now.timestamp()) % 86400
-        if threshold < diff < 86400 - threshold:
-            return False
-
-        # if GET_MISSION.match(self.image, offset=True):
-        #     logger.info('Night commission appear.')
-        #     self.click(GET_MISSION)
-        #     return True
-
-        return False
-
     def screenshot(self):
         """
         Returns:
@@ -115,10 +91,6 @@ class Device(Platform, Screenshot, Control, AppControl):
         # Always obtain a fresh frame before checking the stuck timer. Otherwise
         # an expired timer could hide a newly arrived other-device-login popup.
         self.check_account_session()
-        if self.handle_night_commission():
-            super().screenshot()
-            self.check_account_session()
-
         self.stuck_record_check()
         return self.image
 
@@ -131,7 +103,7 @@ class Device(Platform, Screenshot, Control, AppControl):
         if getattr(self, '_account_session_recovery', False):
             return
         if other_device_login_visible(getattr(self, 'image', None)):
-            message = '检测到账号在其他设备登录，将自动重启游戏并恢复任务'
+            message = '检测到账号在其他设备登录，交由半小时恢复规则处理'
             logger.critical(message)
             raise AccountLoggedInElsewhere(message)
 
@@ -253,6 +225,8 @@ class Device(Platform, Screenshot, Control, AppControl):
             logger.critical('Please enable Alas.Error.HandleError or manually login to AzurLane')
             raise RequestHumanTakeover
         super().app_start()
+        from module.device.startup_frame import ensure_startup_frame
+        ensure_startup_frame(self, super().app_start)
         self.stuck_record_clear()
         self.click_record_clear()
 

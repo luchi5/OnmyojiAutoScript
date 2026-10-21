@@ -1,3 +1,20 @@
 {
-
+  "boss_count_mode": "Boss battle counting mode",
+  "Boss Count Mode": "Boss battle counting mode",
+  "boss_count_mode_help": "Automatic: confirmed reward progress plus subsequent wins up to 100. Fixed: skip reward OCR and stop after the configured number of wins. Restart this account task after changing modes.",
+  "boss_auto_progress": "Complete 100 rewards automatically",
+  "boss_fixed_count": "Fixed battle count (ignore reward counter)",
+  "boss_limit": "Fixed boss win count",
+  "Boss Limit": "Fixed boss win count",
+  "boss_limit_help": "Used only in fixed-count mode; 0 skips battles. Counts wins in this task execution and resets on restart. The total time limit still applies.",
+  "exhaust_double_rewards": "Use all remaining double rewards",
+  "owt_exhaust_double_rewards_help": "Solo only. Read the remaining bonus before every battle; stop at zero. Time limit remains active; uncertain readings defer 10 minutes.",
+  "dedicated_next_run_help": "Time of the next queued run; may be edited manually. Subsequent runs follow the task calendar and retry settings, ignoring legacy server-time overrides.",
+  "unassigned": "Choose leader or member",
+  "teammate_name": "Teammate in-game nickname",
+  "friend_tab": "Invitation friend list",
+  "draft_duel_role_help": "Choose one leader and one member. The leader invites the configured nickname; the member waits on the current screen. Team only; no challenge starts.",
+  "draft_duel_teammate_name_help": "Leader: exact member nickname. Member: exact allowed leader nickname.",
+  "draft_duel_friend_tab_help": "Leader only: choose the friend list to scan.",
+  "draft_duel_partner_config_help": "Both accounts must name each other and choose opposite team roles. Do not copy these fields through the linker."
 }

@@ -240,7 +240,10 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 if cfg.dokan_config.switch_preset_enable and group:
                     logger.info(f"Master_First:switch_preset_team{group},{team}")
                     self.switch_preset_team(cfg.dokan_config.switch_preset_enable, group, team)
-                    self.wait_until_appear(self.I_PRESET, False, 3)
+                    if self._dokan_preset_result_visible():
+                        continue
+                    if not self._dokan_preset_battle_visible():
+                        self.wait_until_appear(self.I_PRESET, False, 3)
 
                 battle_success = self.dokan_battle(cfg, count)
                 if count == 1 and battle_success:
@@ -269,6 +272,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 if cfg.dokan_config.switch_preset_enable and group:
                     logger.info(f"Master_Second:switch_preset_team{group},{team}")
                     self.switch_preset_team(cfg.dokan_config.switch_preset_enable, group, team)
+                    if self._dokan_preset_result_visible():
+                        continue
 
                 self.dokan_battle(cfg)
                 self.quit_battle()
@@ -280,6 +285,8 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
                 if cfg.dokan_config.switch_preset_enable and group:
                     logger.info(f"Normal Battle:switch_preset_team{group},{team}")
                     self.switch_preset_team(cfg.dokan_config.switch_preset_enable, group, team)
+                    if self._dokan_preset_result_visible():
+                        continue
                 # 战斗
                 self.dokan_battle(cfg)
                 # 战斗结束,尝试退出战斗界面
@@ -1025,6 +1032,34 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
             if self.appear(self.I_RYOU_DOKAN_FAILED_VOTE_KEEP_BOUNTY):
                 self.ui_click_until_disappear(self.I_RYOU_DOKAN_FAILED_VOTE_KEEP_BOUNTY)
 
+    def _dokan_preset_result_visible(self):
+        from tasks.Dokan.settlement_recovery import CONTINUE
+        return any(self.appear(marker) for marker in (
+            self.I_WIN, self.I_FALSE, self.I_REWARD, self.I_REWARD_GOLD,
+            self.I_RYOU_DOKAN_WIN, self.I_RYOU_DOKAN_BATTLE_OVER,
+            self.I_RYOU_DOKAN_TOPPA_RANK, self.I_RYOU_DOKAN_SPOILS_OF_DOKAN,
+            CONTINUE,
+        ))
+
+    def _dokan_preset_battle_visible(self):
+        # Some skins retain the battle-info button during preparation/menu UI.
+        return (self.is_in_real_battle(False)
+                and not any(self.appear(marker) for marker in (
+                    self.I_PREPARE_HIGHLIGHT, self.I_PREPARE_DARK,
+                    self.I_PRESET_ENSURE, self.I_PRESENT_LESS_THAN_5,
+                )))
+
+    def _preset_selection_interrupted(self):
+        # The shared preset loops call this immediately after every capture,
+        # including group/team selection and confirmation.
+        if self._dokan_preset_result_visible():
+            logger.info('Dokan result interrupted preset selection; return to settlement flow')
+            return True
+        if self._dokan_preset_battle_visible():
+            logger.info('Dokan battle started during preset selection; continue battle flow')
+            return True
+        return False
+
     def screenshot(self):
         image = super().screenshot()
         # Shared soul-switch loops all capture through this method. Interrupt
@@ -1195,7 +1230,10 @@ class ScriptTask(ExtendGreenMark, GameUi, SwitchSoul, DokanSceneDetector):
         win = False
 
         # 等待准备按钮的出现
-        self.wait_until_appear(self.I_PREPARE_HIGHLIGHT)
+        if self._dokan_preset_result_visible():
+            return False
+        if not self._dokan_preset_battle_visible():
+            self.wait_until_appear(self.I_PREPARE_HIGHLIGHT)
 
         # 战斗刚开始，需要添加绿标
         need_green_mark = battle_config.green_enable

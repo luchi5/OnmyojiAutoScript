@@ -11,6 +11,7 @@ from module.device.handle import Handle
 from module.device.platform2.platform_base import PlatformBase
 from module.device.platform2.emulator_windows import Emulator, EmulatorInstance, EmulatorManager
 from module.device.platform2.mumu_process import MuMuProcessGuard
+from module.device.platform2.launch_spacing import wait_for_launch_slot
 from module.logger import logger
 
 import ctypes
@@ -27,22 +28,24 @@ def minimize_by_name(window_name, convert_hidden=True):
         window_name (str): 窗口名称（支持部分匹配）
         convert_hidden (bool): 是否将隐藏窗口改为最小化
     """
+    if not window_name or not window_name.strip():
+        return
     def callback(hwnd, lParam):
         title = get_window_title(hwnd)
         if window_name.lower() in title.lower():
             # 检查窗口当前状态
             is_visible = ctypes.windll.user32.IsWindowVisible(hwnd)
-
+            
             if is_visible:
                 # 可见窗口 → 最小化
                 minimize_window(hwnd)
                 logger.info(f'最小化可见窗口: {title}')
             elif convert_hidden:
                 # 隐藏窗口 → 改为最小化不激活
-                ctypes.windll.user32.ShowWindow(hwnd, 6)  # SW_SHOWMINNOACTIVE
+                ctypes.windll.user32.ShowWindowAsync(hwnd, 7)  # SW_SHOWMINNOACTIVE
                 logger.info(f'隐藏窗口改为最小化: {title}')
         return True
-
+    
     WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, ctypes.POINTER(ctypes.c_int))
     ctypes.windll.user32.EnumWindows(WNDENUMPROC(callback), None)
 
@@ -50,6 +53,8 @@ def find_hwnd_by_name(window_name):
     """
     枚举所有窗口，返回第一个匹配名称的 hwnd
     """
+    if not window_name or not window_name.strip():
+        return None
     target = None
     def callback(hwnd, lParam):
         title = get_window_title(hwnd)
@@ -70,9 +75,9 @@ def show_window_by_name(window_name):
     """
     hwnd = find_hwnd_by_name(window_name)
     if hwnd:
-        ctypes.windll.user32.ShowWindow(hwnd, 5)  # SW_SHOW
-        set_focus_window(hwnd)
-        logger.info(f'显示窗口: {window_name}')
+        # Window presentation must never block the scheduler on another UI thread.
+        ctypes.windll.user32.ShowWindowAsync(hwnd, 8)  # SW_SHOWNA
+        logger.info(f'已请求显示窗口: {window_name}')
     else:
         logger.info(f'没有找到窗口: {window_name}')
 
@@ -85,7 +90,7 @@ def set_focus_window(hwnd):
 
 
 def minimize_window(hwnd):
-    ctypes.windll.user32.ShowWindow(hwnd, 6)
+    ctypes.windll.user32.ShowWindowAsync(hwnd, 6)
 
 
 def get_window_title(hwnd):
@@ -442,13 +447,14 @@ class PlatformWindows(PlatformBase, EmulatorManager):
         return True
 
 
-    def emulator_start(self):
+    def emulator_start(self, max_attempts=3):
         logger.hr('Emulator start', level=1)
-        for i in range(3):
+        for i in range(max_attempts):
             # Stop
             if not self._emulator_function_wrapper(self._emulator_stop):
                 return False
             # Start
+            wait_for_launch_slot()
             if self._emulator_function_wrapper(self._emulator_start):
                 # Success
                 try:
@@ -457,8 +463,9 @@ class PlatformWindows(PlatformBase, EmulatorManager):
                     logger.warning(f'Emulator readiness check failed: {error}')
                     ready = False
                 if ready:
+                    self._startup_frame_pending = True
                     return True
-                logger.attr(2 - i, f'Failed to connect or start, try again')
+                logger.attr(max_attempts - i - 1, f'Failed to connect or start, try again')
                 continue
             else:
                 # Failed to start, stop and start again
@@ -471,7 +478,7 @@ class PlatformWindows(PlatformBase, EmulatorManager):
         if self.emulator_instance == Emulator.MuMuPlayer12:
             if not self._emulator_function_wrapper(self._emulator_stop):
                 logger.error('Failed to clear MuMu instance after startup failure; manual intervention required')
-        logger.error('Failed to start emulator 3 times, stopped')
+        logger.error(f'Failed to start emulator {max_attempts} times, stopped')
         return False
 
     def emulator_stop(self):

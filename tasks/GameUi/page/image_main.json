@@ -1,5 +1,14 @@
 [
   {
+    "itemName": "check_travel_title",
+    "imageName": "page_check_travel_title.png",
+    "roiFront": "90,19,108,39",
+    "roiBack": "80,10,130,60",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "珍旅居标题，兼容回归页面"
+  },
+  {
     "itemName": "check_main",
     "imageName": "page_check_main.png",
     "roiFront": "807,108,76,45",

@@ -21,7 +21,7 @@ RESULT_MARKERS = (
     "I_CAP_SUCCESS", "I_CAP_FAILURE", "I_BATTLE_FAIL_ABANDON", "I_CAP_AGAIN",
 )
 LOW_THRESHOLD_MARKERS = set(RESULT_MARKERS[:4])
-MARKERS = RESULT_MARKERS + ("I_CAPTURE_TOOLBAR", "I_BUFF", "I_EXIT", "I_BALL_FIRE", "I_UI_CONFIRM", "I_PREPARE_HIGHLIGHT")
+MARKERS = RESULT_MARKERS + ("I_CAPTURE_TOOLBAR", "I_BUFF", "I_EXIT", "I_BALL_FIRE", "I_LOW_PLATE_CONTINUE", "I_LOW_PLATE_UNCHECKED", "I_UI_CONFIRM", "I_PREPARE_HIGHLIGHT")
 
 
 class GameStuckError(Exception):
@@ -322,6 +322,24 @@ class EntryRegressionTests(unittest.TestCase):
         diagnostic = str(raised.exception) + repr(harness.logger.messages)
         self.assertNotIn("500", diagnostic)
         self.assertNotIn("Bondling number max", diagnostic)
+
+    def test_low_plate_checks_today_before_continue(self):
+        harness = Harness([frame("I_LOW_PLATE_CONTINUE", "I_LOW_PLATE_UNCHECKED", "I_BALL_FIRE")]
+                          + [frame("I_LOW_PLATE_CONTINUE", "I_BALL_FIRE")] * 4
+                          + [frame("I_BUFF")])
+        harness.run_alone()
+        markers = [marker for marker, _ in harness.clicks]
+        self.assertEqual(markers[0], "I_LOW_PLATE_UNCHECKED")
+        self.assertEqual(markers.count("I_LOW_PLATE_UNCHECKED"), 1)
+        self.assertIn("I_LOW_PLATE_CONTINUE", markers[1:])
+        self.assertNotIn("I_BALL_FIRE", markers)
+
+    def test_low_plate_prompt_clicks_continue_before_fire(self):
+        harness = Harness([frame("I_LOW_PLATE_CONTINUE", "I_BALL_FIRE")] * 3
+                          + [frame("I_BUFF")])
+        harness.run_alone()
+        self.assertTrue(harness.clicks)
+        self.assertTrue(all(marker == "I_LOW_PLATE_CONTINUE" for marker, _ in harness.clicks))
 
     def test_persistent_confirmation_dialog_times_out_without_clicking_fire(self):
         harness = Harness([frame("I_UI_CONFIRM", "I_BALL_FIRE")])

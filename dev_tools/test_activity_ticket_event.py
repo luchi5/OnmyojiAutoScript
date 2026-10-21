@@ -492,7 +492,7 @@ class TicketEventTests(unittest.TestCase):
             self.assertEqual(field['value'], choice)
         self.assertEqual(ActivityShikigami().general_climb.pass_difficulty, 'ticket_keep_current')
 
-    def test_legacy_sequence_cannot_run_stamina_or_boss(self):
+    def test_sequence_runs_ticket_and_boss_but_never_stamina(self):
         class TaskEnd(Exception):
             pass
         ns = dict(logger=FakeLogger(), RequestHumanTakeover=RequestHumanTakeover,
@@ -510,8 +510,8 @@ class TicketEventTests(unittest.TestCase):
         task._run_pass.assert_called_once()
         task._run_ap.assert_not_called()
         task._run_ap100.assert_not_called()
-        task._run_boss.assert_not_called()
-        self.assertEqual(task.run_idx, 1)
+        task._run_boss.assert_called_once()
+        self.assertEqual(task.run_idx, 2)
 
 
 if __name__ == '__main__':

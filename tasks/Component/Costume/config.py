@@ -28,6 +28,7 @@ class MainType(str, Enum):
 
 # 结界皮肤
 class RealmType(str, Enum):
+    COSTUME_REALM_SHEN_AN = 'costume_realm_shen_an'  # 神安眠处
     COSTUME_REALM_DEFAULT = 'costume_realm_default'  # 妖扇结界
 
 # 鲤鱼旗皮肤

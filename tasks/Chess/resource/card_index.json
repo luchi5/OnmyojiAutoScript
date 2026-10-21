@@ -1,0 +1,648 @@
+{
+  "version": 1,
+  "layouts": {
+    "card": "720697ea4543a64b9fdc94b12f63c824d2ce7610723a703f64f9328377262feb",
+    "store": "09e8eccc03775e07ee3f45b2b00ca97bac499623a5eb5c7ca5d24b78d87ce51b"
+  },
+  "cards": {
+    "card": {
+      "hakurou": {
+        "cost": 1,
+        "name": "白狼",
+        "portrait": "card/portraits/cost1/card_hakurou.png"
+      },
+      "kaku": {
+        "cost": 1,
+        "name": "觉",
+        "portrait": "card/portraits/cost1/card_kaku.png"
+      },
+      "kanihime": {
+        "cost": 1,
+        "name": "蟹姬",
+        "portrait": "card/portraits/cost1/card_kanihime.png"
+      },
+      "kaoru": {
+        "cost": 1,
+        "name": "薰",
+        "portrait": "card/portraits/cost1/card_kaoru.png"
+      },
+      "kappa": {
+        "cost": 1,
+        "name": "河童",
+        "portrait": "card/portraits/cost1/card_kappa.png"
+      },
+      "korouka": {
+        "cost": 1,
+        "name": "古笼火",
+        "portrait": "card/portraits/cost1/card_korouka.png"
+      },
+      "kuda_gitsune": {
+        "cost": 1,
+        "name": "管狐",
+        "portrait": "card/portraits/cost1/card_kuda_gitsune.png"
+      },
+      "shiro_mujou": {
+        "cost": 1,
+        "name": "鬼使白",
+        "portrait": "card/portraits/cost1/card_shiro_mujou.png"
+      },
+      "yamausagi": {
+        "cost": 1,
+        "name": "山兔",
+        "portrait": "card/portraits/cost1/card_yamausagi.png"
+      },
+      "yamawaro": {
+        "cost": 1,
+        "name": "山童",
+        "portrait": "card/portraits/cost1/card_yamawaro.png"
+      },
+      "yuki_douji": {
+        "cost": 1,
+        "name": "雪童子",
+        "portrait": "card/portraits/cost1/card_yuki_douji.png"
+      },
+      "hangan": {
+        "cost": 2,
+        "name": "判官",
+        "portrait": "card/portraits/cost2/card_hangan.png"
+      },
+      "hotarugusa": {
+        "cost": 2,
+        "name": "萤草",
+        "portrait": "card/portraits/cost2/card_hotarugusa.png"
+      },
+      "hououka": {
+        "cost": 2,
+        "name": "凤凰火",
+        "portrait": "card/portraits/cost2/card_hououka.png"
+      },
+      "komatsumaru": {
+        "cost": 2,
+        "name": "小松丸",
+        "portrait": "card/portraits/cost2/card_komatsumaru.png"
+      },
+      "kujira": {
+        "cost": 2,
+        "name": "久次良",
+        "portrait": "card/portraits/cost2/card_kujira.png"
+      },
+      "miketsu": {
+        "cost": 2,
+        "name": "御馔津",
+        "portrait": "card/portraits/cost2/card_miketsu.png"
+      },
+      "onikiri": {
+        "cost": 2,
+        "name": "鬼切",
+        "portrait": "card/portraits/cost2/card_onikiri.png"
+      },
+      "shiro_douji": {
+        "cost": 2,
+        "name": "白童子",
+        "portrait": "card/portraits/cost2/card_shiro_douji.png"
+      },
+      "ubume": {
+        "cost": 2,
+        "name": "姑获鸟",
+        "portrait": "card/portraits/cost2/card_ubume.png"
+      },
+      "umi_no_Chou": {
+        "cost": 2,
+        "name": "灵海蝶",
+        "portrait": "card/portraits/cost2/card_umi_no_Chou.png"
+      },
+      "yamakaze": {
+        "cost": 2,
+        "name": "山风",
+        "portrait": "card/portraits/cost2/card_yamakaze.png"
+      },
+      "yasha": {
+        "cost": 2,
+        "name": "夜叉",
+        "portrait": "card/portraits/cost2/card_yasha.png"
+      },
+      "youko": {
+        "cost": 2,
+        "name": "妖狐",
+        "portrait": "card/portraits/cost2/card_youko.png"
+      },
+      "yuki_onna": {
+        "cost": 2,
+        "name": "雪女",
+        "portrait": "card/portraits/cost2/card_yuki_onna.png"
+      },
+      "zashiki_Warashi": {
+        "cost": 2,
+        "name": "座敷童子",
+        "portrait": "card/portraits/cost2/card_zashiki_Warashi.png"
+      },
+      "ashura": {
+        "cost": 3,
+        "name": "阿修罗",
+        "portrait": "card/portraits/cost3/card_ashura.png"
+      },
+      "bakedanuki": {
+        "cost": 3,
+        "name": "狸猫",
+        "portrait": "card/portraits/cost3/card_bakedanuki.png"
+      },
+      "bakekujira": {
+        "cost": 3,
+        "name": "化鲸",
+        "portrait": "card/portraits/cost3/card_bakekujira.png"
+      },
+      "fuu_youkunn": {
+        "cost": 3,
+        "name": "封阳君",
+        "portrait": "card/portraits/cost3/card_fuu_youkunn.png"
+      },
+      "hon_shin_sanbi_kitsune": {
+        "cost": 3,
+        "name": "本真三尾狐",
+        "portrait": "card/portraits/cost3/card_hon_shin_sanbi_kitsune.png"
+      },
+      "ichimoku_ren": {
+        "cost": 3,
+        "name": "一目连",
+        "portrait": "card/portraits/cost3/card_ichimoku_ren.png"
+      },
+      "kachou_fuugetsu": {
+        "cost": 3,
+        "name": "花鸟卷",
+        "portrait": "card/portraits/cost3/card_kachou_fuugetsu.png"
+      },
+      "keisei_chihime": {
+        "cost": 3,
+        "name": "鲸汐千姬",
+        "portrait": "card/portraits/cost3/card_keisei_chihime.png"
+      },
+      "kingyohime": {
+        "cost": 3,
+        "name": "金鱼姬",
+        "portrait": "card/portraits/cost3/card_kingyohime.png"
+      },
+      "kujaku_myoo": {
+        "cost": 3,
+        "name": "孔雀明王",
+        "portrait": "card/portraits/cost3/card_kujaku_myoo.png"
+      },
+      "kuro_douji": {
+        "cost": 3,
+        "name": "黑童子",
+        "portrait": "card/portraits/cost3/card_kuro_douji.png"
+      },
+      "odokuro": {
+        "cost": 3,
+        "name": "荒骷髅",
+        "portrait": "card/portraits/cost3/card_odokuro.png"
+      },
+      "omoikane": {
+        "cost": 3,
+        "name": "思金神",
+        "portrait": "card/portraits/cost3/card_omoikane.png"
+      },
+      "shiki": {
+        "cost": 3,
+        "name": "季",
+        "portrait": "card/portraits/cost3/card_shiki.png"
+      },
+      "shouzu": {
+        "cost": 3,
+        "name": "椒图",
+        "portrait": "card/portraits/cost3/card_shouzu.png"
+      },
+      "aoandon": {
+        "cost": 4,
+        "name": "青行灯",
+        "portrait": "card/portraits/cost4/card_aoandon.png"
+      },
+      "ibaraki_douji": {
+        "cost": 4,
+        "name": "茨木童子",
+        "portrait": "card/portraits/cost4/card_ibaraki_douji.png"
+      },
+      "jinkougyou": {
+        "cost": 4,
+        "name": "寻香行",
+        "portrait": "card/portraits/cost4/card_jinkougyou.png"
+      },
+      "jinten_tamamonomae": {
+        "cost": 4,
+        "name": "烬天玉藻前",
+        "portrait": "card/portraits/cost4/card_jinten_tamamonomae.png"
+      },
+      "kumon_fuken_gaku": {
+        "cost": 4,
+        "name": "云间不见岳",
+        "portrait": "card/portraits/cost4/card_kumon_fuken_gaku.png"
+      },
+      "kuro_mujou": {
+        "cost": 4,
+        "name": "鬼使黑",
+        "portrait": "card/portraits/cost4/card_kuro_mujou.png"
+      },
+      "suzuka_gozen": {
+        "cost": 4,
+        "name": "铃鹿御前",
+        "portrait": "card/portraits/cost4/card_suzuka_gozen.png"
+      },
+      "tenka_mei_suzu_hime": {
+        "cost": 4,
+        "name": "天火命铃彦姬",
+        "portrait": "card/portraits/cost4/card_tenka_mei_suzu_hime.png"
+      },
+      "umibouzu": {
+        "cost": 4,
+        "name": "海坊主",
+        "portrait": "card/portraits/cost4/card_umibouzu.png"
+      },
+      "youtou_hime": {
+        "cost": 4,
+        "name": "妖刀姬",
+        "portrait": "card/portraits/cost4/card_youtou_hime.png"
+      },
+      "yume_san_byakuzou": {
+        "cost": 4,
+        "name": "梦山白藏主",
+        "portrait": "card/portraits/cost4/card_yume_san_byakuzou.png"
+      },
+      "zen_ungaikyo": {
+        "cost": 4,
+        "name": "禅心云外镜",
+        "portrait": "card/portraits/cost4/card_zen_ungaikyo.png"
+      },
+      "zenhyou_setsunajo": {
+        "cost": 4,
+        "name": "禅冰雪女",
+        "portrait": "card/portraits/cost4/card_zenhyou_setsunajo.png"
+      },
+      "arakawa_no_nushi": {
+        "cost": 5,
+        "name": "荒川之主",
+        "portrait": "card/portraits/cost5/card_arakawa_no_nushi.png"
+      },
+      "enma": {
+        "cost": 5,
+        "name": "阎魔",
+        "portrait": "card/portraits/cost5/card_enma.png"
+      },
+      "hiromori_shikaotoko": {
+        "cost": 5,
+        "name": "寻森小鹿男",
+        "portrait": "card/portraits/cost5/card_hiromori_shikaotoko.png"
+      },
+      "kotodama": {
+        "cost": 5,
+        "name": "言灵",
+        "portrait": "card/portraits/cost5/card_kotodama.png"
+      },
+      "kuzu_no_ha": {
+        "cost": 5,
+        "name": "葛叶",
+        "portrait": "card/portraits/cost5/card_kuzu_no_ha.png"
+      },
+      "ootakemaru": {
+        "cost": 5,
+        "name": "大岳丸",
+        "portrait": "card/portraits/cost5/card_ootakemaru.png"
+      },
+      "shuten_douji": {
+        "cost": 5,
+        "name": "酒吞童子",
+        "portrait": "card/portraits/cost5/card_shuten_douji.png"
+      },
+      "taira_no_masakado": {
+        "cost": 5,
+        "name": "平将门",
+        "portrait": "card/portraits/cost5/card_taira_no_masakado.png"
+      },
+      "tsukuyomi": {
+        "cost": 5,
+        "name": "月读",
+        "portrait": "card/portraits/cost5/card_tsukuyomi.png"
+      },
+      "yuki_gozen": {
+        "cost": 5,
+        "name": "雪御前",
+        "portrait": "card/portraits/cost5/card_yuki_gozen.png"
+      }
+    },
+    "store": {
+      "hakurou": {
+        "cost": 1,
+        "name": "白狼",
+        "portrait": "store/portraits/cost1/store_hakurou.png"
+      },
+      "kaku": {
+        "cost": 1,
+        "name": "觉",
+        "portrait": "store/portraits/cost1/store_kaku.png"
+      },
+      "kanihime": {
+        "cost": 1,
+        "name": "蟹姬",
+        "portrait": "store/portraits/cost1/store_kanihime.png"
+      },
+      "kaoru": {
+        "cost": 1,
+        "name": "薰",
+        "portrait": "store/portraits/cost1/store_kaoru.png"
+      },
+      "kappa": {
+        "cost": 1,
+        "name": "河童",
+        "portrait": "store/portraits/cost1/store_kappa.png"
+      },
+      "korouka": {
+        "cost": 1,
+        "name": "古笼火",
+        "portrait": "store/portraits/cost1/store_korouka.png"
+      },
+      "kuda_gitsune": {
+        "cost": 1,
+        "name": "管狐",
+        "portrait": "store/portraits/cost1/store_kuda_gitsune.png"
+      },
+      "shiro_mujou": {
+        "cost": 1,
+        "name": "鬼使白",
+        "portrait": "store/portraits/cost1/store_shiro_mujou.png"
+      },
+      "yamausagi": {
+        "cost": 1,
+        "name": "山兔",
+        "portrait": "store/portraits/cost1/store_yamausagi.png"
+      },
+      "yamawaro": {
+        "cost": 1,
+        "name": "山童",
+        "portrait": "store/portraits/cost1/store_yamawaro.png"
+      },
+      "yuki_douji": {
+        "cost": 1,
+        "name": "雪童子",
+        "portrait": "store/portraits/cost1/store_yuki_douji.png"
+      },
+      "hangan": {
+        "cost": 2,
+        "name": "判官",
+        "portrait": "store/portraits/cost2/store_hangan.png"
+      },
+      "hotarugusa": {
+        "cost": 2,
+        "name": "萤草",
+        "portrait": "store/portraits/cost2/store_hotarugusa.png"
+      },
+      "hououka": {
+        "cost": 2,
+        "name": "凤凰火",
+        "portrait": "store/portraits/cost2/store_hououka.png"
+      },
+      "komatsumaru": {
+        "cost": 2,
+        "name": "小松丸",
+        "portrait": "store/portraits/cost2/store_komatsumaru.png"
+      },
+      "kujira": {
+        "cost": 2,
+        "name": "久次良",
+        "portrait": "store/portraits/cost2/store_kujira.png"
+      },
+      "miketsu": {
+        "cost": 2,
+        "name": "御馔津",
+        "portrait": "store/portraits/cost2/store_miketsu.png"
+      },
+      "onikiri": {
+        "cost": 2,
+        "name": "鬼切",
+        "portrait": "store/portraits/cost2/store_onikiri.png"
+      },
+      "shiro_douji": {
+        "cost": 2,
+        "name": "白童子",
+        "portrait": "store/portraits/cost2/store_shiro_douji.png"
+      },
+      "ubume": {
+        "cost": 2,
+        "name": "姑获鸟",
+        "portrait": "store/portraits/cost2/store_ubume.png"
+      },
+      "umi_no_Chou": {
+        "cost": 2,
+        "name": "灵海蝶",
+        "portrait": "store/portraits/cost2/store_umi_no_Chou.png"
+      },
+      "yamakaze": {
+        "cost": 2,
+        "name": "山风",
+        "portrait": "store/portraits/cost2/store_yamakaze.png"
+      },
+      "yasha": {
+        "cost": 2,
+        "name": "夜叉",
+        "portrait": "store/portraits/cost2/store_yasha.png"
+      },
+      "youko": {
+        "cost": 2,
+        "name": "妖狐",
+        "portrait": "store/portraits/cost2/store_youko.png"
+      },
+      "yuki_onna": {
+        "cost": 2,
+        "name": "雪女",
+        "portrait": "store/portraits/cost2/store_yuki_onna.png"
+      },
+      "zashiki_Warashi": {
+        "cost": 2,
+        "name": "座敷童子",
+        "portrait": "store/portraits/cost2/store_zashiki_Warashi.png"
+      },
+      "ashura": {
+        "cost": 3,
+        "name": "阿修罗",
+        "portrait": "store/portraits/cost3/store_ashura.png"
+      },
+      "bakedanuki": {
+        "cost": 3,
+        "name": "狸猫",
+        "portrait": "store/portraits/cost3/store_bakedanuki.png"
+      },
+      "bakekujira": {
+        "cost": 3,
+        "name": "化鲸",
+        "portrait": "store/portraits/cost3/store_bakekujira.png"
+      },
+      "fuu_youkunn": {
+        "cost": 3,
+        "name": "封阳君",
+        "portrait": "store/portraits/cost3/store_fuu_youkunn.png"
+      },
+      "hon_shin_sanbi_kitsune": {
+        "cost": 3,
+        "name": "本真三尾狐",
+        "portrait": "store/portraits/cost3/store_hon_shin_sanbi_kitsune.png"
+      },
+      "ichimoku_ren": {
+        "cost": 3,
+        "name": "一目连",
+        "portrait": "store/portraits/cost3/store_ichimoku_ren.png"
+      },
+      "kachou_fuugetsu": {
+        "cost": 3,
+        "name": "花鸟卷",
+        "portrait": "store/portraits/cost3/store_kachou_fuugetsu.png"
+      },
+      "keisei_chihime": {
+        "cost": 3,
+        "name": "鲸汐千姬",
+        "portrait": "store/portraits/cost3/store_keisei_chihime.png"
+      },
+      "kingyohime": {
+        "cost": 3,
+        "name": "金鱼姬",
+        "portrait": "store/portraits/cost3/store_kingyohime.png"
+      },
+      "kujaku_myoo": {
+        "cost": 3,
+        "name": "孔雀明王",
+        "portrait": "store/portraits/cost3/store_kujaku_myoo.png"
+      },
+      "kuro_douji": {
+        "cost": 3,
+        "name": "黑童子",
+        "portrait": "store/portraits/cost3/store_kuro_douji.png"
+      },
+      "odokuro": {
+        "cost": 3,
+        "name": "荒骷髅",
+        "portrait": "store/portraits/cost3/store_odokuro.png"
+      },
+      "omoikane": {
+        "cost": 3,
+        "name": "思金神",
+        "portrait": "store/portraits/cost3/store_omoikane.png"
+      },
+      "shiki": {
+        "cost": 3,
+        "name": "季",
+        "portrait": "store/portraits/cost3/store_shiki.png"
+      },
+      "shouzu": {
+        "cost": 3,
+        "name": "椒图",
+        "portrait": "store/portraits/cost3/store_shouzu.png"
+      },
+      "aoandon": {
+        "cost": 4,
+        "name": "青行灯",
+        "portrait": "store/portraits/cost4/store_aoandon.png"
+      },
+      "ibaraki_douji": {
+        "cost": 4,
+        "name": "茨木童子",
+        "portrait": "store/portraits/cost4/store_ibaraki_douji.png"
+      },
+      "jinkougyou": {
+        "cost": 4,
+        "name": "寻香行",
+        "portrait": "store/portraits/cost4/store_jinkougyou.png"
+      },
+      "jinten_tamamonomae": {
+        "cost": 4,
+        "name": "烬天玉藻前",
+        "portrait": "store/portraits/cost4/store_jinten_tamamonomae.png"
+      },
+      "kumon_fuken_gaku": {
+        "cost": 4,
+        "name": "云间不见岳",
+        "portrait": "store/portraits/cost4/store_kumon_fuken_gaku.png"
+      },
+      "kuro_mujou": {
+        "cost": 4,
+        "name": "鬼使黑",
+        "portrait": "store/portraits/cost4/store_kuro_mujou.png"
+      },
+      "suzuka_gozen": {
+        "cost": 4,
+        "name": "铃鹿御前",
+        "portrait": "store/portraits/cost4/store_suzuka_gozen.png"
+      },
+      "tenka_mei_suzu_hime": {
+        "cost": 4,
+        "name": "天火命铃彦姬",
+        "portrait": "store/portraits/cost4/store_tenka_mei_suzu_hime.png"
+      },
+      "umibouzu": {
+        "cost": 4,
+        "name": "海坊主",
+        "portrait": "store/portraits/cost4/store_umibouzu.png"
+      },
+      "youtou_hime": {
+        "cost": 4,
+        "name": "妖刀姬",
+        "portrait": "store/portraits/cost4/store_youtou_hime.png"
+      },
+      "yume_san_byakuzou": {
+        "cost": 4,
+        "name": "梦山白藏主",
+        "portrait": "store/portraits/cost4/store_yume_san_byakuzou.png"
+      },
+      "zen_ungaikyo": {
+        "cost": 4,
+        "name": "禅心云外镜",
+        "portrait": "store/portraits/cost4/store_zen_ungaikyo.png"
+      },
+      "zenhyou_setsunajo": {
+        "cost": 4,
+        "name": "禅冰雪女",
+        "portrait": "store/portraits/cost4/store_zenhyou_setsunajo.png"
+      },
+      "arakawa_no_nushi": {
+        "cost": 5,
+        "name": "荒川之主",
+        "portrait": "store/portraits/cost5/store_arakawa_no_nushi.png"
+      },
+      "enma": {
+        "cost": 5,
+        "name": "阎魔",
+        "portrait": "store/portraits/cost5/store_enma.png"
+      },
+      "kotodama": {
+        "cost": 5,
+        "name": "言灵",
+        "portrait": "store/portraits/cost5/store_kotodama.png"
+      },
+      "kuzu_no_ha": {
+        "cost": 5,
+        "name": "葛叶",
+        "portrait": "store/portraits/cost5/store_kuzu_no_ha.png"
+      },
+      "ootakemaru": {
+        "cost": 5,
+        "name": "大岳丸",
+        "portrait": "store/portraits/cost5/store_ootakemaru.png"
+      },
+      "shuten_douji": {
+        "cost": 5,
+        "name": "酒吞童子",
+        "portrait": "store/portraits/cost5/store_shuten_douji.png"
+      },
+      "taira_no_masakado": {
+        "cost": 5,
+        "name": "平将门",
+        "portrait": "store/portraits/cost5/store_taira_no_masakado.png"
+      },
+      "tsukuyomi": {
+        "cost": 5,
+        "name": "月读",
+        "portrait": "store/portraits/cost5/store_tsukuyomi.png"
+      },
+      "yuki_gozen": {
+        "cost": 5,
+        "name": "雪御前",
+        "portrait": "store/portraits/cost5/store_yuki_gozen.png"
+      }
+    }
+  }
+}

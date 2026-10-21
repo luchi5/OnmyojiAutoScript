@@ -8,6 +8,7 @@ from datetime import timedelta, datetime
 
 from module.base.timer import Timer
 from module.atom.image_grid import ImageGrid
+from module.atom.ocr import RuleOcr
 from module.logger import logger
 from module.exception import TaskEnd, GameStuckError
 
@@ -22,6 +23,10 @@ from module.base.utils import point2str
 import random
 
 """ 结界蹭卡 """
+
+
+class UtilizeNavigationError(Exception):
+    """Recoverable loss of the friend-list page."""
 
 
 class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
@@ -48,7 +53,10 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.check_utilize_add()
 
         # 查看育成满级
-        self.check_max_lv(con.shikigami_class, getattr(con, 'auto_fill', False))
+        # The default friend roster is not a rarity filter for own growth.
+        own_class = (ShikigamiClass.N if con.shikigami_class == '默认/全部'
+                     else ShikigamiClass(con.shikigami_class))
+        self.check_max_lv(own_class, getattr(con, 'auto_fill', False))
         # 检查蹭卡收获
         if getattr(con, 'utilize_harvest', True):
             self.check_utilize_harvest()
@@ -103,9 +111,24 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 self.set_next_run(task='KekkaiUtilize', target=next_time)
                 return
             if not self.grown_goto_utilize():
-                logger.info('Utilize failed, exit')
+                logger.warning('Utilize entry not confirmed; restore realm before retry')
+                self.back_realm()
+                continue
             # 开始执行寄养
-            if self.run_utilize(con.select_friend_list, con.shikigami_class, con.shikigami_order):
+            # A running worker may still hold the old enum until restarted.
+            # Preserve the previous default-roster fix until it can load/save
+            # the new explicit default option safely.
+            members = getattr(type(con.shikigami_class), '__members__', {})
+            foster_class = (con.shikigami_class if any(
+                member.value == '默认/全部' for member in members.values())
+                else '默认/全部')
+            try:
+                utilized = self.run_utilize(con.select_friend_list, foster_class, con.shikigami_order)
+            except UtilizeNavigationError as exc:
+                logger.warning(str(exc))
+                self.back_realm()
+                continue
+            if utilized:
                 # 退出寮结界
                 self.back_guild()
                 # 进入寮结界
@@ -282,6 +305,8 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
             time_exp = Timer(12)
             time_exp.start()
+            open_attempts = 0
+            entered_panel = False
             while 1:
                 self.screenshot()
                 # 所有 continue 分支都必须受限，OCR 失败不能绕过超时。
@@ -313,6 +338,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                     break
 
                 if self.appear(self.I_EXP_EXTRACT):
+                    entered_panel = True
                     # 如果达到今日领取的最大，就不领取了
                     counter = read_exp_box_counter(self.device.image)
                     if counter is None:
@@ -321,9 +347,17 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                     if cur == total and res == 0:
                         logger.info('Exp box reach max do not collect')
                         break
-                if self.appear_then_click(self.I_BOX_EXP, threshold=0.6, interval=1):
-                    continue
-                if self.appear_then_click(self.I_EXP_EXTRACT, interval=1):
+                    if self.appear_then_click(self.I_EXP_EXTRACT, interval=1):
+                        continue
+                # Only open the box from the realm, never from a reward/popup
+                # or the skin selector. Once the panel was entered, do not reopen.
+                if self.appear(self.I_REALM_SHIN):
+                    if entered_panel or open_attempts >= 3:
+                        break
+                    if self.appear_then_click(self.I_BOX_EXP, interval=2):
+                        open_attempts += 1
+                        continue
+                if self.ui_reward_appear_click(True):
                     continue
 
             _exit_to_realm()
@@ -374,51 +408,58 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             raise GameStuckError('Could not enter shikigami growth within 30 seconds')
         logger.info('Enter shikigami grown')
 
+    def in_utilize_list(self):
+        # The entry button alone can be matched during a page transition.
+        # A selected friend tab is required before any list swipe/tab click.
+        return (self.appear(self.I_UTILIZE_FRIEND_GROUP)
+                or self.appear(self.I_UTILIZE_ZONES_GROUP))
+
     def grown_goto_utilize(self):
-        """
-        从式神育成界面到 蹭卡界面
-        :return:
-        """
-        self.screenshot()
-        if not self.appear(self.I_UTILIZE_ADD):
-            logger.warning('No utilize add')
-            return False
-
-        while 1:
+        deadline = time.monotonic() + 15
+        clicks = stable = 0
+        while time.monotonic() < deadline:
             self.screenshot()
-
-            if self.appear(self.I_U_ENTER_REALM):
-                break
-            if self.appear_then_click(self.I_UTILIZE_ADD, interval=2):
-                continue
-        logger.info('Enter utilize')
-        return True
+            if self.in_utilize_list():
+                stable += 1
+                if stable >= 2:
+                    logger.info('Enter utilize: friend-list page confirmed')
+                    return True
+            else:
+                stable = 0
+                if self.in_shikigami_growth() and clicks < 3:
+                    if self.appear_then_click(self.I_UTILIZE_ADD, interval=2):
+                        clicks += 1
+            time.sleep(0.3)
+        logger.warning('Friend-list entry failed after bounded retries')
+        return False
 
     def switch_friend_list(self, friend: SelectFriendList = SelectFriendList.SAME_SERVER) -> bool:
-        """
-        切换不同的服务区
-        :param friend:
-        :return:
-        """
         logger.info('Switch friend list to %s', friend)
-        if friend == SelectFriendList.SAME_SERVER:
-            check_image = self.I_UTILIZE_FRIEND_GROUP
-        else:
-            check_image = self.I_UTILIZE_ZONES_GROUP
-
-        timer_click = Timer(1)
-        timer_click.start()
-        while 1:
+        check_image = (self.I_UTILIZE_FRIEND_GROUP if friend == SelectFriendList.SAME_SERVER
+                       else self.I_UTILIZE_ZONES_GROUP)
+        deadline = time.monotonic() + 12
+        clicks = stable = 0
+        next_click = 0
+        while time.monotonic() < deadline:
             self.screenshot()
+            if not self.in_utilize_list():
+                raise UtilizeNavigationError('Friend-list page lost; restore realm before retry')
             if self.appear(check_image):
-                break
-            if timer_click.reached():
-                timer_click.reset()
-                x, y = check_image.coord()
-                self.device.click(x=x, y=y, control_name=check_image.name)
-        if friend == SelectFriendList.DIFFERENT_SERVER:
-            time.sleep(1)
-        time.sleep(0.5)
+                stable += 1
+                if stable >= 2:
+                    time.sleep(0.5)
+                    return True
+            else:
+                stable = 0
+                if time.monotonic() >= next_click:
+                    if clicks >= 3:
+                        break
+                    x, y = check_image.coord()
+                    self.device.click(x=x, y=y, control_name=check_image.name)
+                    clicks += 1
+                    next_click = time.monotonic() + 2
+            time.sleep(0.3)
+        raise UtilizeNavigationError('Friend tab was not confirmed after three clicks; restore realm before retry')
 
     @cached_property
     def order_targets(self) -> ImageGrid:
@@ -454,7 +495,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         return result
 
     def run_utilize(self, friend: SelectFriendList = SelectFriendList.SAME_SERVER,
-                    shikigami_class: ShikigamiClass = ShikigamiClass.N,
+                    shikigami_class = '默认/全部',
                     shikigami_order: int = 7):
         """
         执行寄养
@@ -464,6 +505,9 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         :return:
         """
         logger.hr('Start utilize')
+        self.screenshot()
+        if not self.in_utilize_list():
+            raise UtilizeNavigationError('Friend-list page missing before scan')
         if self.first_utilize:
             self.swipe(self.S_U_END, interval=3)
             self.first_utilize = False
@@ -514,14 +558,37 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.save_image(content='没有坑位了', wait_time=0, push_flag=False, image_type='png')
             logger.warning('没有坑位可能是其他人的手速太快了抢占了')
             return True
-        # 切换式神的类型
-        # Import at execution time so an older cached ReplaceShikigami class
-        # cannot shadow the friend-page guard or reject its new parameters.
-        from tasks.Component.ReplaceShikigami.friend_growth_selection import switch_friend_growth_class
-        switch_friend_growth_class(self, shikigami_class)
-        # 上式神
-        self.set_shikigami(shikigami_order, stop_image)
+        if shikigami_class == '默认/全部':
+            logger.info('Friend fostering: use first shikigami in default roster without rarity filtering')
+            self.set_shikigami(1, stop_image)
+        else:
+            from tasks.Component.ReplaceShikigami.friend_growth_selection import switch_friend_growth_class
+            switch_friend_growth_class(self, ShikigamiClass(shikigami_class))
+            self.set_shikigami(shikigami_order, stop_image)
         return True
+
+    @cached_property
+    def _friend_fostering_timers(self):
+        return tuple(
+            RuleOcr(roi=roi, area=roi, mode='Single', method='Default',
+                    keyword='', name=f'friend_fostering_time_{index}')
+            for index, roi in enumerate(((970, 123, 112, 30), (1132, 123, 112, 30)))
+        )
+
+    def _friend_fostering_active(self):
+        """育成页已收起选卡面板，且好友位出现有效倒计时才确认成功。"""
+        if not self.appear(self.I_RS_RECORDS_SHIKI):
+            return False
+        for rule in self._friend_fostering_timers:
+            text = str(rule.ocr(self.device.image)).replace('：', ':').replace(' ', '')
+            match = re.fullmatch(r'(\d{1,2}):(\d{2}):(\d{2})', text)
+            if not match:
+                continue
+            hours, minutes, seconds = map(int, match.groups())
+            if (hours < 24 and minutes < 60 and seconds < 60
+                    and hours * 3600 + minutes * 60 + seconds > 0):
+                return True
+        return False
 
     def in_shikigami_growth(self, screenshot=False):
         if screenshot:

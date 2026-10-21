@@ -141,6 +141,8 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
         start_time = time.time()   # 记录起始时间
         click_interval_timer = Timer(1.5).start()  # 点击选择式神间隔
         clicked = False
+        fostering_confirmed_frames = 0
+        fostering_submitted = False
         while 1:
             # ——1. 先做超时检查——
             if time.time() - start_time > TIMEOUT_SEC:
@@ -152,15 +154,26 @@ class ReplaceShikigami(BaseTask, ReplaceShikigamiAssets):
             
             self.screenshot()
 
+            fostering_active = getattr(self, '_friend_fostering_active', None)
+            if fostering_submitted and callable(fostering_active) and fostering_active():
+                fostering_confirmed_frames += 1
+                if fostering_confirmed_frames >= 2:
+                    logger.info('Friend fostering confirmed by active countdown; stop selecting')
+                    break
+                continue
+            fostering_confirmed_frames = 0
+
             if not self.appear(stop_image):
                 break
 
             if self.appear_then_click(self.I_U_CONFIRM_SMALL, interval=0.5):
+                fostering_submitted = True
                 clicked = False  # 点击了确认, 恢复选式神的操作
                 continue
 
             # 是否育成候补式神按钮
             if self.appear_then_click(self.I_UI_CONFIRM, interval=1) or self.appear_then_click(self.I_UI_CONFIRM_SAMLL, interval=1):
+                fostering_submitted = True
                 continue
             # 与下方点击第7个式神操作互斥, 防止确认按钮还没有出现被下方取消掉
             if not clicked and self.click(click_match, interval=1.5):

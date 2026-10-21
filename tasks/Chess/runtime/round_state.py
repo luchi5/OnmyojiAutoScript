@@ -27,7 +27,7 @@ class ChessRoundStateMixin:
     @cached_property
     def grigri_icon_templates(self) -> dict[str, object]:
         """按中文名缓存全部符咒图标，供 OCR 失败时进行图像兜底。"""
-        badge_dir = Path(__file__).resolve().parents[1] / 'badge'
+        badge_dir = Path(__file__).resolve().parents[1] / 'resource' / 'badge'
         templates = {}
         for name in grigri_names_for_quality(None):
             file = badge_dir / grigri_file(name)
@@ -702,62 +702,3 @@ class ChessRoundStateMixin:
             if character in raw:
                 return rank, raw
         return None, raw
-
-    def _try_last_seconds_deploy(self) -> bool:
-        """第一套布局备阶段倒计时不超过 10 秒时，空闲补做一次上阵。
-
-        Returns:
-            bool: 是否已经进入倒计时补位判定。OCR 未到阈值或不可用时
-                返回 False，允许后续截图继续检查；一旦到达阈值，无论
-                阵容是否已满都返回 True，确保每回目至多触发一次。
-        """
-        if self._is_early_round_layout():
-            return False
-        remaining = self._read_remaining_time()
-        if remaining is None or remaining > 10:
-            return False
-
-        logger.debug(
-            'Chess last-seconds lineup check: '
-            f'remaining={remaining}'
-        )
-        if self._read_chess_mode() != '备':
-            logger.debug('Skip last-seconds deploy: mode is no longer 备')
-            return True
-        if not self._ensure_shop_closed():
-            logger.warning(
-                'Skip last-seconds deploy: shop could not be closed'
-            )
-            return True
-
-        self.screenshot()
-        if self._is_early_round_layout() or not self._is_preparation_mode():
-            logger.debug(
-                'Skip last-seconds deploy: preparation/layout changed '
-                'while closing shop'
-            )
-            return True
-
-        capacity = self._read_lineup_capacity_status()
-        if capacity is None:
-            logger.warning(
-                'Skip last-seconds deploy: lineup capacity is unavailable'
-            )
-            return True
-        if capacity['full']:
-            logger.debug(
-                'Skip last-seconds deploy: lineup is already full '
-                f'({capacity["current"]}/{capacity["capacity"]})'
-            )
-            return True
-
-        logger.debug(
-            'Run last-seconds deploy: '
-            f'{capacity["current"]}/{capacity["capacity"]}'
-        )
-        deployed = self.deploy_shikigami_from_hand()
-        logger.debug(
-            'Chess last-seconds deploy complete: '
-            f'deployed={deployed}'
-        )
-        return True

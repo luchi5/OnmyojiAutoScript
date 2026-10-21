@@ -3,7 +3,9 @@
 # github https://github.com/runhey
 import time
 from cached_property import cached_property
-from datetime import datetime
+from datetime import datetime, timedelta
+from pathlib import Path
+from module.config.utils import write_file
 
 from module.exception import TaskEnd
 from module.logger import logger
@@ -19,6 +21,7 @@ from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleCon
 from tasks.Component.SwitchSoul.switch_soul import SwitchSoul
 from tasks.Component.GeneralBuff.config_buff import BuffClass
 from tasks.WeeklyTrifles.assets import WeeklyTriflesAssets
+from tasks.WantedQuests.assets import WantedQuestsAssets
 
 
 class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
@@ -54,7 +57,21 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
 
         # 进入
         success = True
-        self.ui_click(self.I_SE_ENTER, self.I_SE_FIRE)
+        entry = self.enter_weekly_secret()
+        if entry is False:
+            logger.warning('秘闻失败/未解锁：挑战页面已出现但没有排行，按失败周期排期')
+            self.set_next_run(task='Secret', success=False, finish=True)
+            write_file(str(Path('config') / 'secret_status' / f'{self.config.config_name}.json'), {
+                'outcome': 'failed', 'reason': 'not_unlocked',
+                'at': datetime.now().isoformat(timespec='seconds'),
+                'next_run': str(self.config.secret.scheduler.next_run),
+            })
+            self.goto_page(page_main)
+            raise TaskEnd('Weekly Secret not unlocked; skipped')
+        if entry is None:
+            logger.warning('等待后仍未确认挑战页面，保留未完成状态，10分钟后重查')
+            self.set_next_run(task='Secret', target=datetime.now() + timedelta(minutes=10), server=False)
+            raise TaskEnd('Weekly Secret entry not confirmed')
         time.sleep(1)  # 有一个很傻逼的动画
         self.screenshot()
         if not self.appear(self.I_SE_PLACEMENT):
@@ -139,6 +156,31 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
             self.close_buff()
         self.set_next_run(task='Secret', success=True, finish=True)
         raise TaskEnd('Secret')
+
+    def enter_weekly_secret(self):
+        """True: unlocked; False: challenge without ranking; None: not loaded."""
+        def challenge_visible():
+            return (self.appear(self.I_SE_FIRE)
+                    or self.appear(WantedQuestsAssets.I_WQSE_FIRE))
+        for attempt in range(2):
+            if attempt:
+                self.goto_page(page_secret_zones)
+            self.screenshot()
+            if not challenge_visible():
+                if not self.appear_then_click(self.I_SE_ENTER, interval=2):
+                    continue
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                self.screenshot()
+                if challenge_visible():
+                    # Let the entry animation settle before checking ranking,
+                    # just as upstream does. A vanished challenge is still loading.
+                    time.sleep(1)
+                    self.screenshot()
+                    if challenge_visible():
+                        return bool(self.appear(self.I_SE_PLACEMENT))
+                time.sleep(0.5)
+        return None
 
     def find_battle(self, screenshot: bool = False) -> int or None:
         """
@@ -276,6 +318,13 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                 logger.warning('False battle')
                 self.ui_click_until_disappear(self.I_FALSE)
                 return False
+
+            # A visible battle marker is expected during arbitrarily long fights.
+            # Refresh only the idle timers; retain click and account-session guards.
+            # Missing markers still expire through the normal screenshot checks.
+            if self.is_in_real_battle(is_screenshot=False):
+                self.device.stuck_timer.reset()
+                self.device.stuck_timer_long.reset()
 
     def check_time(self) -> None:
         """

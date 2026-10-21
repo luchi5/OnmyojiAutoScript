@@ -9,6 +9,7 @@ from enum import IntEnum
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock
 
 from dev_tools.test_bondling_battle_entry import FakeLogger
 
@@ -31,7 +32,8 @@ def production_class(namespace):
                   if isinstance(node, ast.ClassDef) and node.name == 'ScriptTask')
     methods = [node for node in source.body if isinstance(node, ast.FunctionDef)
                and (node.name in ('run', 'boss_type', 'best_demon_enable',
-                                  'check_challenge_done') or 'soul' in node.name)]
+                                  'check_challenge_done', 'finish_if_challenge_done',
+                                  'execute_boss') or 'soul' in node.name)]
     required = {'run', 'resolve_soul_target', 'checkout_soul', 'boss_type',
                 'best_demon_enable', 'check_challenge_done'}
     missing = required - {node.name for node in methods}
@@ -88,6 +90,7 @@ class DemonHarness:
         namespace = {
             'datetime': FrozenDatetime, 'timedelta': timedelta, 'IntEnum': IntEnum,
             'logger': self.logger, 'TaskEnd': TaskEnd,
+            'time': SimpleNamespace(sleep=lambda _: None),
             'page_shikigami_records': 'shikigami-records',
             'page_demon_encounter_realworld': 'demon-map',
         }
@@ -99,6 +102,9 @@ class DemonHarness:
     def check_time(self):
         self.events.append('check-time')
         return self.time_allowed
+
+    def screenshot(self):
+        pass
 
     def goto_page(self, page):
         self.navigation.append(page)
@@ -281,9 +287,57 @@ class DemonSoulSelectionTests(unittest.TestCase):
                 with self.assertRaises(TaskEnd):
                     task.run()
                 self.assertEqual(task.navigation, ['demon-map'])
-                self.assertNotIn('lantern', task.events)
+                self.assertIn('lantern', task.events)
                 self.assertNotIn('boss', task.events)
                 self.assertEqual(task.delays, [{'task': 'DemonEncounter', 'success': True, 'finish': False}])
+
+    def test_exploration_precedes_quota_check_and_boss(self):
+        for exhausted in (False, True):
+            with self.subTest(exhausted=exhausted):
+                task = DemonHarness(normal_enabled=False)
+                def check():
+                    task.events.append('quota-check')
+                    return exhausted
+                task.check_challenge_done = check
+                with self.assertRaises(TaskEnd):
+                    task.run()
+                expected = ['check-time', ('goto', 'demon-map'), 'lantern', 'quota-check']
+                if not exhausted:
+                    expected.append('boss')
+                self.assertEqual(task.events, expected)
+
+    def test_unknown_count_retries_fresh_frames_without_false_completion(self):
+        task = DemonHarness(challenge_count=(0, 0, 0))
+        task.screenshot = Mock()
+        self.assertFalse(task.check_challenge_done())
+        self.assertEqual(task.screenshot.call_count, 3)
+        self.assertEqual(task.delays, [])
+
+    def test_loading_frame_then_zero_completes(self):
+        task = DemonHarness()
+        task.O_DE_CHALLENGE_COUNT.ocr = Mock(side_effect=[(0, 0, 0), (0, 2, 2)])
+        with self.assertRaises(TaskEnd):
+            task.finish_if_challenge_done()
+        self.assertTrue(task.delays[0]['success'])
+
+    def test_zero_before_boss_search_stops_without_clicking(self):
+        task = DemonHarness(normal_enabled=False, challenge_count=(0, 1, 1))
+        for name in ('I_DE_BOSS', 'I_DE_BOX_CENTER', 'I_BOSS_FIRE', 'I_BEST_BOSS_FIRE'):
+            setattr(task, name, name)
+        task.appear = Mock(return_value=False)
+        task.appear_then_click = Mock()
+        task.device.click_record_clear = Mock()
+        # Bypass the harness's fake battle and exercise the production search.
+        production = type(task).__bases__[1]
+        with self.assertRaises(TaskEnd):
+            production.execute_boss(task)
+        task.appear_then_click.assert_not_called()
+        self.assertTrue(task.delays[0]['success'])
+
+    def test_remaining_attempts_and_invalid_counts_are_not_complete(self):
+        for count in ((1, 0, 1), (1, 1, 2), (2, 0, 2), (3, -1, 2)):
+            with self.subTest(count=count):
+                self.assertFalse(DemonHarness(challenge_count=count).check_challenge_done())
 
     def test_time_outside_window_does_not_resolve_invalid_config_or_navigate(self):
         task = DemonHarness(normal_value='group,team')

@@ -87,8 +87,8 @@ class ConfigBase(BaseModel):
             super().__init__(*args, **kwargs)
         except ValidationError as exc:
             """
-            During the initialization of the ConfigBase class,
-            if a ValidationError occurs, the default value of the field is used to initialize the field,
+            During the initialization of the ConfigBase class, 
+            if a ValidationError occurs, the default value of the field is used to initialize the field, 
             and the exception is re-raised after the initialization is complete.
             """
             exc_info = exc.errors()[0]

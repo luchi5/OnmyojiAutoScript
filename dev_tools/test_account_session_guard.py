@@ -81,7 +81,6 @@ def fake_device(frame=None, previous=None, timer_expired=False):
     device.package = 'test.game'
     device.sleeps = []
     device.sleep = device.sleeps.append
-    device.handle_night_commission = lambda: False
 
     def stuck_check():
         device.stuck_checks += 1
@@ -121,7 +120,7 @@ def fake_script(device, task_error=None, task_callback=None):
     cls = isolated_class(ROOT / 'script.py', 'Script',
                          {'_recover_account_session', '_get_next_task_with_recovery',
                           '_check_account_session_before_recovery', '_record_task_result',
-                          '_stop_when_restart_disabled',
+                          '_stop_when_restart_disabled', '_start_game_normally',
                           'get_next_task', '_wait_goto_main', 'wait_until', 'run', 'loop'},
                          {**exceptions, 'logger': logger, 'Path': Path,
                           'Function': FakeFunction, 'datetime': datetime, 'date': date,
@@ -168,6 +167,12 @@ def fake_script(device, task_error=None, task_callback=None):
 
 
 class AccountSessionGuardTests(unittest.TestCase):
+    def setUp(self):
+        from unittest.mock import patch
+        policy = patch('module.device.account_session_recovery.claim_recovery', return_value=True)
+        self.recovery_claim = policy.start()
+        self.addCleanup(policy.stop)
+
     def waiting_script(self, frame=None, task_error=None):
         script = fake_script(fake_device(frame), task_error)
         future = datetime.now() + timedelta(hours=3)
@@ -214,6 +219,7 @@ class AccountSessionGuardTests(unittest.TestCase):
         old = np.zeros((720, 1280, 3), np.uint8)
         device = fake_device(message_frame(), previous=old, timer_expired=True)
         script = fake_script(device)
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertEqual(device.captures, 1)
         self.assertEqual(device.stuck_checks, 0)
@@ -236,6 +242,7 @@ class AccountSessionGuardTests(unittest.TestCase):
                     return frame
                 device.screenshot = initial_frame
                 script = fake_script(device, error_type('simulated failure'))
+                script.config.model.restart.scheduler.enable = True
                 self.assertFalse(script.run('KekkaiUtilize'))
                 self.assertEqual(device.captures, 2)
                 self.assertNotIn('Restart', script.actions)
@@ -248,6 +255,7 @@ class AccountSessionGuardTests(unittest.TestCase):
         device = fake_device()
         script = fake_script(device, GameStuckError('ordinary network timeout'))
         script.config.model.restart.scheduler.enable = True
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertIn('Restart', script.actions)
         self.assertEqual(device.sleeps, [10])
@@ -255,6 +263,7 @@ class AccountSessionGuardTests(unittest.TestCase):
     def test_ordinary_expired_timer_keeps_original_stuck_recovery(self):
         device = fake_device(timer_expired=True)
         script = fake_script(device)
+        script.config.model.restart.scheduler.enable = True
         script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertEqual(device.captures, 2)
@@ -273,12 +282,14 @@ class AccountSessionGuardTests(unittest.TestCase):
         device.screenshot = initial_frame
         script = fake_script(device, GameStuckError('original timeout'))
         script.config.model.restart.scheduler.enable = True
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertIn('Restart', script.actions)
         self.assertEqual(device.sleeps, [10])
 
     def test_takeover_keeps_queue_for_recovery_without_immediate_game_actions(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
         released = []
         script.instance_guard = SimpleNamespace(token_lost=False, release=lambda: released.append(True))
         self.assertFalse(script.run('KekkaiUtilize'))
@@ -289,6 +300,7 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_notification_or_evidence_exception_does_not_block_recovery(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
 
         def fail(*args, **kwargs):
             raise OSError('simulated auxiliary failure')
@@ -299,6 +311,7 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_rejected_notification_is_logged_without_blocking_recovery(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
         script.config.notifier.push = lambda **kwargs: False
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertNotIn('Restart', script.actions)
@@ -309,6 +322,7 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_accepted_notification_does_not_log_request_failure(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
         script.config.notifier.push = lambda **kwargs: True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertNotIn('Restart', script.actions)
@@ -318,23 +332,19 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_manual_new_worker_runs_normally_after_popup_is_handled(self):
         script = fake_script(fake_device())
+        script.config.model.restart.scheduler.enable = True
         self.assertTrue(script.run('KekkaiUtilize'))
         self.assertEqual(script.actions, [])
 
-    def test_disabled_scheduled_restart_recovers_once_without_enabling_it(self):
+    def test_disabled_restart_allows_one_external_recovery(self):
         script = fake_script(fake_device(message_frame()))
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertFalse(script.config.model.restart.scheduler.enable)
-        self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
-        self.assertFalse(script._account_session_restart_pending)
-        self.assertTrue(script.config.task.enable)
-        self.assertEqual(script.config.task.command, 'Restart')
-        self.assertFalse(script.config.model.restart.scheduler.enable)
-        self.assertEqual(script._get_next_task_with_recovery(), 'KekkaiUtilize')
-        self.assertNotIn('Restart', script.actions)
+        self.assertTrue(script._account_session_restart_pending)
 
     def test_enabled_restart_is_not_also_queued_by_task_call(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
         script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
@@ -344,6 +354,7 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_forced_recovery_is_not_skipped_as_the_first_restart(self):
         script = fake_script(fake_device())
+        script.config.model.restart.scheduler.enable = True
         script.is_first_task = True
         script._account_session_restart_pending = True
         self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
@@ -353,6 +364,7 @@ class AccountSessionGuardTests(unittest.TestCase):
         device = fake_device(message_frame())
         observed = []
         script = fake_script(device, task_callback=lambda: observed.append(device._account_session_recovery))
+        script.config.model.restart.scheduler.enable = True
         script._account_session_restart_authorized = True
         self.assertTrue(script.run('Restart'))
         self.assertEqual(observed, [True])
@@ -368,6 +380,7 @@ class AccountSessionGuardTests(unittest.TestCase):
             with self.subTest(error=type(error).__name__):
                 device = fake_device(message_frame())
                 script = fake_script(device, error)
+                script.config.model.restart.scheduler.enable = True
                 script._account_session_restart_authorized = True
                 if isinstance(error, GameStuckError):
                     self.assertFalse(script.run('Restart'))
@@ -382,31 +395,18 @@ class AccountSessionGuardTests(unittest.TestCase):
         device = fake_device(message_frame())
         device._account_session_recovery = True
         script = fake_script(device)
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertTrue(script._account_session_restart_pending)
         # The previous scope is restored, rather than silently discarded.
         self.assertTrue(device._account_session_recovery)
 
-    def test_original_three_failures_limit_stops_before_a_third_recovery(self):
+    def test_external_recovery_does_not_increment_task_failures(self):
         script = fake_script(fake_device(message_frame()))
-        released, order = [], []
-        script.instance_guard = SimpleNamespace(token_lost=False, release=lambda: released.append(True))
-        original_run = script.run
-
-        def record_run(command):
-            order.append(command)
-            return original_run(command)
-
-        script.run = record_run
-        with self.assertRaises(SystemExit):
-            script.loop()
-        self.assertEqual(order, ['KekkaiUtilize', 'Restart', 'KekkaiUtilize', 'Restart', 'KekkaiUtilize'])
-        self.assertEqual(script.failure_record['KekkaiUtilize'], 3)
-        self.assertEqual(script.failure_record['Restart'], 0)
-        self.assertEqual(script.actions.count('emulator_stop'), 1)
-        self.assertEqual(released, [])
-        self.assertFalse(script.config.model.restart.scheduler.enable)
-        self.assertEqual(len(script.notifications), 4)  # Three takeovers plus the terminal failure notice.
+        script.failure_record['KekkaiUtilize'] = 2
+        self.assertFalse(script.run('KekkaiUtilize'))
+        script._record_task_result('KekkaiUtilize', False)
+        self.assertEqual(script.failure_record['KekkaiUtilize'], 2)
 
     def test_login_still_attempts_twice_and_reports_the_correct_number(self):
         logger = FakeLogger()
@@ -432,40 +432,22 @@ class AccountSessionGuardTests(unittest.TestCase):
         self.assertEqual(actions, ['stop', 'start', 'stop', 'start'])
         self.assertTrue(any('Login failed after 2 attempts' in str(args) for _, args in logger.messages))
 
-    def test_future_task_wait_returns_forced_restart_after_idle_takeover(self):
-        script, _ = self.waiting_script(message_frame())
-        self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
-        self.assertEqual(len(script.polls), 1)
-        self.assertEqual(script.failure_record['GotoMain'], 1)
-        self.assertFalse(script.config.model.restart.scheduler.enable)
-        self.assertNotIn('wait_until', script.actions)
-        self.assertNotIn('release_during_wait', script.actions)
-        self.assertNotIn('Restart', script.actions)
-
-    def test_repeated_idle_takeovers_stop_after_three_navigation_failures(self):
-        script, _ = self.waiting_script(message_frame())
-        released, order = [], []
-        script.instance_guard = SimpleNamespace(token_lost=False, release=lambda: released.append(True))
-        original_run = script.run
-
-        def record_run(command):
-            order.append(command)
-            return original_run(command)
-
-        script.run = record_run
+    def test_idle_takeover_stops_without_reclaiming(self):
+        script, future = self.waiting_script(message_frame())
         with self.assertRaises(SystemExit):
-            script.loop()
-        self.assertEqual(order, ['GotoMain', 'Restart', 'GotoMain', 'Restart', 'GotoMain'])
-        self.assertEqual(script.failure_record['GotoMain'], 3)
-        self.assertEqual(script.failure_record['Restart'], 0)
-        self.assertNotIn('DailyTrifles', script.failure_record)
-        self.assertEqual(script.actions.count('emulator_stop'), 1)
-        self.assertEqual(len(script.notifications), 4)
-        self.assertEqual(released, [])
-        self.assertFalse(script.config.model.restart.scheduler.enable)
+            script._get_next_task_with_recovery()
+        self.recovery_claim.assert_not_called()
+
+    def test_idle_takeover_stops_even_with_restart_enabled(self):
+        script, future = self.waiting_script(message_frame())
+        script.config.model.restart.scheduler.enable = True
+        with self.assertRaises(SystemExit):
+            script._wait_goto_main(future)
+        self.recovery_claim.assert_not_called()
 
     def test_successful_idle_navigation_clears_its_takeover_failure_count(self):
         script, future = self.waiting_script()
+        script.config.model.restart.scheduler.enable = True
         script.failure_record['GotoMain'] = 2
         self.assertTrue(script._wait_goto_main(future))
         self.assertEqual(script.failure_record['GotoMain'], 0)
@@ -475,6 +457,7 @@ class AccountSessionGuardTests(unittest.TestCase):
     def test_ordinary_idle_navigation_error_keeps_existing_recovery_without_new_count(self):
         script, future = self.waiting_script(task_error=GameStuckError('ordinary network failure'))
         script.config.model.restart.scheduler.enable = True
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script._wait_goto_main(future))
         self.assertNotIn('GotoMain', script.failure_record)
         self.assertIn('Restart', script.actions)
@@ -482,6 +465,7 @@ class AccountSessionGuardTests(unittest.TestCase):
 
     def test_pending_takeover_interrupts_time_wait_before_the_future_task(self):
         script = fake_script(fake_device())
+        script.config.model.restart.scheduler.enable = True
         script._account_session_restart_pending = True
         script.config.start_watching = lambda: None
 

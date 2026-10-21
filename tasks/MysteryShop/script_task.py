@@ -196,28 +196,10 @@ class ScriptTask(FriendshipPoints, MysteryShopAssets, GeneralInvite):
         """
         重写
         """
-        target_time: time = self.config.mystery_shop.shop_config.time_of_mystery
-        target_time: timedelta = timedelta(hours=target_time.hour, minutes=target_time.minute,
-                                           seconds=target_time.second)
-        if target_time == time(hour=0, minute=0, second=0):
-            if success:
-                self.set_next_run(task='MysteryShop', success=True, finish=True)
-            else:
-                self.set_next_run(task='MysteryShop', success=False, finish=True)
-            raise TaskEnd('MysteryShop')
-        now = datetime.now()
-        day_of_week = now.weekday()
-        now_datetime = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        if 2 <= day_of_week <= 4:
-            # 如果现在是周三和周五之间，那就设定下一次为这周六（hour=0, minute=0, second=0）+ target_time
-            next_time = now_datetime + timedelta(days=5 - day_of_week) + target_time
-        elif 5 <= day_of_week <= 6 or 0 <= day_of_week <= 1:
-            # 如果现在是周六和周一之间，那就设定下一次为下周三（hour=0, minute=0, second=0）+ target_time
-            next_time = now_datetime + timedelta(days=6 - day_of_week + 3) + target_time
-        else:
-            next_time = now_datetime + timedelta(days=2 - day_of_week) + target_time
-            logger.warning('Now is not in the time of mystery shop')
-        self.set_next_run(task='MysteryShop', target=next_time)
+        from tasks.MysteryShop.schedule import next_shop_run
+        target = next_shop_run(datetime.now(), self.config.mystery_shop.shop_config.time_of_mystery,
+                               completed=success)
+        self.set_next_run(task='MysteryShop', target=target, server=False)
         raise TaskEnd('MysteryShop')
 
 

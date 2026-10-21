@@ -217,6 +217,12 @@ class ScriptTask(GameUi, TalismanPassAssets):
         check_timer.start()
         while 1:
             self.screenshot()
+            # The overflow dialog can arrive after the reward-selection frame.
+            # Dismiss it before matching the still-visible buttons behind it.
+            if self.appear(self.I_OVERFLOW_CONFIRME):
+                self.appear_then_click(self.I_OVERFLOW_CONFIRME, interval=1)
+                check_timer.reset()
+                continue
             if self.appear_then_click(match_level[level], interval=0.8):
                 logger.info(f'Select {level} reward')
                 if self.appear_then_click(self.I_OVERFLOW_CONFIRME):

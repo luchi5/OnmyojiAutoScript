@@ -8,7 +8,6 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 
-from dev_tools import test_closeout_integration as integration
 from tasks.Component import daily_feedback_capture as capture
 from module.exception import AccountLoggedInElsewhere, GameStuckError, RequestHumanTakeover
 
@@ -302,6 +301,7 @@ class HookIntegrationTests(unittest.TestCase):
     """Execute the real task hook/finish functions with existing RAM fixtures."""
 
     def setUp(self):
+        from dev_tools import test_closeout_integration as integration
         self.integration = integration
         self.case = integration.CloseoutIntegrationTests()
         self.case.setUp()

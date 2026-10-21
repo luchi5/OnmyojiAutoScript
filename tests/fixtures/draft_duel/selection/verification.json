@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-20",
+  "pair": [
+    "01",
+    "09"
+  ],
+  "tests_passed": 73,
+  "replay_names_correct": 9,
+  "replay_selection_seconds": [
+    0.266,
+    0.25,
+    0.875
+  ],
+  "live_observe_pair_seconds": [
+    0.969,
+    0.5,
+    0.468,
+    0.468,
+    0.516,
+    0.438,
+    0.453
+  ],
+  "actual_selection_click_verified": false,
+  "battle_started": false,
+  "game_or_emulator_restarted": false,
+  "limitations": [
+    "soul recognition not implemented",
+    "complete battle and settlement loop not verified",
+    "fifth pick lobby acknowledgement not implemented"
+  ]
+}

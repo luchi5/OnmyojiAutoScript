@@ -82,13 +82,14 @@ class RestartSwitchGateTests(unittest.TestCase):
         with self.assertRaises(SystemExit): script.run('KekkaiUtilize')
         self.assertNotIn('Restart', script.actions)
 
-    def test_takeover_authorization_remains_valid_if_latest_switch_is_unreadable(self):
+    def test_queued_takeover_cannot_bypass_a_newly_disabled_switch(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
-        def broken(name): raise OSError('offline read failure')
-        script.config.model.read_json = broken
-        self.assertTrue(script.run('Restart'))
+        script.config.model.restart.scheduler.enable = False
+        with self.assertRaises(SystemExit): script.run('Restart')
+        self.assertNotIn('Restart', script.actions)
 
     def test_direct_restart_is_blocked_even_if_a_cached_task_is_enabled(self):
         script = fake_script(fake_device())
@@ -97,42 +98,28 @@ class RestartSwitchGateTests(unittest.TestCase):
         self.assertEqual(script.device.captures, 0)
         self.assertEqual(script.actions, ['save_evidence'])
 
-    def test_idle_game_missing_cannot_bypass_disabled_restart(self):
+    def test_idle_game_missing_uses_normal_start_with_restart_disabled(self):
         script = fake_script(fake_device())
         script.device.app_is_running = lambda: False
-        with self.assertRaises(SystemExit):
-            script._wait_goto_main(datetime.now() + timedelta(hours=1))
-        self.assertEqual(script.device.captures, 0)
-        self.assertNotIn('release_during_wait', script.actions)
-
-    def test_takeover_exception_recovers_once_with_switch_off_and_no_permission_leak(self):
-        script = fake_script(fake_device(message_frame()))
-        self.assertFalse(script.run('KekkaiUtilize'))
-        self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
-        self.assertTrue(script.run('Restart'))
+        calls = []
+        script.run = lambda command: calls.append(command) or True
+        script.wait_until = lambda future: True
+        self.assertTrue(script._wait_goto_main(datetime.now() + timedelta(hours=1)))
+        self.assertEqual(calls, ['GameStart', 'GotoMain'])
         self.assertFalse(script.config.model.restart.scheduler.enable)
-        self.assertFalse(script._account_session_restart_active)
-        self.assertFalse(script._account_session_restart_authorized)
-        self.assertFalse(script.device._account_session_recovery)
-        with self.assertRaises(SystemExit): script.run('Restart')
 
-    def test_popup_found_during_failure_keeps_takeover_exception_for_all_errors(self):
-        for error_type in RECOVERABLE:
-            with self.subTest(error=error_type.__name__):
-                device = fake_device()
-                capture = device.screenshot
-                def first_frame():
-                    value = capture()
-                    device.next_frame = message_frame()
-                    return value
-                device.screenshot = first_frame
-                script = fake_script(device, error_type('failure before popup arrives'))
-                self.assertFalse(script.run('KekkaiUtilize'))
-                self.assertTrue(script._account_session_restart_pending)
-                self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
-                self.assertTrue(script._account_session_restart_authorized)
-                self.assertEqual(script.device.sleeps, [10])
-                self.assertNotIn('exception_handler', script.actions)
+    def test_takeover_stops_with_switch_off(self):
+        script = fake_script(fake_device(message_frame()))
+        with self.assertRaises(SystemExit): script.run('KekkaiUtilize')
+        self.assertFalse(getattr(script, '_account_session_restart_pending', False))
+        self.assertEqual(script.device.sleeps, [])
+        self.assertNotIn('Restart', script.actions)
+
+    def test_pending_takeover_rechecks_switch(self):
+        script = fake_script(fake_device())
+        script._account_session_restart_pending = True
+        with self.assertRaises(SystemExit): script._get_next_task_with_recovery()
+        self.assertFalse(getattr(script, '_account_session_restart_authorized', False))
 
     def test_notifications_or_evidence_failures_cannot_prevent_stop(self):
         for which in ('evidence', 'notification', 'both', 'rejected'):

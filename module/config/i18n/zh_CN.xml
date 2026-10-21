@@ -201,6 +201,7 @@
 	<message><source>Hunt</source><translation>狩猎战</translation></message>
 	<message><source>MysteryShop</source><translation>神秘商店</translation></message>
 	<message><source>Duel</source><translation>斗技</translation></message>
+	<message><source>DraftDuel</source><translation>协同对弈</translation></message>
 	<message><source>WantedQuests</source><translation>悬赏封印</translation></message>
 	<message><source>Tako</source><translation>石距</translation></message>
 	<message><source>AutoCheckinBigGod</source><translation>大神签到</translation></message>
@@ -250,6 +251,7 @@
 	<message><source>Hunt</source><translation>狩猎战</translation></message>
 	<message><source>MysteryShop</source><translation>神秘商店</translation></message>
 	<message><source>Duel</source><translation>斗技</translation></message>
+	<message><source>DraftDuel</source><translation>协同对弈</translation></message>
 	<message><source>WantedQuests</source><translation>悬赏封印</translation></message>
 	<message><source>Tako</source><translation>石距</translation></message>
 	<message><source>AutoCheckinBigGod</source><translation>大神签到</translation></message>
@@ -739,7 +741,25 @@ Refresh：直接刷新，如果刷新操作进入CD，将标记为失败并退�
 	<message><source>Before End</source><translation>强制设定悬赏刷新前 X 分钟执行</translation></message>
 	<message><source>before_end_help</source><translation>默认'00:00:00'表示不使用这个功能，不可取负值，建议最后一小时才执行悬赏'01:00:00'</translation></message>
 	<message><source>Time Of Mystery</source><translation>强制设定出现神秘商店当天的执行时间</translation></message>
-	<message><source>time_of_mystery_help</source><translation>限定[00:00:01-23:30:00],这将使你无视掉调度器的Interval。保持默认'00:00:00'表示不使用</translation></message>
+	<message><source>time_of_mystery_help</source><translation>每周三、周六按此时间运行；旧的通用调度时间不再覆盖此设置。</translation></message>
 	<message><source>TakoConfig</source><translation>石距加成</translation></message>
+</context>
+<context>
+    <name>Args</name>
+    <message><source>DraftDuelConfig</source><translation>协同对弈配置</translation></message>
+    <message><source>Partner Config</source><translation>搭档脚本配置名</translation></message>
+    <message><source>Challenge Limit</source><translation>挑战轮数上限</translation></message>
+    <message><source>Coin Budget</source><translation>金币预算</translation></message>
+    <message><source>Free Only</source><translation>仅使用免费次数</translation></message>
+    <message><source>Partner Wait Seconds</source><translation>等待搭档时间（秒）</translation></message>
+    <message><source>Phase Timeout Seconds</source><translation>阶段确认超时（秒）</translation></message>
+    <message><source>Matchmaking Timeout Seconds</source><translation>匹配限制时间（秒）</translation></message>
+    <message><source>draft_duel_partner_config_help</source><translation>填写另一账号的脚本配置名；两个账号必须互相填写对方。队长由两个配置名自动确定，不需要手动选择角色。此字段请分别设置，不要联动复制。</translation></message>
+    <message><source>draft_duel_challenge_limit_help</source><translation>本次任务最多开启的完整挑战轮数，默认1轮。挑战完成以游戏结算为准，不把未确认结果计为完成。</translation></message>
+    <message><source>draft_duel_limit_time_help</source><translation>本次任务的时间上限，默认1小时；达到后停止开启新的对局，正在进行的对局完成结算后再结束。</translation></message>
+    <message><source>draft_duel_coin_budget_help</source><translation>本次任务每个账号用于新挑战报名的金币上限，默认0表示不允许花费金币。实际扣费必须从游戏画面确认；费用无法确认时不报名。</translation></message>
+    <message><source>draft_duel_free_only_help</source><translation>默认开启，仅在确认可以免费报名时开启新挑战。关闭后仍受金币预算限制。</translation></message>
+    <message><source>draft_duel_partner_wait_seconds_help</source><translation>等待已配置搭档进入同一协同任务的最长时间，默认120秒；超时后停止本次配对。</translation></message>
+    <message><source>draft_duel_phase_timeout_seconds_help</source><translation>等待选将、组队等阶段完成画面确认的最长时间，默认120秒；超时后重新识别双方状态，不重复执行已确认动作。</translation></message>
 </context>
 </TS>

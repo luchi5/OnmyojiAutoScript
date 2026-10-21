@@ -167,6 +167,12 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         ret = None
         while True:
             self.screenshot()
+            if self.appear(self.I_D_TOP_HONOR):
+                # Victory showcase can precede the old result screen. Avoid Share.
+                ret = True
+                ret_timer.start()
+                self.click(self.C_D_RESULT_CONTINUE, interval=1.2)
+                continue
             self.check_and_get_reward()
             if self.appear(self.I_CHECK_DUEL, interval=0.6) and self.appear(self.I_D_HELP, interval=0.6):  # 斗技主界面
                 break
@@ -303,7 +309,8 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             self.appear(self.I_D_CHECK_BAN)
 
     def is_battle_win(self) -> bool:
-        return self.appear(self.I_WIN) or self.appear(self.I_D_VICTORY)
+        return (self.appear(self.I_WIN) or self.appear(self.I_D_VICTORY)
+                or self.appear(self.I_D_TOP_HONOR))
 
     def is_battle_lose(self) -> bool:
         return self.appear(self.I_FALSE) or self.appear(self.I_D_FAIL)

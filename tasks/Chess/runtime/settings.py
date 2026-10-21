@@ -13,14 +13,11 @@ class ChessRuntimeSettings:
     RANK_PROTECTION_EXIT_COUNT = 2
 
     HAND_AREA = (179, 540, 957, 158)
-    # 完整手牌模板在实战截图中的真匹配约 0.997，已测非目标最高约
-    # 0.438；取 0.75 为光效、轻微位移和压缩失真保留余量。
+    # Retained for ordinary soul and protection templates, not shikigami fallback.
     HAND_TEMPLATE_THRESHOLD = 0.75
     HAND_DEPLOY_TEMPLATE_THRESHOLD = 0.75
     HAND_DEPLOY_CONFIRM_FRAMES = 1
-    SHOP_TEMPLATE_THRESHOLD = 0.75
-    SHOP_GLOW_TEMPLATE_THRESHOLD = 0.65
-    SHOP_GOLD_ICON_THRESHOLD = 0.75
+    HAND_CAPACITY = 10
     # Chess 运行时统一使用四档间隔。较慢的 2/3 秒轮询通过倍数表达，
     # 不再为每个功能分别维护近似数值。
     FAST_OPERATION_INTERVAL = 0.1
@@ -60,7 +57,7 @@ class ChessRuntimeSettings:
     SHOP_REFRESH_COST = 2
     HAKUZOSU_PROTECT_NAME = 'hakuzosu_protect'
     HAKUZOSU_PROTECT_DISPLAY_NAME = '守护之印'
-    HAKUZOSU_PROTECT_IMAGE = 'c/c_hakuzosu_protect.png'
+    HAKUZOSU_PROTECT_IMAGE = 'resource/card/c_hakuzosu_protect.png'
     HAKUZOSU_NAME = 'yume_san_byakuzou'
     ARAKAWA_BOND_NAME = '荒川'
     DEFAULT_LINEUP_KEY = REGISTERED_DEFAULT_LINEUP_KEY
@@ -71,9 +68,6 @@ class ChessRuntimeSettings:
     SOUL_ODD_SET_Y_OFFSET = -5
     SOUL_TEMPLATE_THRESHOLD = 0.60
     SOUL_TEMPLATE_SCALES = (0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20)
-    UNKNOWN_SELL_CONFIRM_FRAMES = 3
-    UNKNOWN_LINEUP_PROTECT_THRESHOLD = 0.58
-    UNKNOWN_LINEUP_PROTECT_SCALES = (0.90, 0.95, 1.00, 1.05, 1.10)
     SOUL_DISPLAY_NAMES = {
         entry.romaji: entry.chinese_name
         for entry in SOUL_ENTRIES

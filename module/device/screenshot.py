@@ -6,6 +6,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from adbutils.errors import AdbError
 from PIL import Image
 
 from module.base.decorator import cached_property
@@ -16,7 +17,7 @@ from module.device.method.adb import Adb
 from module.device.method.windows import Window
 from module.device.method.droidcast import DroidCast
 from module.device.method.scrcpy import Scrcpy
-from module.device.method.nemu_ipc import NemuIpc
+from module.device.method.nemu_ipc import NemuIpc, NemuIpcUnavailable
 from module.exception import RequestHumanTakeover, ScriptError
 from module.logger import logger
 
@@ -45,8 +46,38 @@ class Screenshot(Adb, DroidCast, Scrcpy, Window, NemuIpc):
             'DroidCast_raw': self.screenshot_droidcast_raw,
             'scrcpy': self.screenshot_scrcpy,
             'window_background': self.screenshot_window_background if IS_WINDOWS else None,
-            'nemu_ipc': self.screenshot_nemu_ipc
+            'nemu_ipc': self.screenshot_nemu_with_fallback
         }
+
+    def screenshot_nemu_with_fallback(self):
+        # Keep the configured transport, and periodically try it again after recovery.
+        if time.monotonic() >= getattr(self, '_nemu_retry_at', 0):
+            try:
+                image = self.screenshot_nemu_ipc()
+                if image is None or image.shape != (720, 1280, 3) or not image.any():
+                    raise NemuIpcUnavailable('Nemu screenshot is empty, black or wrong size')
+                return image
+            except NemuIpcUnavailable as error:
+                logger.warning(f'{error}; using ADB screenshots temporarily')
+                self._nemu_retry_at = time.monotonic() + 60
+
+        # Direct capture avoids the regular ADB retry decorator's emulator restart.
+        deadline = time.monotonic() + 45
+        for attempt in range(15):
+            try:
+                data = self.adb_shell(['screencap', '-p'], stream=True, timeout=10)
+                image = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                if image is not None and image.shape == (720, 1280, 3) and image.any():
+                    # Match the RGB contract of all screenshot transports and assets.
+                    return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                logger.warning('ADB screenshot not ready: empty, black or wrong size')
+            except (AdbError, OSError, cv2.error) as error:
+                logger.warning(f'ADB screenshot retry {attempt + 1}/15: {error}')
+            if time.monotonic() >= deadline:
+                break
+            if attempt < 14:
+                time.sleep(2)
+        raise RequestHumanTakeover('Both Nemu and ADB screenshot transports are unavailable')
 
     def screenshot(self):
         """

@@ -20,6 +20,17 @@ class UtilizeRule(str, Enum):
     # AUTO = 'auto'  # 自动 兼容代码罢了
 
 
+class FosterShikigamiClass(str, Enum):
+    DEFAULT = '默认/全部'
+    UR = 'UR'
+    SP = 'SP'
+    SSR = 'SSR'
+    SR = 'SR'
+    R = 'R'
+    N = 'N'
+    MATERIAL = 'MATERIAL'
+
+
 
 class UtilizeScheduler(Scheduler):
     priority: int = Field(default=2, description='priority_help')
@@ -30,8 +41,8 @@ class UtilizeConfig(BaseModel):
     utilize_rule: UtilizeRule = Field(default=UtilizeRule.DEFAULT, description='utilize_rule_help')
     select_friend_list: SelectFriendList = Field(default=SelectFriendList.SAME_SERVER, description='select_friend_list_help')
     auto_fill: bool = Field(default=False, description='auto_fill_help')
-    shikigami_class: ShikigamiClass = Field(default=ShikigamiClass.N, description='shikigami_class_help')
-    shikigami_order: int = Field(default=4, description='shikigami_order_help')
+    shikigami_class: FosterShikigamiClass = Field(default=FosterShikigamiClass.DEFAULT, description='foster_shikigami_class_help')
+    shikigami_order: int = Field(default=4, ge=1, le=7, description='foster_shikigami_order_help')
     min_run_interval: TimeDelta = Field(default=timedelta(0), description='min_run_interval_help')
     min_taiko_value: int = Field(default=0, ge=0, le=200, description='min_taiko_value_help')
     min_fish_value: int = Field(default=0, ge=0, le=200, description='min_fish_value_help')

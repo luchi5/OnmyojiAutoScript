@@ -199,10 +199,10 @@ class CloseoutTests(unittest.TestCase):
 
     def test_account_state_separate_including_decimal_name(self):
         self.report('Dokan')
-        other = FakeConfig('demo-account-007')
+        other = FakeConfig('07-基础托管至11.7')
         self.assertEqual(DC.closeout_state(other, self.now)['outcomes'], {})
         DC.report_closeout_outcome(other, 'Dokan', 'expired', now=self.now)
-        self.assertTrue((self.location / 'demo-account-007.json').exists())
+        self.assertTrue((self.location / '07-基础托管至11.7.json').exists())
         self.assertEqual(DC.closeout_state(self.config, self.now)['outcomes']['Dokan']['outcome'], 'completed')
 
     def test_unsafe_account_path_is_rejected(self):

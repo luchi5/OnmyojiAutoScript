@@ -85,6 +85,14 @@ class ExpiredTests(unittest.TestCase):
         h=harness([timedelta(0),timedelta(hours=2)])
         self.assertEqual(h.ocr_time(),timedelta(hours=2))
 
+    def test_unrecognized_expired_reward_schedules_retry_without_restart(self):
+        h=harness([timedelta(0)]*3)
+        h.goto_cards=Mock(); h.check_card_status=lambda:True; h.check_card_effect=lambda:True
+        h.collect_expired_card=Mock(return_value=False); h.set_next_run=Mock()
+        self.assertFalse(h.run_activation(SimpleNamespace(card_type='不筛选（第一张）')))
+        h.collect_expired_card.assert_called_once()
+        h.set_next_run.assert_called_once()
+
     def test_expiration_requires_three_readings(self):
         h=harness([timedelta(0)]*3)
         self.assertEqual(h.ocr_time(),timedelta(0))
@@ -100,10 +108,18 @@ class ExpiredTests(unittest.TestCase):
         # Realm markers can remain visible behind the panel: close it first.
         h.appear=lambda marker:(marker=='realm' or (marker=='panel' and h.screenshot.call_count==1))
         h.appear_then_click=Mock()
-        actions=[];h.harvest_card=lambda:actions.append('harvest');h.goto_cards=lambda:actions.append('cards')
+        actions=[];h.harvest_card=lambda:(actions.append('harvest') or True);h.goto_cards=lambda:actions.append('cards')
         h.collect_expired_card()
         h.appear_then_click.assert_called_once_with('back',interval=1)
         self.assertEqual(actions,['harvest','cards'])
+
+    def test_no_reward_does_not_reopen_obstructed_card_panel(self):
+        h=harness([]);h.I_REALM_SHIN='realm';h.I_SHI_GROWN='grown';h.I_UI_BACK_RED='back'
+        h.I_A_CHECK_CARD='panel';h.I_A_AUTO_INVITE='invite'
+        h.appear=lambda marker:marker=='realm'
+        h.harvest_card=Mock(return_value=False);h.goto_cards=Mock()
+        self.assertFalse(h.collect_expired_card())
+        h.goto_cards.assert_not_called()
 
     def test_failed_collection_is_bounded_and_not_scheduled(self):
         h=harness([timedelta(0)]*9)

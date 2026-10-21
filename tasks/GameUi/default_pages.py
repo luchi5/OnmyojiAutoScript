@@ -146,7 +146,7 @@ page_collection.add_enter_failure_hooks(conditional_action(condition=GameUiAsset
 page_collection.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_collection->page_main")
 page_main.connect(page_collection, GameUiAssets.I_MAIN_GOTO_COLLECTION, key="page_main->page_collection")
 
-page_travel = Page(GameUiAssets.I_CHECK_TRAVEL, category="global")
+page_travel = Page(any_of(GameUiAssets.I_CHECK_TRAVEL, GameUiAssets.I_CHECK_TRAVEL_TITLE), category="global")
 page_travel.add_enter_failure_hooks(conditional_action(condition=GameUiAssets.I_CHECK_MAIN,
                                                        action=RestartAssets.C_LOGIN_SCROLL_CLOSE_AREA))
 page_travel.connect(page_main, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_travel->page_main")
@@ -243,7 +243,7 @@ page_demon_encounter.connect(page_town, GlobalGameAssets.I_UI_BACK_YELLOW, key="
 page_town.connect(page_demon_encounter, GameUiAssets.I_TOWN_GOTO_DEMON_ENCOUNTER, key="page_town->page_demon_encounter")
 
 # 现世逢魔页面。
-page_demon_encounter_realworld = Page(GameUiAssets.I_CHECK_DEMON_ENCOUNTER_REALWORLD, category="global")
+page_demon_encounter_realworld = Page(GameUiAssets.I_CHECK_DEMON_ENCOUNTER_REALWORLD, category="global", priority=60)
 page_demon_encounter_realworld.connect(page_demon_encounter, GlobalGameAssets.I_UI_BACK_YELLOW, key="page_demon_encounter_realworld->page_demon_encounter")
 page_demon_encounter.connect(page_demon_encounter_realworld, GameUiAssets.I_DEMON_ENCOUNTER_REALWORLD_GOTO, key="page_demon_encounter->page_demon_encounter_realworld")
 

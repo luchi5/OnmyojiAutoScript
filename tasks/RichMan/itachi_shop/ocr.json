@@ -1,0 +1,20 @@
+[
+  {
+    "itemName": "itachi_coin",
+    "roiFront": "1081,21,134,38",
+    "roiBack": "1081,21,134,38",
+    "mode": "DigitCounter",
+    "method": "Default",
+    "keyword": "",
+    "description": ""
+  },
+  {
+    "itemName": "itachi_buy_cost",
+    "roiFront": "634,530,70,41",
+    "roiBack": "634,530,70,41",
+    "mode": "Digit",
+    "method": "Default",
+    "keyword": "",
+    "description": ""
+  }
+]

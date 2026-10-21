@@ -1,0 +1,7614 @@
+{
+  "schema_version": 1,
+  "source_sha256": "b922ae69bc155c2ba7b34c41771432f91bd99eb7957bec695b93c8be2f66794f",
+  "aliases": {
+    "萤草": "莹草"
+  },
+  "profiles": {
+    "遥念烟烟罗": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "name:遥念烟烟罗"
+      ],
+      "source": "评分总表!E2",
+      "role_source": "评分总表!D2",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "神启荒 + 输出；避开月读",
+        "weakness": "掉印记后被控",
+        "avoid": "无",
+        "soul_recommendation": "钟灵，魍魉"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_14"
+      ]
+    },
+    "流光追月神": {
+      "strength": 94.0,
+      "roles": [
+        "fire",
+        "name:流光追月神"
+      ],
+      "source": "评分总表!E3",
+      "role_source": "评分总表!D3",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "高耗火输出体系；避开言灵",
+        "weakness": "坦度一般",
+        "avoid": "坑点：怕言灵",
+        "soul_recommendation": "蚌精镜姬"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "空相面灵气": {
+      "strength": 94.0,
+      "roles": [
+        "pull",
+        "name:空相面灵气"
+      ],
+      "source": "评分总表!E4",
+      "role_source": "评分总表!D4",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "帝释天/纺愿缘结神 + 群控（大夜摩天阎魔）",
+        "weakness": "脆皮怕控，怕迦楼罗粉婆婆",
+        "avoid": "无",
+        "soul_recommendation": "招财轮入道海月"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_6"
+      ]
+    },
+    "灶门炭治郎": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:灶门炭治郎"
+      ],
+      "source": "评分总表!E5",
+      "role_source": "评分总表!D5",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "自拉条解控 + 心眼/破势爆发",
+        "weakness": "脆皮",
+        "avoid": "无",
+        "soul_recommendation": "心眼破势针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "帝释天": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "pull",
+        "name:帝释天"
+      ],
+      "source": "评分总表!E6",
+      "role_source": "评分总表!D6",
+      "flags": [
+        "partner_and_avoid_conflict_requires_review"
+      ],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "纺愿缘结神/空相面灵气（避免多个单拉重复）",
+        "weakness": "命中感人",
+        "avoid": "避免与纺愿缘结神同队（单拉重复）",
+        "soul_recommendation": "返魂香等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_6",
+        "avoid_帝释天_纺愿缘结神"
+      ]
+    },
+    "椒图": {
+      "strength": 94.0,
+      "roles": [
+        "protect",
+        "support",
+        "jiaotu",
+        "name:椒图"
+      ],
+      "source": "评分总表!E7",
+      "role_source": "评分总表!D7",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "单体爆发对手的克星 + 反击队（犬神/吸血姬/妖刀姬）",
+        "weakness": "怕被1速控",
+        "avoid": "坑点：怕雪童子",
+        "soul_recommendation": "树妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_8",
+        "combo_13"
+      ]
+    },
+    "虫师": {
+      "strength": 94.0,
+      "roles": [
+        "dispel",
+        "heal",
+        "name:虫师"
+      ],
+      "source": "评分总表!E8",
+      "role_source": "评分总表!D8",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "群奶驱散体系 + 高速队",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_10",
+        "combo_11"
+      ]
+    },
+    "雨女": {
+      "strength": 94.0,
+      "roles": [
+        "dispel",
+        "name:雨女"
+      ],
+      "source": "评分总表!E9",
+      "role_source": "评分总表!D9",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "解控体系 + 需要驱散的队",
+        "weakness": "怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_18"
+      ]
+    },
+    "鲤鱼精": {
+      "strength": 94.0,
+      "roles": [
+        "shield",
+        "name:鲤鱼精"
+      ],
+      "source": "评分总表!E10",
+      "role_source": "评分总表!D10",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "护盾体系（厚盾）+ 输出",
+        "weakness": "怕穿盾控，盾可被驱散",
+        "avoid": "无",
+        "soul_recommendation": "蚌精等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_11"
+      ]
+    },
+    "因幡辉夜姬": {
+      "strength": 94.0,
+      "roles": [
+        "fire",
+        "name:因幡辉夜姬"
+      ],
+      "source": "评分总表!E11",
+      "role_source": "评分总表!D11",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "高耗火输出（烬天/炼狱茨木/玉藻前）",
+        "weakness": "脆皮怕控鬼火不足",
+        "avoid": "无",
+        "soul_recommendation": "骰子鬼等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "大夜摩天阎魔": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "name:大夜摩天阎魔"
+      ],
+      "source": "评分总表!E12",
+      "role_source": "评分总表!D12",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "神启荒/群体输出 + 拉条",
+        "weakness": "命中一般坦度一般",
+        "avoid": "坑点：怕月读",
+        "soul_recommendation": "遗念火蚌精"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_6",
+        "combo_14"
+      ]
+    },
+    "天火命铃彦姬": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "pull",
+        "single_damage",
+        "name:天火命铃彦姬"
+      ],
+      "source": "评分总表!E13",
+      "role_source": "评分总表!D13",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "出世螺 + 拉条体系（纺愿缘结神）",
+        "weakness": "怕连环控，怕羊跳回合锁条",
+        "avoid": "无",
+        "soul_recommendation": "出世螺木魅"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "寻森小鹿男": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "damage",
+        "single_damage",
+        "name:寻森小鹿男"
+      ],
+      "source": "评分总表!E14",
+      "role_source": "评分总表!D14",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "招财拉条体系；避开月读",
+        "weakness": "多数都在普攻，怕封被动",
+        "avoid": "坑点：怕月读",
+        "soul_recommendation": "元兴寺招财"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "心友犬神": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:心友犬神"
+      ],
+      "source": "评分总表!E15",
+      "role_source": "评分总表!D15",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "食灵 + 提供护盾的队友（一目连/鲤鱼精）",
+        "weakness": "盾薄怕控",
+        "avoid": "坑点：友方没有盾保人",
+        "soul_recommendation": "雪幽魂等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_5"
+      ]
+    },
+    "情思日和坊": {
+      "strength": 94.0,
+      "roles": [
+        "heal",
+        "name:情思日和坊"
+      ],
+      "source": "评分总表!E16",
+      "role_source": "评分总表!D16",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "挡伤体系 + 群输出",
+        "weakness": "低攻击不如SR日和坊",
+        "avoid": "无",
+        "soul_recommendation": "树妖珍珠等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "晨辉惠比寿": {
+      "strength": 94.0,
+      "roles": [
+        "fire",
+        "heal",
+        "name:晨辉惠比寿"
+      ],
+      "source": "评分总表!E17",
+      "role_source": "评分总表!D17",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "火机奶妈体系；避免与禅心云外镜同队",
+        "weakness": "怕控封被动",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）",
+        "soul_recommendation": "应声虫骰子鬼"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_晨辉惠比寿_禅心云外镜"
+      ]
+    },
+    "本真三尾狐": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:本真三尾狐"
+      ],
+      "source": "评分总表!E18",
+      "role_source": "评分总表!D18",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "兵主部单核 + 保人",
+        "weakness": "自身盾薄，怕封被动速度慢",
+        "avoid": "无",
+        "soul_recommendation": "兵主部网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "梦引蝴蝶精": {
+      "strength": 94.0,
+      "roles": [
+        "buff",
+        "heal",
+        "name:梦引蝴蝶精"
+      ],
+      "source": "评分总表!E19",
+      "role_source": "评分总表!D19",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "珍珠群奶 + 需要续航的队；避开季/云外镜/镜音",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "珍珠等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_10"
+      ]
+    },
+    "灼华桃花妖": {
+      "strength": 94.0,
+      "roles": [
+        "heal",
+        "revive",
+        "name:灼华桃花妖"
+      ],
+      "source": "评分总表!E20",
+      "role_source": "评分总表!D20",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "群奶复活体系；避开阎魔/SP吸血姬",
+        "weakness": "猜拳怕控怕阎魔SP吸血姬",
+        "avoid": "坑点：从头被控到尾",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "纺愿缘结神": {
+      "strength": 94.0,
+      "roles": [
+        "heal",
+        "pull",
+        "name:纺愿缘结神"
+      ],
+      "source": "评分总表!E21",
+      "role_source": "评分总表!D21",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "空相面灵气 + 单体爆发；避免与帝释天等单拉重复",
+        "weakness": "怕控，粉婆婆，迦楼罗",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）；避免与帝释天/御馔津等单拉重复",
+        "soul_recommendation": "招财树妖"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_6",
+        "avoid_帝释天_纺愿缘结神",
+        "avoid_纺愿缘结神_稻荷神御馔津",
+        "avoid_纺愿缘结神_禅心云外镜"
+      ]
+    },
+    "蚀月吸血姬": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:蚀月吸血姬"
+      ],
+      "source": "评分总表!E22",
+      "role_source": "评分总表!D22",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "克制复活体系；伤魂鸟单核",
+        "weakness": "怕控脆皮",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟地藏等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_12"
+      ]
+    },
+    "鲸汐千姬": {
+      "strength": 94.0,
+      "roles": [
+        "damage",
+        "fire",
+        "name:鲸汐千姬"
+      ],
+      "source": "评分总表!E23",
+      "role_source": "评分总表!D23",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "初音未来 + 群体海月输出",
+        "weakness": "脆皮暴击感人",
+        "avoid": "坑点：怕言灵和SP,R莹草",
+        "soul_recommendation": "蚌精钓瓶火"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_9"
+      ]
+    },
+    "龙吟铃鹿御前": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:龙吟铃鹿御前"
+      ],
+      "source": "评分总表!E24",
+      "role_source": "评分总表!D24",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "制裁盾体系 + 拉条",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "青女房针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "匣中少女": {
+      "strength": 94.0,
+      "roles": [
+        "shield",
+        "name:匣中少女"
+      ],
+      "source": "评分总表!E25",
+      "role_source": "评分总表!D25",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "保命盾体系；避开SP06（缚骨清姬等封被动）",
+        "weakness": "怕封被动",
+        "avoid": "坑点：怕SP06",
+        "soul_recommendation": "地藏等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_11"
+      ]
+    },
+    "日和坊": {
+      "strength": 94.0,
+      "roles": [
+        "heal",
+        "name:日和坊"
+      ],
+      "source": "评分总表!E26",
+      "role_source": "评分总表!D26",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "群奶体系；避开季/云外镜/镜音铃连",
+        "weakness": "怕封被动",
+        "avoid": "避免与季/云外镜/镜音铃连同队",
+        "soul_recommendation": "幽谷响树妖"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_11",
+        "avoid_日和坊_季",
+        "avoid_日和坊_云外镜",
+        "avoid_日和坊_镜音铃连"
+      ]
+    },
+    "湍津姬": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "name:湍津姬"
+      ],
+      "source": "评分总表!E27",
+      "role_source": "评分总表!D27",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等，一直未上线",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "无",
+        "avoid": "坑点：？？？",
+        "soul_recommendation": "？？？"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "迦楼罗": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:迦楼罗"
+      ],
+      "source": "评分总表!E28",
+      "role_source": "评分总表!D28",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕封被动怕控",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟破势雪幽魂魅妖"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "追月神": {
+      "strength": 94.0,
+      "roles": [
+        "fire",
+        "name:追月神"
+      ],
+      "source": "评分总表!E29",
+      "role_source": "评分总表!D29",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "火机体系；避开言灵/伊邪那美",
+        "weakness": "速度慢",
+        "avoid": "坑点：怕言灵伊邪那美",
+        "soul_recommendation": "镜姬被服"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "一目连": {
+      "strength": 94.0,
+      "roles": [
+        "shield",
+        "name:一目连"
+      ],
+      "source": "评分总表!E30",
+      "role_source": "评分总表!D30",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "护盾体系 + 群输出；避开SP06",
+        "weakness": "盾薄暴击感人",
+        "avoid": "坑点：怕SP06",
+        "soul_recommendation": "薙魂蚌精等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_11"
+      ]
+    },
+    "大天狗": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:大天狗"
+      ],
+      "source": "评分总表!E31",
+      "role_source": "评分总表!D31",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "脆皮打不动盾",
+        "avoid": "坑点：怕返魂香",
+        "soul_recommendation": "针女日女等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "天照": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:天照"
+      ],
+      "source": "评分总表!E32",
+      "role_source": "评分总表!D32",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "隐念复制攻击 + 增伤体系",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "隐念网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "季": {
+      "strength": 94.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:季"
+      ],
+      "source": "评分总表!E33",
+      "role_source": "评分总表!D33",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "犬神/伪回合体系 + 群奶（避免单奶）",
+        "weakness": "怕控",
+        "avoid": "坑点：打不动盾不搭配单奶怕犬神",
+        "soul_recommendation": "狂骨钟灵"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_10",
+        "avoid_桃花妖_季",
+        "avoid_日和坊_季",
+        "avoid_蝴蝶精_季"
+      ]
+    },
+    "毗沙门天": {
+      "strength": 94.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "support",
+        "name:毗沙门天"
+      ],
+      "source": "评分总表!E34",
+      "role_source": "评分总表!D34",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "？"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "葛叶": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:葛叶"
+      ],
+      "source": "评分总表!E35",
+      "role_source": "评分总表!D35",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "地藏伤魂鸟 + 保人体系",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "地藏伤魂鸟"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "言灵": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:言灵"
+      ],
+      "source": "评分总表!E36",
+      "role_source": "评分总表!D36",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "鬼金羊/涂佛体系；对面无因幡时发挥更好",
+        "weakness": "怕封被动脆皮",
+        "avoid": "坑点：被羊洗鬼火，对面上因",
+        "soul_recommendation": "涂佛阴摩罗"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_17"
+      ]
+    },
+    "辉夜姬": {
+      "strength": 94.0,
+      "roles": [
+        "fire",
+        "name:辉夜姬"
+      ],
+      "source": "评分总表!E37",
+      "role_source": "评分总表!D37",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "防御抵抗体系 + 高耗火输出",
+        "weakness": "怕控，断结界",
+        "avoid": "无",
+        "soul_recommendation": "木魅返魂香等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "铃彦姬": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:铃彦姬"
+      ],
+      "source": "评分总表!E38",
+      "role_source": "评分总表!D38",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "一目连/匣中少女（护盾）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动盾",
+        "soul_recommendation": "针女魍魉日女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼切": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:鬼切"
+      ],
+      "source": "评分总表!E39",
+      "role_source": "评分总表!D39",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "暴击感人脆皮怕控",
+        "avoid": "坑点：魅妖",
+        "soul_recommendation": "破势伤魂鸟网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼金羊": {
+      "strength": 94.0,
+      "roles": [
+        "control",
+        "fire",
+        "name:鬼金羊"
+      ],
+      "source": "评分总表!E40",
+      "role_source": "评分总表!D40",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "言灵对策 + 火机体系；避开白镜",
+        "weakness": "命中一般",
+        "avoid": "对面有白镜（云外镜）时慎用",
+        "soul_recommendation": "招财火灵等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_17"
+      ]
+    },
+    "龙珏": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:龙珏"
+      ],
+      "source": "评分总表!E41",
+      "role_source": "评分总表!D41",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "歌留多（间伤秒人）+ 保人（荒骷髅/入内雀）",
+        "weakness": "玄血满后变脆皮",
+        "avoid": "坑点：怕穿盾控",
+        "soul_recommendation": "三味等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_7",
+        "combo_19"
+      ]
+    },
+    "巡音流歌": {
+      "strength": 94.0,
+      "roles": [
+        "dispel",
+        "shield",
+        "name:巡音流歌"
+      ],
+      "source": "评分总表!E42",
+      "role_source": "评分总表!D42",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "驱散护盾体系 + 高速队",
+        "weakness": "抵抗不了季荒骷髅等白字暴力输出",
+        "avoid": "无",
+        "soul_recommendation": "共浅？"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "灶门祢豆子": {
+      "strength": 94.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:灶门祢豆子"
+      ],
+      "source": "评分总表!E43",
+      "role_source": "评分总表!D43",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "破盾体系 + 魅妖控制",
+        "weakness": "开3技能前脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "魅妖针女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "闻人翊悬": {
+      "strength": 94.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:闻人翊悬"
+      ],
+      "source": "评分总表!E44",
+      "role_source": "评分总表!D44",
+      "flags": [],
+      "notes": {
+        "evaluation": "特等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "海月伤魂鸟"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "云间不见岳": {
+      "strength": 90.0,
+      "roles": [
+        "buff",
+        "heal",
+        "name:云间不见岳"
+      ],
+      "source": "评分总表!E45",
+      "role_source": "评分总表!D45",
+      "flags": [],
+      "notes": {
+        "evaluation": "90",
+        "partners": "炼狱茨木童子/烬天玉藻前/福悦座敷童子（火系爆发体系）",
+        "weakness": "怕控",
+        "avoid": "坑点：没有火系",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_2",
+        "numeric_福悦座敷童子",
+        "numeric_炼狱茨木童子",
+        "numeric_烬天玉藻前"
+      ]
+    },
+    "鬼王酒吞童子": {
+      "strength": 90.0,
+      "roles": [
+        "protect",
+        "support",
+        "name:鬼王酒吞童子"
+      ],
+      "source": "评分总表!E46",
+      "role_source": "评分总表!D46",
+      "flags": [],
+      "notes": {
+        "evaluation": "90",
+        "partners": "禅心云外镜（双辅95分体系）+ 群体输出",
+        "weakness": "怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "幽谷响镇墓兽"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_3",
+        "numeric_禅心云外镜"
+      ]
+    },
+    "坂田银时": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:坂田银时"
+      ],
+      "source": "评分总表!E47",
+      "role_source": "评分总表!D47",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "隐念群控输出 + 高抵抗体系",
+        "weakness": "命中一般打不动盾",
+        "avoid": "无",
+        "soul_recommendation": "隐念青女房"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "云外镜": {
+      "strength": 88.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "dispel",
+        "pull",
+        "name:云外镜"
+      ],
+      "source": "评分总表!E48",
+      "role_source": "评分总表!D48",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "白镜特等/黑镜中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕无法动作控/脆皮怕控",
+        "avoid": "坑点：无/怕鬼切SP06",
+        "soul_recommendation": "招财/镇墓兽"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_桃花妖_云外镜",
+        "avoid_日和坊_云外镜",
+        "avoid_蝴蝶精_云外镜"
+      ]
+    },
+    "神无月": {
+      "strength": 85.0,
+      "roles": [
+        "buff",
+        "fire",
+        "protect",
+        "name:神无月"
+      ],
+      "source": "评分总表!E49",
+      "role_source": "评分总表!D49",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "普攻/御魂触发体系（不知火/姑获鸟）",
+        "weakness": "怕控，基本不会给友方控制",
+        "avoid": "坑点：只有神无月一个火",
+        "soul_recommendation": "共潜等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "浮世青行灯": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "damage",
+        "name:浮世青行灯"
+      ],
+      "source": "评分总表!E50",
+      "role_source": "评分总表!D50",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "火山队特等单上上等",
+        "partners": "心狩鬼女红叶 + 阎魔/古笼火（火山鬼火压制队）",
+        "weakness": "坦度一般怕控和封被动",
+        "avoid": "无",
+        "soul_recommendation": "恶楼雪幽魂"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_4"
+      ]
+    },
+    "嘴平伊之助": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:嘴平伊之助"
+      ],
+      "source": "评分总表!E51",
+      "role_source": "评分总表!D51",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "免控群输出 + 针女体系",
+        "weakness": "脆皮怕封御魂被动",
+        "avoid": "无",
+        "soul_recommendation": "针女魍魉"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "心狩鬼女红叶": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:心狩鬼女红叶"
+      ],
+      "source": "评分总表!E52",
+      "role_source": "评分总表!D52",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "火山队特等单上上等",
+        "partners": "浮世青行灯 + 阎魔/古笼火（火山队）",
+        "weakness": "暴击感人",
+        "avoid": "坑点：打不动椒图小白怕孔雀",
+        "soul_recommendation": "狰针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "counterattack",
+          "tag": "momiji_counterattack"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_4"
+      ]
+    },
+    "鬼童丸": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "damage",
+        "single_damage",
+        "name:鬼童丸"
+      ],
+      "source": "评分总表!E53",
+      "role_source": "评分总表!D53",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有拉条加速特等没有上等",
+        "partners": "拉条（空相面灵气/纺愿缘结神）+ 食灵协战",
+        "weakness": "怕封被动",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "雪幽魂狰钟灵"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_5"
+      ]
+    },
+    "青行灯": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "fire",
+        "name:青行灯"
+      ],
+      "source": "评分总表!E54",
+      "role_source": "评分总表!D54",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有火系特等没有上等",
+        "partners": "火系体系（云间不见岳）+ 拉条（空相面灵气）",
+        "weakness": "看脸明灯脆皮怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "海月招财轮入道遗念火等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "夜刀神": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:夜刀神"
+      ],
+      "source": "评分总表!E55",
+      "role_source": "评分总表!D55",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "遗念火封召唤物 + 高抵抗",
+        "weakness": "速度慢",
+        "avoid": "无",
+        "soul_recommendation": "遗念火等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "不知火": {
+      "strength": 85.0,
+      "roles": [
+        "basic_support",
+        "support",
+        "name:不知火"
+      ],
+      "source": "评分总表!E56",
+      "role_source": "评分总表!D56",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有火系特等没有上等",
+        "partners": "酒吞童子/吸血姬/鬼童丸（普攻队）+ 椒图",
+        "weakness": "脆皮很快没了第一命",
+        "avoid": "无",
+        "soul_recommendation": "幽谷响针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_8"
+      ]
+    },
+    "平将门": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:平将门"
+      ],
+      "source": "评分总表!E57",
+      "role_source": "评分总表!D57",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "云间不见岳 + 隐念体系",
+        "weakness": "怕控猜拳非防御模式",
+        "avoid": "无",
+        "soul_recommendation": "隐念等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "歌留多": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:歌留多"
+      ],
+      "source": "评分总表!E58",
+      "role_source": "评分总表!D58",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有龙珏特等没有上等",
+        "partners": "龙珏（间伤联动秒人）",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：怕小白减间伤",
+        "soul_recommendation": "出世螺海月"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_7"
+      ]
+    },
+    "荒骷髅": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "protect",
+        "single_damage",
+        "name:荒骷髅"
+      ],
+      "source": "评分总表!E59",
+      "role_source": "评分总表!D59",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "被保核心（龙珏/雪御前）连环输出",
+        "weakness": "伤害一般怕控",
+        "avoid": "坑点：怕金鱼",
+        "soul_recommendation": "薙魂木魅"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_7",
+        "combo_19"
+      ]
+    },
+    "天井下": {
+      "strength": 85.0,
+      "roles": [
+        "fire",
+        "pull",
+        "name:天井下"
+      ],
+      "source": "评分总表!E60",
+      "role_source": "评分总表!D60",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "火机拉条一体 + 高速队",
+        "weakness": "鬼火不足",
+        "avoid": "无",
+        "soul_recommendation": "被服等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "市加美": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "heal",
+        "single_damage",
+        "name:市加美"
+      ],
+      "source": "评分总表!E61",
+      "role_source": "评分总表!D61",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有回合外特等没有上等",
+        "partners": "回合外输出体系（食灵/鬼童丸/心友犬神）",
+        "weakness": "速度慢怕控",
+        "avoid": "无",
+        "soul_recommendation": "共潜等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "食灵": {
+      "strength": 85.0,
+      "roles": [
+        "buff",
+        "support",
+        "name:食灵"
+      ],
+      "source": "评分总表!E62",
+      "role_source": "评分总表!D62",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "姑获鸟/鬼童丸/心友犬神（协战队核心）",
+        "weakness": "坦度一般怕控怕封被动",
+        "avoid": "坑点：爆伤最高给到非输出",
+        "soul_recommendation": "共浅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_5"
+      ]
+    },
+    "我妻善逸": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:我妻善逸"
+      ],
+      "source": "评分总表!E63",
+      "role_source": "评分总表!D63",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "免疫自拉条 + 单体爆发",
+        "weakness": "伤害一般，不会自动补霹雳",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "木之本樱": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:木之本樱"
+      ],
+      "source": "评分总表!E64",
+      "role_source": "评分总表!D64",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "季配合（穿盾控）+ 控制体系",
+        "weakness": "怕控速度慢",
+        "avoid": "无",
+        "soul_recommendation": "飞缘魔雪幽魂"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "思金神": {
+      "strength": 85.0,
+      "roles": [
+        "fire",
+        "support",
+        "name:思金神"
+      ],
+      "source": "评分总表!E65",
+      "role_source": "评分总表!D65",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "高耗火输出（烬天玉藻前/炼狱茨木童子/玉藻前）",
+        "weakness": "怕控，没有控制御魂",
+        "avoid": "坑点：单上思一个打火",
+        "soul_recommendation": "木魅涅槃之火"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "禅心云外镜": {
+      "strength": 80,
+      "roles": [
+        "resist",
+        "support",
+        "name:禅心云外镜"
+      ],
+      "source": "评分总表!E66",
+      "role_source": "评分总表!D66",
+      "flags": [],
+      "notes": {
+        "evaluation": "80（有鬼王酒吞童子时：95）",
+        "partners": "鬼王酒吞童子（增伤解控体系）；避免与单奶同队",
+        "weakness": "盾薄，和奶妈不搭",
+        "avoid": "坑点：怕SP06，腹肌，大小鬼切，SP三尾狐",
+        "soul_recommendation": "遗念火共浅"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_3",
+        "numeric_禅心云外镜",
+        "avoid_晨辉惠比寿_禅心云外镜",
+        "avoid_纺愿缘结神_禅心云外镜",
+        "avoid_蜜桃芥子_禅心云外镜",
+        "avoid_绘世花鸟卷_禅心云外镜",
+        "avoid_夏目猫老师_禅心云外镜",
+        "avoid_聆海金鱼姬_禅心云外镜"
+      ]
+    },
+    "黑童子": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:黑童子"
+      ],
+      "source": "评分总表!E67",
+      "role_source": "评分总表!D67",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "针女镇墓兽"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "姑获鸟": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:姑获鸟"
+      ],
+      "source": "评分总表!E68",
+      "role_source": "评分总表!D68",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "中等，协战队特等",
+        "partners": "食灵 + 协战输出（鬼童丸/心友犬神）",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "日女针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_5"
+      ]
+    },
+    "时曜泷夜叉姬": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:时曜泷夜叉姬"
+      ],
+      "source": "评分总表!E69",
+      "role_source": "评分总表!D69",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等特等之间",
+        "partners": "隐念免控体系；避开泷/巡音流歌",
+        "weakness": "打不动盾，怕泷巡音，50暴猜拳低爆伤",
+        "avoid": "无",
+        "soul_recommendation": "隐念等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "犬神": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:犬神"
+      ],
+      "source": "评分总表!E70",
+      "role_source": "评分总表!D70",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "上等，有季特等",
+        "partners": "季（伪回合联动）+ 椒图",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_10",
+        "combo_13"
+      ]
+    },
+    "玉藻前": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:玉藻前"
+      ],
+      "source": "评分总表!E71",
+      "role_source": "评分总表!D71",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有火系特等没有上等",
+        "partners": "云间不见岳 + 打火机",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "茨木童子": {
+      "strength": 95.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:茨木童子"
+      ],
+      "source": "评分总表!E72",
+      "role_source": "评分总表!D72",
+      "flags": [
+        "composite_formula_mismatch",
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有火系特等没有上等",
+        "partners": "云间不见岳 + 打火机（流光追月神/因幡辉夜姬）",
+        "weakness": "脆皮怕控怕封被动",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "阿修罗": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:阿修罗"
+      ],
+      "source": "评分总表!E73",
+      "role_source": "评分总表!D73",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "有火系特等没有上等",
+        "partners": "云间不见岳 + 打火机 + 拉条",
+        "weakness": "杀人后发疯",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "梦寻山兔": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "pull",
+        "name:梦寻山兔"
+      ],
+      "source": "评分总表!E74",
+      "role_source": "评分总表!D74",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "脆皮",
+        "avoid": "无",
+        "soul_recommendation": "出世螺魍魉"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "花鸟卷": {
+      "strength": 85.0,
+      "roles": [
+        "heal",
+        "name:花鸟卷"
+      ],
+      "source": "评分总表!E75",
+      "role_source": "评分总表!D75",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "狰针女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "孔雀明王": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:孔雀明王"
+      ],
+      "source": "评分总表!E76",
+      "role_source": "评分总表!D76",
+      "flags": [],
+      "notes": {
+        "evaluation": "针女特等共潜中等",
+        "partners": "针女群输出体系 + 增伤（食灵/不见岳）",
+        "weakness": "脆皮怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "针女共浅"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "朽木露琪亚": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:朽木露琪亚"
+      ],
+      "source": "评分总表!E77",
+      "role_source": "评分总表!D77",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "穿盾控制 + 遗念火",
+        "weakness": "命中一般",
+        "avoid": "无",
+        "soul_recommendation": "遗念火等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "李小狼": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "pull",
+        "name:李小狼"
+      ],
+      "source": "评分总表!E78",
+      "role_source": "评分总表!D78",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "轮入道秒人 + 拉条",
+        "weakness": "较脆怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "轮入道三味"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "初音未来": {
+      "strength": 74.0,
+      "roles": [
+        "buff",
+        "fire",
+        "name:初音未来"
+      ],
+      "source": "评分总表!E79",
+      "role_source": "评分总表!D79",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "单上中等，SP千姬上等",
+        "partners": "鲸汐千姬 + 群体海月输出",
+        "weakness": "群体海月缺火，不会AI拉条",
+        "avoid": "需与SP千姬（鲸汐千姬）配合才强",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_9"
+      ]
+    },
+    "蜜桃芥子": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "pull",
+        "name:蜜桃芥子"
+      ],
+      "source": "评分总表!E80",
+      "role_source": "评分总表!D80",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "120速中等，170上等",
+        "partners": "拉条奶妈体系；避开迦楼罗/粉婆婆/禅心云外镜",
+        "weakness": "120速太慢，怕控奶量感人",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）",
+        "soul_recommendation": "珍珠树妖火灵"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_蜜桃芥子_禅心云外镜"
+      ]
+    },
+    "万年竹": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:万年竹"
+      ],
+      "source": "评分总表!E81",
+      "role_source": "评分总表!D81",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "连环输出拉人 + 椒图反击体系",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "骰子鬼等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "兵勇": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:兵勇"
+      ],
+      "source": "评分总表!E82",
+      "role_source": "评分总表!D82",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "固定150速左右",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "镜姬等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "垢尝": {
+      "strength": 85.0,
+      "roles": [
+        "dispel",
+        "name:垢尝"
+      ],
+      "source": "评分总表!E83",
+      "role_source": "评分总表!D83",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "怕控制的队（雨女/数珠体系）",
+        "weakness": "驱散次数有限",
+        "avoid": "无",
+        "soul_recommendation": "幽谷响等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_18"
+      ]
+    },
+    "影鳄": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:影鳄"
+      ],
+      "source": "评分总表!E84",
+      "role_source": "评分总表!D84",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "怕控命中一般",
+        "avoid": "无",
+        "soul_recommendation": "魍魉等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "数珠": {
+      "strength": 85.0,
+      "roles": [
+        "dispel",
+        "name:数珠"
+      ],
+      "source": "评分总表!E85",
+      "role_source": "评分总表!D85",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "怕控的输出核心",
+        "weakness": "看脸驱散",
+        "avoid": "无",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_18"
+      ]
+    },
+    "跳跳妹妹": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:跳跳妹妹"
+      ],
+      "source": "评分总表!E86",
+      "role_source": "评分总表!D86",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控怕封被动",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_缚骨清姬",
+        "summon_跳跳妹妹_惠比寿",
+        "summon_跳跳妹妹_慧明灯",
+        "summon_跳跳妹妹_月读",
+        "summon_跳跳妹妹_猫川",
+        "summon_跳跳妹妹_雪御前",
+        "summon_跳跳妹妹_千姬",
+        "summon_跳跳妹妹_丑时之女",
+        "summon_跳跳妹妹_金鱼姬"
+      ]
+    },
+    "食发鬼": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "push",
+        "name:食发鬼"
+      ],
+      "source": "评分总表!E87",
+      "role_source": "评分总表!D87",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "控制队（大夜摩天阎魔/遥念烟烟罗）",
+        "weakness": "怕控输出一般",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鸦天狗": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:鸦天狗"
+      ],
+      "source": "评分总表!E88",
+      "role_source": "评分总表!D88",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "怕控的输出核心",
+        "weakness": "怕封被动输出一般",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "修罗鬼童丸": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "damage",
+        "name:修罗鬼童丸"
+      ],
+      "source": "评分总表!E89",
+      "role_source": "评分总表!D89",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕多个控，怕抢一速群控",
+        "avoid": "无",
+        "soul_recommendation": "火灵招财"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "待宵姑获鸟": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:待宵姑获鸟"
+      ],
+      "source": "评分总表!E90",
+      "role_source": "评分总表!D90",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "网切针女破势"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "梦山白藏主": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "protect",
+        "name:梦山白藏主"
+      ],
+      "source": "评分总表!E91",
+      "role_source": "评分总表!D91",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "减伤肉盾 + 输出；避开九命猫",
+        "weakness": "低暴击怕控",
+        "avoid": "坑点：怕九命猫",
+        "soul_recommendation": "镜姬木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "渺念萤草": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:渺念萤草"
+      ],
+      "source": "评分总表!E92",
+      "role_source": "评分总表!D92",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕封被动，脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "应声虫"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "神酿星熊童子": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:神酿星熊童子"
+      ],
+      "source": "评分总表!E93",
+      "role_source": "评分总表!D93",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控断结界",
+        "avoid": "坑点：怕白镜，混乱友方",
+        "soul_recommendation": "遗念火等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "稻荷神御馔津": {
+      "strength": 85.0,
+      "roles": [
+        "pull",
+        "support",
+        "name:稻荷神御馔津"
+      ],
+      "source": "评分总表!E94",
+      "role_source": "评分总表!D94",
+      "flags": [],
+      "notes": {
+        "evaluation": "85",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕控",
+        "avoid": "避免与纺愿缘结神同队（单拉重复）",
+        "soul_recommendation": "返魂香招财"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_纺愿缘结神_稻荷神御馔津"
+      ]
+    },
+    "绘世花鸟卷": {
+      "strength": 85.0,
+      "roles": [
+        "heal",
+        "name:绘世花鸟卷"
+      ],
+      "source": "评分总表!E95",
+      "role_source": "评分总表!D95",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "召唤物体系；避免与禅心云外镜同队",
+        "weakness": "怕控",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）",
+        "soul_recommendation": "树妖"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_绘世花鸟卷_禅心云外镜"
+      ]
+    },
+    "缚骨清姬": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:缚骨清姬"
+      ],
+      "source": "评分总表!E96",
+      "role_source": "评分总表!D96",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "针对禅心云外镜体系；单核队",
+        "weakness": "怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "针女及其他"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_缚骨清姬",
+        "summon_缚骨清姬_惠比寿",
+        "summon_缚骨清姬_慧明灯",
+        "summon_缚骨清姬_月读",
+        "summon_缚骨清姬_猫川",
+        "summon_缚骨清姬_雪御前",
+        "summon_缚骨清姬_千姬",
+        "summon_缚骨清姬_丑时之女",
+        "summon_缚骨清姬_金鱼姬"
+      ]
+    },
+    "麓铭大岳丸": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:麓铭大岳丸"
+      ],
+      "source": "评分总表!E97",
+      "role_source": "评分总表!D97",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控，暴击感人",
+        "avoid": "无",
+        "soul_recommendation": "破势狂骨网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "入内雀": {
+      "strength": 85.0,
+      "roles": [
+        "protect",
+        "support",
+        "name:入内雀"
+      ],
+      "source": "评分总表!E98",
+      "role_source": "评分总表!D98",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "保单核（龙珏/雪御前/荒骷髅）",
+        "weakness": "容易给奶妈腐血",
+        "avoid": "坑点：附身在非输出身上",
+        "soul_recommendation": "日女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_7",
+        "combo_19"
+      ]
+    },
+    "天逆每": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:天逆每"
+      ],
+      "source": "评分总表!E99",
+      "role_source": "评分总表!D99",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般，基本不会放3技能",
+        "avoid": "无",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "惠比寿": {
+      "strength": 85.0,
+      "roles": [
+        "heal",
+        "name:惠比寿"
+      ],
+      "source": "评分总表!E100",
+      "role_source": "评分总表!D100",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "被服等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_惠比寿",
+        "summon_缚骨清姬_惠比寿",
+        "summon_惠比寿_慧明灯",
+        "summon_惠比寿_月读",
+        "summon_惠比寿_猫川",
+        "summon_惠比寿_雪御前",
+        "summon_惠比寿_千姬",
+        "summon_惠比寿_丑时之女",
+        "summon_惠比寿_金鱼姬"
+      ]
+    },
+    "慧明灯": {
+      "strength": 85.0,
+      "roles": [
+        "protect",
+        "support",
+        "name:慧明灯"
+      ],
+      "source": "评分总表!E101",
+      "role_source": "评分总表!D101",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "薙魂等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_慧明灯",
+        "summon_缚骨清姬_慧明灯",
+        "summon_惠比寿_慧明灯",
+        "summon_慧明灯_月读",
+        "summon_慧明灯_猫川",
+        "summon_慧明灯_雪御前",
+        "summon_慧明灯_千姬",
+        "summon_慧明灯_丑时之女",
+        "summon_慧明灯_金鱼姬"
+      ]
+    },
+    "桃花妖": {
+      "strength": 85.0,
+      "roles": [
+        "heal",
+        "name:桃花妖"
+      ],
+      "source": "评分总表!E102",
+      "role_source": "评分总表!D102",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "珍珠群奶；避开季/云外镜/镜音铃连",
+        "weakness": "怕控",
+        "avoid": "避免与季/云外镜/镜音铃连同队",
+        "soul_recommendation": "珍珠树妖地藏"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_桃花妖_季",
+        "avoid_桃花妖_云外镜",
+        "avoid_桃花妖_镜音铃连"
+      ]
+    },
+    "樱花妖": {
+      "strength": 85.0,
+      "roles": [
+        "heal",
+        "name:樱花妖"
+      ],
+      "source": "评分总表!E103",
+      "role_source": "评分总表!D103",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕无法动作控奶量一般",
+        "avoid": "无",
+        "soul_recommendation": "返魂香等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "百目鬼": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:百目鬼"
+      ],
+      "source": "评分总表!E104",
+      "role_source": "评分总表!D104",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控命中一般速度慢",
+        "avoid": "无",
+        "soul_recommendation": "被服等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "粉婆婆": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:粉婆婆"
+      ],
+      "source": "评分总表!E105",
+      "role_source": "评分总表!D105",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕控怕封被动",
+        "avoid": "坑点：怕白镜怕SP莹草R莹草",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "络新妇": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:络新妇"
+      ],
+      "source": "评分总表!E106",
+      "role_source": "评分总表!D106",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般",
+        "avoid": "无",
+        "soul_recommendation": "飞缘魔等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "般若": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:般若"
+      ],
+      "source": "评分总表!E107",
+      "role_source": "评分总表!D107",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般",
+        "avoid": "坑点：敌方不完全依赖御魂被动",
+        "soul_recommendation": "魅妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "薰": {
+      "strength": 85.0,
+      "roles": [
+        "dispel",
+        "fire",
+        "name:薰"
+      ],
+      "source": "评分总表!E108",
+      "role_source": "评分总表!D108",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "高耗火输出（烬天玉藻前/炼狱茨木童子/玉藻前）",
+        "weakness": "自残，直接暴毙残血队友",
+        "avoid": "无",
+        "soul_recommendation": "火灵等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "镰鼬": {
+      "strength": 85.0,
+      "roles": [
+        "pull",
+        "name:镰鼬"
+      ],
+      "source": "评分总表!E109",
+      "role_source": "评分总表!D109",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "开局拉一下然后一直普攻",
+        "avoid": "无",
+        "soul_recommendation": "遗念火等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_16"
+      ]
+    },
+    "鸩": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:鸩"
+      ],
+      "source": "评分总表!E110",
+      "role_source": "评分总表!D110",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "伊邪那美": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:伊邪那美"
+      ],
+      "source": "评分总表!E111",
+      "role_source": "评分总表!D111",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般怕控",
+        "avoid": "无",
+        "soul_recommendation": "钓瓶火元兴寺"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "八岐大蛇": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:八岐大蛇"
+      ],
+      "source": "评分总表!E112",
+      "role_source": "评分总表!D112",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "轮入道伤魂鸟"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "卑弥呼": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:卑弥呼"
+      ],
+      "source": "评分总表!E113",
+      "role_source": "评分总表!D113",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "核心输出（须佐之男/烬天玉藻前/龙珏）",
+        "weakness": "怕控",
+        "avoid": "坑点：被时之隙套的人被控下回合不会解控",
+        "soul_recommendation": "日女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "大岳丸": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "name:大岳丸"
+      ],
+      "source": "评分总表!E114",
+      "role_source": "评分总表!D114",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "破势地藏等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "妖刀姬": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:妖刀姬"
+      ],
+      "source": "评分总表!E115",
+      "role_source": "评分总表!D115",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "针女伤魂鸟"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "封阳君": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:封阳君"
+      ],
+      "source": "评分总表!E116",
+      "role_source": "评分总表!D116",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "控制队（大夜摩天阎魔/遥念烟烟罗）",
+        "weakness": "无法主动使用控制模式，输出模式感人",
+        "avoid": "无",
+        "soul_recommendation": "蝠翼"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "月读": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "protect",
+        "single_damage",
+        "support",
+        "name:月读"
+      ],
+      "source": "评分总表!E117",
+      "role_source": "评分总表!D117",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "日女推条体系 + 输出；克制召唤物队",
+        "weakness": "怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "日女被服"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_月读",
+        "summon_缚骨清姬_月读",
+        "summon_惠比寿_月读",
+        "summon_慧明灯_月读",
+        "summon_月读_猫川",
+        "summon_月读_雪御前",
+        "summon_月读_千姬",
+        "summon_月读_丑时之女",
+        "summon_月读_金鱼姬"
+      ]
+    },
+    "泷": {
+      "strength": 85.0,
+      "roles": [
+        "support",
+        "name:泷"
+      ],
+      "source": "评分总表!E118",
+      "role_source": "评分总表!D118",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "输出一般，盾薄层数掉得快",
+        "avoid": "无",
+        "soul_recommendation": "遗念火木魅"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "泷夜叉姬": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:泷夜叉姬"
+      ],
+      "source": "评分总表!E119",
+      "role_source": "评分总表!D119",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "海月针女日女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "猫川": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:猫川"
+      ],
+      "source": "评分总表!E120",
+      "role_source": "评分总表!D120",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "怕控制的队（雨女/数珠体系）",
+        "weakness": "猫砂盆被快速打掉，怕控脆皮怕封被动",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "狂骨应声虫"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_猫川",
+        "summon_缚骨清姬_猫川",
+        "summon_惠比寿_猫川",
+        "summon_慧明灯_猫川",
+        "summon_月读_猫川",
+        "summon_猫川_雪御前",
+        "summon_猫川_千姬",
+        "summon_猫川_丑时之女",
+        "summon_猫川_金鱼姬"
+      ]
+    },
+    "白藏主": {
+      "strength": 85.0,
+      "roles": [
+        "protect",
+        "support",
+        "name:白藏主"
+      ],
+      "source": "评分总表!E121",
+      "role_source": "评分总表!D121",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "对抗单体爆发；配合九命猫之外的输出",
+        "weakness": "遇到AOE秒没",
+        "avoid": "无",
+        "soul_recommendation": "出世螺等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_13"
+      ]
+    },
+    "祸津神": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "shield",
+        "name:祸津神"
+      ],
+      "source": "评分总表!E122",
+      "role_source": "评分总表!D122",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "盾薄怕控",
+        "avoid": "无",
+        "soul_recommendation": "薙魂遗念火"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "荒川之主": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:荒川之主"
+      ],
+      "source": "评分总表!E123",
+      "role_source": "评分总表!D123",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "破势网切等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "酒吞童子": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:酒吞童子"
+      ],
+      "source": "评分总表!E124",
+      "role_source": "评分总表!D124",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控怕封被动",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "狂骨破势轮入道地藏"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_8"
+      ]
+    },
+    "铃鹿御前": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:铃鹿御前"
+      ],
+      "source": "评分总表!E125",
+      "role_source": "评分总表!D125",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控脆皮",
+        "avoid": "无",
+        "soul_recommendation": "魍魉针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "雪御前": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:雪御前"
+      ],
+      "source": "评分总表!E126",
+      "role_source": "评分总表!D126",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等到特等之间",
+        "partners": "荒骷髅/入内雀保人 + 隐念输出",
+        "weakness": "怕穿盾控，召唤物掉了优先补，猜拳，打不动盾",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "隐念等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_19",
+        "summon_跳跳妹妹_雪御前",
+        "summon_缚骨清姬_雪御前",
+        "summon_惠比寿_雪御前",
+        "summon_慧明灯_雪御前",
+        "summon_月读_雪御前",
+        "summon_猫川_雪御前",
+        "summon_雪御前_千姬",
+        "summon_雪御前_丑时之女",
+        "summon_雪御前_金鱼姬"
+      ]
+    },
+    "雪童子": {
+      "strength": 85.0,
+      "roles": [
+        "control",
+        "damage",
+        "single_damage",
+        "name:雪童子"
+      ],
+      "source": "评分总表!E127",
+      "role_source": "评分总表!D127",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "克制椒图体系；返魂香控制",
+        "weakness": "输出感人脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "返魂香等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "须佐之男": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:须佐之男"
+      ],
+      "source": "评分总表!E128",
+      "role_source": "评分总表!D128",
+      "flags": [],
+      "notes": {
+        "evaluation": "破势特等狰上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势狰"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "饭笥": {
+      "strength": 85.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:饭笥"
+      ],
+      "source": "评分总表!E129",
+      "role_source": "评分总表!D129",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "针女雪幽魂"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "夏目猫老师": {
+      "strength": 85.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "heal",
+        "name:夏目猫老师"
+      ],
+      "source": "评分总表!E130",
+      "role_source": "评分总表!D130",
+      "flags": [],
+      "notes": {
+        "evaluation": "上等",
+        "partners": "推条群奶体系；避开单奶/禅心云外镜",
+        "weakness": "奶量一般，怕无法动作控，封被动单奶不如日和坊有次数限制，3000攻猜拳",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）",
+        "soul_recommendation": "地藏薙魂等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_夏目猫老师_禅心云外镜"
+      ]
+    },
+    "福悦座敷童子": {
+      "strength": 70,
+      "roles": [
+        "fire",
+        "name:福悦座敷童子"
+      ],
+      "source": "评分总表!E131",
+      "role_source": "评分总表!D131",
+      "flags": [],
+      "notes": {
+        "evaluation": "有云间不见岳时90  无70",
+        "partners": "云间不见岳 + 火系输出（炼狱茨木/烬天玉藻前）",
+        "weakness": "假的打火机",
+        "avoid": "无",
+        "soul_recommendation": "薙魂等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_2",
+        "numeric_福悦座敷童子"
+      ]
+    },
+    "古笼火": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:古笼火"
+      ],
+      "source": "评分总表!E132",
+      "role_source": "评分总表!D132",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "火山队上等单上中等",
+        "partners": "火山队（浮世青行灯/心狩鬼女红叶）",
+        "weakness": "控不过来",
+        "avoid": "坑点：随机控，打到免控的",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_4"
+      ]
+    },
+    "孟婆": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "push",
+        "name:孟婆"
+      ],
+      "source": "评分总表!E133",
+      "role_source": "评分总表!D133",
+      "flags": [],
+      "notes": {
+        "evaluation": "220以上特等，220-210上等，210以下中等",
+        "partners": "控制队（大夜摩天阎魔/遥念烟烟罗）",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "蝠翼等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_16"
+      ]
+    },
+    "赤影妖刀姬": {
+      "strength": 83.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:赤影妖刀姬"
+      ],
+      "source": "评分总表!E134",
+      "role_source": "评分总表!D134",
+      "flags": [],
+      "notes": {
+        "evaluation": "83",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势网切轮入道"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "聆海金鱼姬": {
+      "strength": 80.0,
+      "roles": [
+        "heal",
+        "pull",
+        "name:聆海金鱼姬"
+      ],
+      "source": "评分总表!E135",
+      "role_source": "评分总表!D135",
+      "flags": [],
+      "notes": {
+        "evaluation": "80",
+        "partners": "拉条体系；避免与禅心云外镜、单奶重复",
+        "weakness": "脆皮怕控自身盾薄怕封被动",
+        "avoid": "避免与禅心云外镜同队（与奶妈体系不搭）",
+        "soul_recommendation": "珍珠，树妖"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_聆海金鱼姬_禅心云外镜"
+      ]
+    },
+    "炼狱茨木童子": {
+      "strength": 70,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:炼狱茨木童子"
+      ],
+      "source": "评分总表!E136",
+      "role_source": "评分总表!D136",
+      "flags": [],
+      "notes": {
+        "evaluation": "有云间不见岳时90  无70",
+        "partners": "云间不见岳 + 打火（因幡辉夜姬/流光追月神）",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "破势狂骨网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_2",
+        "numeric_炼狱茨木童子"
+      ]
+    },
+    "烬天玉藻前": {
+      "strength": 70,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:烬天玉藻前"
+      ],
+      "source": "评分总表!E137",
+      "role_source": "评分总表!D137",
+      "flags": [],
+      "notes": {
+        "evaluation": "有云间不见岳时90  无70",
+        "partners": "云间不见岳 + 打火（因幡辉夜姬/流光追月神）",
+        "weakness": "随机打人，脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_2",
+        "numeric_烬天玉藻前"
+      ]
+    },
+    "苍风一目连": {
+      "strength": 81.0,
+      "roles": [
+        "damage",
+        "shield",
+        "support",
+        "name:苍风一目连"
+      ],
+      "source": "评分总表!E138",
+      "role_source": "评分总表!D138",
+      "flags": [],
+      "notes": {
+        "evaluation": "81",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "怕穿盾控和SP06，防御低会被瞬秒",
+        "avoid": "无",
+        "soul_recommendation": "破势轮入道"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "面灵气": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "pull",
+        "name:面灵气"
+      ],
+      "source": "评分总表!E139",
+      "role_source": "评分总表!D139",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "中等/伤魂鸟上等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "速度慢脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "镜音铃连": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "protect",
+        "single_damage",
+        "name:镜音铃连"
+      ],
+      "source": "评分总表!E140",
+      "role_source": "评分总表!D140",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "170上等，120速中等",
+        "partners": "免疫体系 + 高速（170）；避止单奶冲突",
+        "weakness": "120速太慢，怕控",
+        "avoid": "与桃花妖等单奶冲突",
+        "soul_recommendation": "共浅木魅"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_桃花妖_镜音铃连",
+        "avoid_日和坊_镜音铃连",
+        "avoid_蝴蝶精_镜音铃连"
+      ]
+    },
+    "莹草": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "name:莹草"
+      ],
+      "source": "评分总表!E141",
+      "role_source": "评分总表!D141",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "中等/能抗间伤上等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "树妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "妙主九命猫": {
+      "strength": 80.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:妙主九命猫"
+      ],
+      "source": "评分总表!E142",
+      "role_source": "评分总表!D142",
+      "flags": [],
+      "notes": {
+        "evaluation": "80",
+        "partners": "狰反击 + 克制白藏主",
+        "weakness": "猜拳，打不过没有纯输出挖土队，较脆",
+        "avoid": "坑点：打椒图小白刮痧",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "少羽大天狗": {
+      "strength": 80.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:少羽大天狗"
+      ],
+      "source": "评分总表!E143",
+      "role_source": "评分总表!D143",
+      "flags": [],
+      "notes": {
+        "evaluation": "80",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动盾",
+        "soul_recommendation": "针女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "神堕八岐大蛇": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:神堕八岐大蛇"
+      ],
+      "source": "评分总表!E144",
+      "role_source": "评分总表!D144",
+      "flags": [],
+      "notes": {
+        "evaluation": "伤魂鸟上等，恶楼中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "怕控，怕暴力输出打回原形",
+        "avoid": "无",
+        "soul_recommendation": "恶楼伤魂鸟"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "千姬": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "fire",
+        "name:千姬"
+      ],
+      "source": "评分总表!E145",
+      "role_source": "评分总表!D145",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "高耗火输出（烬天玉藻前/炼狱茨木童子/玉藻前）",
+        "weakness": "速度慢脆皮，锤子很脆",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "阴摩罗等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_千姬",
+        "summon_缚骨清姬_千姬",
+        "summon_惠比寿_千姬",
+        "summon_慧明灯_千姬",
+        "summon_月读_千姬",
+        "summon_猫川_千姬",
+        "summon_雪御前_千姬",
+        "summon_千姬_丑时之女",
+        "summon_千姬_金鱼姬"
+      ]
+    },
+    "神启荒": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:神启荒"
+      ],
+      "source": "评分总表!E146",
+      "role_source": "评分总表!D146",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "控制式神（大夜摩天阎魔/遥念烟烟罗）跟伤",
+        "weakness": "暴击感人伤害一般很快没结界",
+        "avoid": "坑点：打不动盾，友方控不到人",
+        "soul_recommendation": "贝吹坊日女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_14"
+      ]
+    },
+    "小松丸": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:小松丸"
+      ],
+      "source": "评分总表!E147",
+      "role_source": "评分总表!D147",
+      "flags": [],
+      "notes": {
+        "evaluation": "220以上特等，220-210上等，210以下中等，120下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般怕控",
+        "avoid": "坑点：怕月读",
+        "soul_recommendation": "反枕等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "不相狐禅": {
+      "strength": 78.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "single_damage",
+        "name:不相狐禅"
+      ],
+      "source": "评分总表!E148",
+      "role_source": "评分总表!D148",
+      "flags": [],
+      "notes": {
+        "evaluation": "？",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控",
+        "avoid": "无",
+        "soul_recommendation": "？"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "阎魔": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:阎魔"
+      ],
+      "source": "评分总表!E149",
+      "role_source": "评分总表!D149",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "火山队上等单上下等",
+        "partners": "火山队（浮世青行灯/心狩鬼女红叶）",
+        "weakness": "命中一般控不过来",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_4",
+        "combo_12"
+      ]
+    },
+    "申屠子夜": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:申屠子夜"
+      ],
+      "source": "评分总表!E150",
+      "role_source": "评分总表!D150",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "变身前下等，后上等",
+        "partners": "冰冻控制体系（雪女/雪童子）+ 变身输出",
+        "weakness": "友方没有冰冻控",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "海忍": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:海忍"
+      ],
+      "source": "评分总表!E151",
+      "role_source": "评分总表!D151",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "输出随缘脆皮怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "恶楼等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "初翎山风": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:初翎山风"
+      ],
+      "source": "评分总表!E152",
+      "role_source": "评分总表!D152",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "输出暴击感人",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势青女房"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "化鲸": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:化鲸"
+      ],
+      "source": "评分总表!E153",
+      "role_source": "评分总表!D153",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "速度慢脆皮怕控",
+        "avoid": "坑点：打不动盾",
+        "soul_recommendation": "骰子鬼等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "不见岳": {
+      "strength": 74.0,
+      "roles": [
+        "buff",
+        "support",
+        "name:不见岳"
+      ],
+      "source": "评分总表!E154",
+      "role_source": "评分总表!D154",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "核心输出（须佐之男/烬天玉藻前/龙珏）",
+        "weakness": "属性一般",
+        "avoid": "无",
+        "soul_recommendation": "蚌精青女房"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "山风": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:山风"
+      ],
+      "source": "评分总表!E155",
+      "role_source": "评分总表!D155",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "脆皮怕控伤害一般怕封被动",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "心眼等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "夜溟彼岸花": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "control",
+        "damage",
+        "name:夜溟彼岸花"
+      ],
+      "source": "评分总表!E156",
+      "role_source": "评分总表!D156",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "魅妖控制 + 保命体系",
+        "weakness": "输出一般脆皮怕控只放3技能",
+        "avoid": "无",
+        "soul_recommendation": "魅妖针女"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "丑时之女": {
+      "strength": 74.0,
+      "roles": [
+        "buff",
+        "name:丑时之女"
+      ],
+      "source": "评分总表!E157",
+      "role_source": "评分总表!D157",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "快速拆人体系 + 单体爆发",
+        "weakness": "脆皮怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "木魅等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_丑时之女",
+        "summon_缚骨清姬_丑时之女",
+        "summon_惠比寿_丑时之女",
+        "summon_慧明灯_丑时之女",
+        "summon_月读_丑时之女",
+        "summon_猫川_丑时之女",
+        "summon_雪御前_丑时之女",
+        "summon_千姬_丑时之女",
+        "summon_丑时之女_金鱼姬"
+      ]
+    },
+    "山兔": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "pull",
+        "name:山兔"
+      ],
+      "source": "评分总表!E158",
+      "role_source": "评分总表!D158",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "拉条不稳定，命中感人",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "久次良": {
+      "strength": 74.0,
+      "roles": [
+        "pull",
+        "shield",
+        "name:久次良"
+      ],
+      "source": "评分总表!E159",
+      "role_source": "评分总表!D159",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "速度慢脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "星熊童子": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:星熊童子"
+      ],
+      "source": "评分总表!E160",
+      "role_source": "评分总表!D160",
+      "flags": [],
+      "notes": {
+        "evaluation": "220以上上等，220-210中等，210以下下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般均速较慢",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "薙魂等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_16"
+      ]
+    },
+    "神乐定春": {
+      "strength": 74.0,
+      "roles": [
+        "pull",
+        "shield",
+        "name:神乐定春"
+      ],
+      "source": "评分总表!E161",
+      "role_source": "评分总表!D161",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "坦度一般怕控一个带不动五个",
+        "avoid": "无",
+        "soul_recommendation": "骰子鬼等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "白童子": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:白童子"
+      ],
+      "source": "评分总表!E162",
+      "role_source": "评分总表!D162",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "脆皮怕控输出一般",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "御怨般若": {
+      "strength": 75.0,
+      "roles": [
+        "control",
+        "name:御怨般若"
+      ],
+      "source": "评分总表!E163",
+      "role_source": "评分总表!D163",
+      "flags": [],
+      "notes": {
+        "evaluation": "75",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "速度慢怕控",
+        "avoid": "坑点：敌方不依赖御魂，被动无关紧要",
+        "soul_recommendation": "幽谷响镇墓兽"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "兔丸": {
+      "strength": 74.0,
+      "roles": [
+        "dispel",
+        "pull",
+        "name:兔丸"
+      ],
+      "source": "评分总表!E164",
+      "role_source": "评分总表!D164",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "随机拉，怕控怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "小袖之手": {
+      "strength": 74.0,
+      "roles": [
+        "buff",
+        "name:小袖之手"
+      ],
+      "source": "评分总表!E165",
+      "role_source": "评分总表!D165",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "核心输出（须佐之男/烬天玉藻前/龙珏）",
+        "weakness": "输出一般",
+        "avoid": "坑点：被敌方召唤物插队",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "座敷童子": {
+      "strength": 74.0,
+      "roles": [
+        "fire",
+        "name:座敷童子"
+      ],
+      "source": "评分总表!E166",
+      "role_source": "评分总表!D166",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "高耗火输出（烬天玉藻前/炼狱茨木童子/玉藻前）",
+        "weakness": "自残，鬼火不足",
+        "avoid": "无",
+        "soul_recommendation": "蚌精等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "蝴蝶精": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "name:蝴蝶精"
+      ],
+      "source": "评分总表!E167",
+      "role_source": "评分总表!D167",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "群奶体系；避开季/云外镜/镜音铃连",
+        "weakness": "怕控怕封被动",
+        "avoid": "避免与季/云外镜/镜音铃连同队",
+        "soul_recommendation": "树妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "avoid_蝴蝶精_季",
+        "avoid_蝴蝶精_云外镜",
+        "avoid_蝴蝶精_镜音铃连"
+      ]
+    },
+    "书翁": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "protect",
+        "name:书翁"
+      ],
+      "source": "评分总表!E168",
+      "role_source": "评分总表!D168",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕控",
+        "avoid": "坑点：可被驱散",
+        "soul_recommendation": "三味等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "灵海蝶": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "heal",
+        "name:灵海蝶"
+      ],
+      "source": "评分总表!E169",
+      "role_source": "评分总表!D169",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "奶量一般怕封被动怕控命中低",
+        "avoid": "无",
+        "soul_recommendation": "珍珠等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "雪女": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:雪女"
+      ],
+      "source": "评分总表!E170",
+      "role_source": "评分总表!D170",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "速度慢命中一般",
+        "avoid": "无",
+        "soul_recommendation": "雪幽魂魍魉"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "独眼小僧": {
+      "strength": 74.0,
+      "roles": [
+        "reflect",
+        "name:独眼小僧"
+      ],
+      "source": "评分总表!E171",
+      "role_source": "评分总表!D171",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "反弹量低",
+        "avoid": "坑点：顶着鬼吞等免疫",
+        "soul_recommendation": "镜姬等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "童女": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "name:童女"
+      ],
+      "source": "评分总表!E172",
+      "role_source": "评分总表!D172",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕控自残",
+        "avoid": "无",
+        "soul_recommendation": "树妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "瑶音紧那罗": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:瑶音紧那罗"
+      ],
+      "source": "评分总表!E173",
+      "role_source": "评分总表!D173",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "低暴击低攻击3000-4000",
+        "avoid": "坑点：打椒图小白刮痧",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "蝉冰雪女": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:蝉冰雪女"
+      ],
+      "source": "评分总表!E174",
+      "role_source": "评分总表!D174",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "盾薄怕控脆皮",
+        "avoid": "坑点：会打到入内雀或食灵非敌方输出",
+        "soul_recommendation": "招财伤魂鸟"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "判官": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:判官"
+      ],
+      "source": "评分总表!E175",
+      "role_source": "评分总表!D175",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "破势网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "吸血姬": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:吸血姬"
+      ],
+      "source": "评分总表!E176",
+      "role_source": "评分总表!D176",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "镇墓兽狰"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_8",
+        "combo_13"
+      ]
+    },
+    "夜叉": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:夜叉"
+      ],
+      "source": "评分总表!E177",
+      "role_source": "评分总表!D177",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "贝吹坊等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "妖狐": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:妖狐"
+      ],
+      "source": "评分总表!E178",
+      "role_source": "评分总表!D178",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "妖琴师": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:妖琴师"
+      ],
+      "source": "评分总表!E179",
+      "role_source": "评分总表!D179",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般",
+        "avoid": "无",
+        "soul_recommendation": "飞缘魔等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "清姬": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:清姬"
+      ],
+      "source": "评分总表!E180",
+      "role_source": "评分总表!D180",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "魅妖日女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "烟烟罗": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:烟烟罗"
+      ],
+      "source": "评分总表!E181",
+      "role_source": "评分总表!D181",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出一般",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "盗人神": {
+      "strength": 74.0,
+      "roles": [
+        "name:盗人神"
+      ],
+      "source": "评分总表!E182",
+      "role_source": "评分总表!D182",
+      "flags": [
+        "unknown_role"
+      ],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "通用输出/增伤体系",
+        "weakness": "就偷个御魂没输出",
+        "avoid": "无",
+        "soul_recommendation": "魍魉等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "纸舞": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "damage",
+        "name:纸舞"
+      ],
+      "source": "评分总表!E183",
+      "role_source": "评分总表!D183",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "脆皮怕控怕封被动",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "蟹姬": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:蟹姬"
+      ],
+      "source": "评分总表!E184",
+      "role_source": "评分总表!D184",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控自身眩晕",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "金鱼姬": {
+      "strength": 74.0,
+      "roles": [
+        "protect",
+        "support",
+        "name:金鱼姬"
+      ],
+      "source": "评分总表!E185",
+      "role_source": "评分总表!D185",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "通用输出/增伤体系",
+        "weakness": "怕控",
+        "avoid": "与召唤物式神冲突（千姬/月读/猫川/雪御前等）",
+        "soul_recommendation": "轮入道"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "summon_跳跳妹妹_金鱼姬",
+        "summon_缚骨清姬_金鱼姬",
+        "summon_惠比寿_金鱼姬",
+        "summon_慧明灯_金鱼姬",
+        "summon_月读_金鱼姬",
+        "summon_猫川_金鱼姬",
+        "summon_雪御前_金鱼姬",
+        "summon_千姬_金鱼姬",
+        "summon_丑时之女_金鱼姬"
+      ]
+    },
+    "食梦貘": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:食梦貘"
+      ],
+      "source": "评分总表!E186",
+      "role_source": "评分总表!D186",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般",
+        "avoid": "坑点：影响AOE",
+        "soul_recommendation": "飞缘魔等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "饴细工": {
+      "strength": 74.0,
+      "roles": [
+        "support",
+        "name:饴细工"
+      ],
+      "source": "评分总表!E187",
+      "role_source": "评分总表!D187",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "通用输出/增伤体系",
+        "weakness": "怕控，一个带不动其他五个",
+        "avoid": "无",
+        "soul_recommendation": "薙魂等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼使白": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "damage",
+        "name:鬼使白"
+      ],
+      "source": "评分总表!E188",
+      "role_source": "评分总表!D188",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "伤害一般命中一般",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "魅妖针女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼使黑": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:鬼使黑"
+      ],
+      "source": "评分总表!E189",
+      "role_source": "评分总表!D189",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控速度慢",
+        "avoid": "无",
+        "soul_recommendation": "破势网切"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼女红叶": {
+      "strength": 74.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:鬼女红叶"
+      ],
+      "source": "评分总表!E190",
+      "role_source": "评分总表!D190",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控暴击感人",
+        "avoid": "坑点：怕万年竹",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "彼岸花": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "damage",
+        "single_damage",
+        "name:彼岸花"
+      ],
+      "source": "评分总表!E191",
+      "role_source": "评分总表!D191",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般输出感人",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟魅妖反枕"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "御馔津": {
+      "strength": 74.0,
+      "roles": [
+        "control",
+        "name:御馔津"
+      ],
+      "source": "评分总表!E192",
+      "role_source": "评分总表!D192",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "看脸控制怕控",
+        "avoid": "无",
+        "soul_recommendation": "返魂香等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "紧那罗": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:紧那罗"
+      ],
+      "source": "评分总表!E193",
+      "role_source": "评分总表!D193",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "暖机超长脆皮怕控",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "缘结神": {
+      "strength": 74.0,
+      "roles": [
+        "heal",
+        "name:缘结神"
+      ],
+      "source": "评分总表!E194",
+      "role_source": "评分总表!D194",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "怕封被动奶量感人",
+        "avoid": "无",
+        "soul_recommendation": "树妖等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "荒": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:荒"
+      ],
+      "source": "评分总表!E195",
+      "role_source": "评分总表!D195",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控灭火器无法消耗愿力",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "伤魂鸟狂骨招财"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "奴良陆生": {
+      "strength": 74.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:奴良陆生"
+      ],
+      "source": "评分总表!E196",
+      "role_source": "评分总表!D196",
+      "flags": [],
+      "notes": {
+        "evaluation": "中等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮伤害一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "狰破势"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "天剑韧心鬼切": {
+      "strength": 72.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:天剑韧心鬼切"
+      ],
+      "source": "评分总表!E197",
+      "role_source": "评分总表!D197",
+      "flags": [],
+      "notes": {
+        "evaluation": "72",
+        "partners": "脆皮核心输出（须佐之男/烬天玉藻前）",
+        "weakness": "暴击感人输出一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势青女房"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "山童": {
+      "strength": 68.0,
+      "roles": [
+        "control",
+        "name:山童"
+      ],
+      "source": "评分总表!E198",
+      "role_source": "评分总表!D198",
+      "flags": [],
+      "notes": {
+        "evaluation": "",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "命中一般，有盾命中更低",
+        "avoid": "无",
+        "soul_recommendation": "魍魉等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "妖刀姬绯夜猎刃": {
+      "strength": 61.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:妖刀姬绯夜猎刃"
+      ],
+      "source": "评分总表!E199",
+      "role_source": "评分总表!D199",
+      "flags": [],
+      "notes": {
+        "evaluation": "61",
+        "partners": "狰反击体系 + 椒图/白藏主",
+        "weakness": "低暴击低攻击",
+        "avoid": "坑点：打不动小白",
+        "soul_recommendation": "狰轮入道等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": [
+        "combo_13"
+      ]
+    },
+    "凤凰火": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:凤凰火"
+      ],
+      "source": "评分总表!E200",
+      "role_source": "评分总表!D200",
+      "flags": [
+        "qualitative_condition_base_only"
+      ],
+      "notes": {
+        "evaluation": "下等/有减益中等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "脆皮怕控",
+        "avoid": "坑点：没有可搭配的友方减益",
+        "soul_recommendation": "飞缘魔"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "黑崎一护": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:黑崎一护"
+      ],
+      "source": "评分总表!E201",
+      "role_source": "评分总表!D201",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "空相面灵气/帝释天 + 高爆发输出",
+        "weakness": "脆皮怕控伤害一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "鬼灯": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:鬼灯"
+      ],
+      "source": "评分总表!E202",
+      "role_source": "评分总表!D202",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控脆皮封被动一个带不动五个",
+        "avoid": "无",
+        "soul_recommendation": "返魂香"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "铁鼠": {
+      "strength": 60.0,
+      "roles": [
+        "buff",
+        "name:铁鼠"
+      ],
+      "source": "评分总表!E203",
+      "role_source": "评分总表!D203",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "核心输出（须佐之男/烬天玉藻前/龙珏）",
+        "weakness": "怕控，也就增伤了",
+        "avoid": "无",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "杀生丸": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:杀生丸"
+      ],
+      "source": "评分总表!E204",
+      "role_source": "评分总表!D204",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "群输出消耗队",
+        "weakness": "脆皮怕控伤害一般怕封被动",
+        "avoid": "无",
+        "soul_recommendation": "破势青女房"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "桔梗": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:桔梗"
+      ],
+      "source": "评分总表!E205",
+      "role_source": "评分总表!D205",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "怕控制的队（雨女/数珠体系）",
+        "weakness": "脆皮怕控伤害一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势青女房"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "狸猫": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:狸猫"
+      ],
+      "source": "评分总表!E206",
+      "role_source": "评分总表!D206",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "控不过来",
+        "avoid": "无",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "川猿": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:川猿"
+      ],
+      "source": "评分总表!E207",
+      "role_source": "评分总表!D207",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "怕控盾薄，AI不会优先释放单体控",
+        "avoid": "无",
+        "soul_recommendation": "魍魉等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "骁浪荒川之主": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "name:骁浪荒川之主"
+      ],
+      "source": "评分总表!E208",
+      "role_source": "评分总表!D208",
+      "flags": [],
+      "notes": {
+        "evaluation": "60",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "暴击感人输出一般",
+        "avoid": "无",
+        "soul_recommendation": "恶楼破势"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "一反木绵": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:一反木绵"
+      ],
+      "source": "评分总表!E209",
+      "role_source": "评分总表!D209",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "青坊主": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:青坊主"
+      ],
+      "source": "评分总表!E210",
+      "role_source": "评分总表!D210",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：敌方无召唤物",
+        "soul_recommendation": "破势"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "两面佛": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:两面佛"
+      ],
+      "source": "评分总表!E211",
+      "role_source": "评分总表!D211",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "控制队（大夜摩天阎魔/遥念烟烟罗）",
+        "weakness": "脆皮怕控伤害一般怕封被动",
+        "avoid": "坑点：怕白镜",
+        "soul_recommendation": "招财轮入道"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "小鹿男": {
+      "strength": 60.0,
+      "roles": [
+        "push",
+        "name:小鹿男"
+      ],
+      "source": "评分总表!E212",
+      "role_source": "评分总表!D212",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "控制队（大夜摩天阎魔/遥念烟烟罗）",
+        "weakness": "怕封被动",
+        "avoid": "坑点：怕月读",
+        "soul_recommendation": "招财等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "犬夜叉": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:犬夜叉"
+      ],
+      "source": "评分总表!E213",
+      "role_source": "评分总表!D213",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控成型前伤害一般",
+        "avoid": "坑点：成型前打不动椒图小白",
+        "soul_recommendation": "轮入道等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "海坊主": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "heal",
+        "name:海坊主"
+      ],
+      "source": "评分总表!E214",
+      "role_source": "评分总表!D214",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "需要续航的消耗队；避开禅心云外镜",
+        "weakness": "奶量感人伤害感人",
+        "avoid": "无",
+        "soul_recommendation": "日女雪幽魂"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "阿香": {
+      "strength": 60.0,
+      "roles": [
+        "control",
+        "name:阿香"
+      ],
+      "source": "评分总表!E215",
+      "role_source": "评分总表!D215",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "神启荒/群体输出跟伤",
+        "weakness": "脆皮怕控伤害一般",
+        "avoid": "无",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "三尾狐": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:三尾狐"
+      ],
+      "source": "评分总表!E216",
+      "role_source": "评分总表!D216",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "九命猫": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:九命猫"
+      ],
+      "source": "评分总表!E217",
+      "role_source": "评分总表!D217",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "青女房等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "巫蛊师": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:巫蛊师"
+      ],
+      "source": "评分总表!E218",
+      "role_source": "评分总表!D218",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "武士之灵": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:武士之灵"
+      ],
+      "source": "评分总表!E219",
+      "role_source": "评分总表!D219",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "河童": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:河童"
+      ],
+      "source": "评分总表!E220",
+      "role_source": "评分总表!D220",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "童男": {
+      "strength": 60.0,
+      "roles": [
+        "revive",
+        "name:童男"
+      ],
+      "source": "评分总表!E221",
+      "role_source": "评分总表!D221",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "群输出消耗队",
+        "weakness": "同跳哥",
+        "avoid": "坑点：被阎魔等禁复活",
+        "soul_recommendation": "镜姬等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "管狐": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:管狐"
+      ],
+      "source": "评分总表!E222",
+      "role_source": "评分总表!D222",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "觉": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:觉"
+      ],
+      "source": "评分总表!E223",
+      "role_source": "评分总表!D223",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动盾",
+        "soul_recommendation": "青女房等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "跳跳弟弟": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:跳跳弟弟"
+      ],
+      "source": "评分总表!E224",
+      "role_source": "评分总表!D224",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "青蛙瓷器": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:青蛙瓷器"
+      ],
+      "source": "评分总表!E225",
+      "role_source": "评分总表!D225",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "青女房等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "饿鬼": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:饿鬼"
+      ],
+      "source": "评分总表!E226",
+      "role_source": "评分总表!D226",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "狰等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "首无": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:首无"
+      ],
+      "source": "评分总表!E227",
+      "role_source": "评分总表!D227",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "青女房等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "二口女": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:二口女"
+      ],
+      "source": "评分总表!E228",
+      "role_source": "评分总表!D228",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "日女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "人面树": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:人面树"
+      ],
+      "source": "评分总表!E229",
+      "role_source": "评分总表!D229",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "恶楼等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "以津真天": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:以津真天"
+      ],
+      "source": "评分总表!E230",
+      "role_source": "评分总表!D230",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出一般",
+        "avoid": "无",
+        "soul_recommendation": "伤魂鸟等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "傀儡师": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:傀儡师"
+      ],
+      "source": "评分总表!E231",
+      "role_source": "评分总表!D231",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "轮入道针女"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "入殓师": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:入殓师"
+      ],
+      "source": "评分总表!E232",
+      "role_source": "评分总表!D232",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "狂骨等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "奕": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:奕"
+      ],
+      "source": "评分总表!E233",
+      "role_source": "评分总表!D233",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "於菊虫": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:於菊虫"
+      ],
+      "source": "评分总表!E234",
+      "role_source": "评分总表!D234",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "猫掌柜": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:猫掌柜"
+      ],
+      "source": "评分总表!E235",
+      "role_source": "评分总表!D235",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "针女等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "白狼": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:白狼"
+      ],
+      "source": "评分总表!E236",
+      "role_source": "评分总表!D236",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "破势等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "蝎女": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "single_damage",
+        "name:蝎女"
+      ],
+      "source": "评分总表!E237",
+      "role_source": "评分总表!D237",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "跳跳哥哥": {
+      "strength": 60.0,
+      "roles": [
+        "revive",
+        "name:跳跳哥哥"
+      ],
+      "source": "评分总表!E238",
+      "role_source": "评分总表!D238",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "群输出消耗队",
+        "weakness": "怕控，复活为时已晚",
+        "avoid": "无",
+        "soul_recommendation": "被服"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "风狸": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:风狸"
+      ],
+      "source": "评分总表!E239",
+      "role_source": "评分总表!D239",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "坑点：打不动椒图小白和盾",
+        "soul_recommendation": "兵主部等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "骨女": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:骨女"
+      ],
+      "source": "评分总表!E240",
+      "role_source": "评分总表!D240",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控输出感人",
+        "avoid": "无",
+        "soul_recommendation": "网切等"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "寻香行": {
+      "strength": 60.0,
+      "roles": [
+        "aoe",
+        "damage",
+        "name:寻香行"
+      ],
+      "source": "评分总表!E241",
+      "role_source": "评分总表!D241",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "伤害感人脆皮怕控",
+        "avoid": "无",
+        "soul_recommendation": "贝吹坊海月"
+      },
+      "conditional_tags": [
+        {
+          "required_soul": "海月火玉",
+          "tag": "observed:aoe_haiyue"
+        },
+        {
+          "min_speed": 220,
+          "tag": "observed:fast_aoe"
+        }
+      ],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "卖药郎": {
+      "strength": 60.0,
+      "roles": [
+        "damage",
+        "single_damage",
+        "name:卖药郎"
+      ],
+      "source": "评分总表!E242",
+      "role_source": "评分总表!D242",
+      "flags": [],
+      "notes": {
+        "evaluation": "下等",
+        "partners": "增伤（食灵/云间不见岳/因幡辉夜姬）+ 拉条",
+        "weakness": "脆皮怕控伤害一般",
+        "avoid": "坑点：打不动椒图小白",
+        "soul_recommendation": "伤魂鸟破势"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "scored",
+      "rule_keys": []
+    },
+    "大道寺芝士": {
+      "strength": null,
+      "roles": [
+        "name:大道寺芝士"
+      ],
+      "source": "评分总表!E243",
+      "role_source": "评分总表!D243",
+      "flags": [
+        "missing_strength",
+        "unknown_role"
+      ],
+      "notes": {
+        "evaluation": "？",
+        "partners": "通用输出/增伤体系",
+        "weakness": "？",
+        "avoid": "无",
+        "soul_recommendation": "？"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "fallback_unrated",
+      "rule_keys": []
+    },
+    "雪兔": {
+      "strength": null,
+      "roles": [
+        "name:雪兔"
+      ],
+      "source": "评分总表!E244",
+      "role_source": "评分总表!D244",
+      "flags": [
+        "missing_strength",
+        "unknown_role"
+      ],
+      "notes": {
+        "evaluation": "？",
+        "partners": "通用输出/增伤体系",
+        "weakness": "？",
+        "avoid": "无",
+        "soul_recommendation": "？"
+      },
+      "conditional_tags": [],
+      "numeric_conditions": [],
+      "selection_status": "fallback_unrated",
+      "rule_keys": []
+    }
+  },
+  "groups": [
+    {
+      "key": "combo_2",
+      "groups": [
+        [
+          "name:云间不见岳"
+        ],
+        [
+          "name:炼狱茨木童子",
+          "name:烬天玉藻前"
+        ],
+        [
+          "name:福悦座敷童子"
+        ]
+      ],
+      "weight": 3.0,
+      "source": "组合推荐!B2:F2",
+      "reason": "火系爆发队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_3",
+      "groups": [
+        [
+          "name:鬼王酒吞童子"
+        ],
+        [
+          "name:禅心云外镜"
+        ],
+        [
+          "aoe"
+        ]
+      ],
+      "weight": 3.0,
+      "source": "组合推荐!B3:F3",
+      "reason": "鬼吞禅镜双辅队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_4",
+      "groups": [
+        [
+          "name:浮世青行灯"
+        ],
+        [
+          "name:心狩鬼女红叶"
+        ],
+        [
+          "name:阎魔",
+          "name:古笼火"
+        ]
+      ],
+      "weight": 2.6,
+      "source": "组合推荐!B4:F4",
+      "reason": "火山鬼火压制队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_5",
+      "groups": [
+        [
+          "name:食灵"
+        ],
+        [
+          "name:姑获鸟"
+        ],
+        [
+          "name:鬼童丸",
+          "name:心友犬神"
+        ]
+      ],
+      "weight": 2.4,
+      "source": "组合推荐!B5:F5",
+      "reason": "协战追击队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_6",
+      "groups": [
+        [
+          "name:空相面灵气"
+        ],
+        [
+          "name:帝释天",
+          "name:纺愿缘结神"
+        ],
+        [
+          "name:大夜摩天阎魔"
+        ]
+      ],
+      "weight": 2.6,
+      "source": "组合推荐!B6:F6",
+      "reason": "拉条速控队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_7",
+      "groups": [
+        [
+          "name:龙珏"
+        ],
+        [
+          "name:歌留多"
+        ],
+        [
+          "name:荒骷髅",
+          "name:入内雀"
+        ]
+      ],
+      "weight": 2.6,
+      "source": "组合推荐!B7:F7",
+      "reason": "龙珏间伤秒人队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_8",
+      "groups": [
+        [
+          "name:不知火"
+        ],
+        [
+          "name:酒吞童子",
+          "name:吸血姬"
+        ],
+        [
+          "name:椒图"
+        ]
+      ],
+      "weight": 2.0,
+      "source": "组合推荐!B8:F8",
+      "reason": "普攻队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_9",
+      "groups": [
+        [
+          "name:鲸汐千姬"
+        ],
+        [
+          "name:初音未来"
+        ],
+        [
+          "observed:aoe_haiyue"
+        ]
+      ],
+      "weight": 2.0,
+      "source": "组合推荐!B9:F9",
+      "reason": "鲸初增伤队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_10",
+      "groups": [
+        [
+          "name:季"
+        ],
+        [
+          "name:犬神"
+        ],
+        [
+          "name:虫师",
+          "name:梦引蝴蝶精"
+        ]
+      ],
+      "weight": 2.2,
+      "source": "组合推荐!B10:F10",
+      "reason": "季伪回合队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_11",
+      "groups": [
+        [
+          "name:一目连",
+          "name:鲤鱼精"
+        ],
+        [
+          "name:匣中少女"
+        ],
+        [
+          "name:日和坊",
+          "name:虫师"
+        ]
+      ],
+      "weight": 1.6,
+      "source": "组合推荐!B11:F11",
+      "reason": "护盾消耗队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_12",
+      "groups": [
+        [
+          "name:蚀月吸血姬"
+        ],
+        [
+          "name:阎魔"
+        ],
+        [
+          "single_damage"
+        ]
+      ],
+      "weight": 1.8,
+      "source": "组合推荐!B12:F12",
+      "reason": "克制复活队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_13",
+      "groups": [
+        [
+          "name:妖刀姬绯夜猎刃",
+          "name:犬神",
+          "name:吸血姬"
+        ],
+        [
+          "name:椒图"
+        ],
+        [
+          "name:白藏主"
+        ]
+      ],
+      "weight": 1.2,
+      "source": "组合推荐!B13:F13",
+      "reason": "反击狰队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_14",
+      "groups": [
+        [
+          "name:神启荒"
+        ],
+        [
+          "name:大夜摩天阎魔",
+          "name:遥念烟烟罗"
+        ],
+        [
+          "buff"
+        ]
+      ],
+      "weight": 1.6,
+      "source": "组合推荐!B14:F14",
+      "reason": "控制跟伤队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_16",
+      "groups": [
+        [
+          "name:镰鼬"
+        ],
+        [
+          "name:孟婆",
+          "name:星熊童子"
+        ],
+        [
+          "observed:fast_aoe"
+        ]
+      ],
+      "weight": 1.4,
+      "source": "组合推荐!B16:F16",
+      "reason": "双拉速攻队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_17",
+      "groups": [
+        [
+          "name:言灵"
+        ],
+        [
+          "name:鬼金羊"
+        ],
+        [
+          "aoe"
+        ]
+      ],
+      "weight": 2.0,
+      "source": "组合推荐!B17:F17",
+      "reason": "言灵鬼火污染队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_18",
+      "groups": [
+        [
+          "name:雨女",
+          "name:垢尝",
+          "name:数珠"
+        ],
+        [
+          "damage"
+        ],
+        [
+          "fire"
+        ]
+      ],
+      "weight": 0.8,
+      "source": "组合推荐!B18:F18",
+      "reason": "驱散解控队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "combo_19",
+      "groups": [
+        [
+          "name:入内雀"
+        ],
+        [
+          "name:荒骷髅"
+        ],
+        [
+          "name:龙珏",
+          "name:雪御前"
+        ]
+      ],
+      "weight": 1.6,
+      "source": "组合推荐!B19:F19",
+      "reason": "单核保人队：完整组合加分（资料启发式）"
+    },
+    {
+      "key": "numeric_福悦座敷童子",
+      "groups": [
+        [
+          "name:福悦座敷童子"
+        ],
+        [
+          "name:云间不见岳"
+        ]
+      ],
+      "weight": 2,
+      "source": "评分总表!J131",
+      "reason": "福悦座敷童子：有云间不见岳时70→90"
+    },
+    {
+      "key": "numeric_炼狱茨木童子",
+      "groups": [
+        [
+          "name:炼狱茨木童子"
+        ],
+        [
+          "name:云间不见岳"
+        ]
+      ],
+      "weight": 2,
+      "source": "评分总表!J136",
+      "reason": "炼狱茨木童子：有云间不见岳时70→90"
+    },
+    {
+      "key": "numeric_烬天玉藻前",
+      "groups": [
+        [
+          "name:烬天玉藻前"
+        ],
+        [
+          "name:云间不见岳"
+        ]
+      ],
+      "weight": 2,
+      "source": "评分总表!J137",
+      "reason": "烬天玉藻前：有云间不见岳时70→90"
+    },
+    {
+      "key": "numeric_禅心云外镜",
+      "groups": [
+        [
+          "name:禅心云外镜"
+        ],
+        [
+          "name:鬼王酒吞童子"
+        ]
+      ],
+      "weight": 1.5,
+      "source": "评分总表!J66",
+      "reason": "禅心云外镜：有鬼王酒吞童子时80→95"
+    },
+    {
+      "key": "avoid_帝释天_纺愿缘结神",
+      "groups": [
+        [
+          "name:帝释天"
+        ],
+        [
+          "name:纺愿缘结神"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N6",
+      "reason": "帝释天与纺愿缘结神：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_纺愿缘结神_稻荷神御馔津",
+      "groups": [
+        [
+          "name:纺愿缘结神"
+        ],
+        [
+          "name:稻荷神御馔津"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N21",
+      "reason": "纺愿缘结神与稻荷神御馔津：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_晨辉惠比寿_禅心云外镜",
+      "groups": [
+        [
+          "name:晨辉惠比寿"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N17",
+      "reason": "晨辉惠比寿与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_纺愿缘结神_禅心云外镜",
+      "groups": [
+        [
+          "name:纺愿缘结神"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N21",
+      "reason": "纺愿缘结神与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_蜜桃芥子_禅心云外镜",
+      "groups": [
+        [
+          "name:蜜桃芥子"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N80",
+      "reason": "蜜桃芥子与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_绘世花鸟卷_禅心云外镜",
+      "groups": [
+        [
+          "name:绘世花鸟卷"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N95",
+      "reason": "绘世花鸟卷与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_夏目猫老师_禅心云外镜",
+      "groups": [
+        [
+          "name:夏目猫老师"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N130",
+      "reason": "夏目猫老师与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_聆海金鱼姬_禅心云外镜",
+      "groups": [
+        [
+          "name:聆海金鱼姬"
+        ],
+        [
+          "name:禅心云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N135",
+      "reason": "聆海金鱼姬与禅心云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_桃花妖_季",
+      "groups": [
+        [
+          "name:桃花妖"
+        ],
+        [
+          "name:季"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N102",
+      "reason": "桃花妖与季：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_桃花妖_云外镜",
+      "groups": [
+        [
+          "name:桃花妖"
+        ],
+        [
+          "name:云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N102",
+      "reason": "桃花妖与云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_桃花妖_镜音铃连",
+      "groups": [
+        [
+          "name:桃花妖"
+        ],
+        [
+          "name:镜音铃连"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N102",
+      "reason": "桃花妖与镜音铃连：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_日和坊_季",
+      "groups": [
+        [
+          "name:日和坊"
+        ],
+        [
+          "name:季"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N26",
+      "reason": "日和坊与季：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_日和坊_云外镜",
+      "groups": [
+        [
+          "name:日和坊"
+        ],
+        [
+          "name:云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N26",
+      "reason": "日和坊与云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_日和坊_镜音铃连",
+      "groups": [
+        [
+          "name:日和坊"
+        ],
+        [
+          "name:镜音铃连"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N26",
+      "reason": "日和坊与镜音铃连：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_蝴蝶精_季",
+      "groups": [
+        [
+          "name:蝴蝶精"
+        ],
+        [
+          "name:季"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N167",
+      "reason": "蝴蝶精与季：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_蝴蝶精_云外镜",
+      "groups": [
+        [
+          "name:蝴蝶精"
+        ],
+        [
+          "name:云外镜"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N167",
+      "reason": "蝴蝶精与云外镜：表内同队避坑扣分"
+    },
+    {
+      "key": "avoid_蝴蝶精_镜音铃连",
+      "groups": [
+        [
+          "name:蝴蝶精"
+        ],
+        [
+          "name:镜音铃连"
+        ]
+      ],
+      "weight": -3,
+      "source": "评分总表!N167",
+      "reason": "蝴蝶精与镜音铃连：表内同队避坑扣分"
+    },
+    {
+      "key": "summon_跳跳妹妹_缚骨清姬",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:缚骨清姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 缚骨清姬"
+    },
+    {
+      "key": "summon_跳跳妹妹_惠比寿",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:惠比寿"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 惠比寿"
+    },
+    {
+      "key": "summon_跳跳妹妹_慧明灯",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:慧明灯"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 慧明灯"
+    },
+    {
+      "key": "summon_跳跳妹妹_月读",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:月读"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 月读"
+    },
+    {
+      "key": "summon_跳跳妹妹_猫川",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:猫川"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 猫川"
+    },
+    {
+      "key": "summon_跳跳妹妹_雪御前",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 雪御前"
+    },
+    {
+      "key": "summon_跳跳妹妹_千姬",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 千姬"
+    },
+    {
+      "key": "summon_跳跳妹妹_丑时之女",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 丑时之女"
+    },
+    {
+      "key": "summon_跳跳妹妹_金鱼姬",
+      "groups": [
+        [
+          "name:跳跳妹妹"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N86",
+      "reason": "资料提示召唤位冲突：跳跳妹妹 / 金鱼姬"
+    },
+    {
+      "key": "summon_缚骨清姬_惠比寿",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:惠比寿"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 惠比寿"
+    },
+    {
+      "key": "summon_缚骨清姬_慧明灯",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:慧明灯"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 慧明灯"
+    },
+    {
+      "key": "summon_缚骨清姬_月读",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:月读"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 月读"
+    },
+    {
+      "key": "summon_缚骨清姬_猫川",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:猫川"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 猫川"
+    },
+    {
+      "key": "summon_缚骨清姬_雪御前",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 雪御前"
+    },
+    {
+      "key": "summon_缚骨清姬_千姬",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 千姬"
+    },
+    {
+      "key": "summon_缚骨清姬_丑时之女",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 丑时之女"
+    },
+    {
+      "key": "summon_缚骨清姬_金鱼姬",
+      "groups": [
+        [
+          "name:缚骨清姬"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N96",
+      "reason": "资料提示召唤位冲突：缚骨清姬 / 金鱼姬"
+    },
+    {
+      "key": "summon_惠比寿_慧明灯",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:慧明灯"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 慧明灯"
+    },
+    {
+      "key": "summon_惠比寿_月读",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:月读"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 月读"
+    },
+    {
+      "key": "summon_惠比寿_猫川",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:猫川"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 猫川"
+    },
+    {
+      "key": "summon_惠比寿_雪御前",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 雪御前"
+    },
+    {
+      "key": "summon_惠比寿_千姬",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 千姬"
+    },
+    {
+      "key": "summon_惠比寿_丑时之女",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 丑时之女"
+    },
+    {
+      "key": "summon_惠比寿_金鱼姬",
+      "groups": [
+        [
+          "name:惠比寿"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N100",
+      "reason": "资料提示召唤位冲突：惠比寿 / 金鱼姬"
+    },
+    {
+      "key": "summon_慧明灯_月读",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:月读"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 月读"
+    },
+    {
+      "key": "summon_慧明灯_猫川",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:猫川"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 猫川"
+    },
+    {
+      "key": "summon_慧明灯_雪御前",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 雪御前"
+    },
+    {
+      "key": "summon_慧明灯_千姬",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 千姬"
+    },
+    {
+      "key": "summon_慧明灯_丑时之女",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 丑时之女"
+    },
+    {
+      "key": "summon_慧明灯_金鱼姬",
+      "groups": [
+        [
+          "name:慧明灯"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N101",
+      "reason": "资料提示召唤位冲突：慧明灯 / 金鱼姬"
+    },
+    {
+      "key": "summon_月读_猫川",
+      "groups": [
+        [
+          "name:月读"
+        ],
+        [
+          "name:猫川"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N117",
+      "reason": "资料提示召唤位冲突：月读 / 猫川"
+    },
+    {
+      "key": "summon_月读_雪御前",
+      "groups": [
+        [
+          "name:月读"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N117",
+      "reason": "资料提示召唤位冲突：月读 / 雪御前"
+    },
+    {
+      "key": "summon_月读_千姬",
+      "groups": [
+        [
+          "name:月读"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N117",
+      "reason": "资料提示召唤位冲突：月读 / 千姬"
+    },
+    {
+      "key": "summon_月读_丑时之女",
+      "groups": [
+        [
+          "name:月读"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N117",
+      "reason": "资料提示召唤位冲突：月读 / 丑时之女"
+    },
+    {
+      "key": "summon_月读_金鱼姬",
+      "groups": [
+        [
+          "name:月读"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N117",
+      "reason": "资料提示召唤位冲突：月读 / 金鱼姬"
+    },
+    {
+      "key": "summon_猫川_雪御前",
+      "groups": [
+        [
+          "name:猫川"
+        ],
+        [
+          "name:雪御前"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N120",
+      "reason": "资料提示召唤位冲突：猫川 / 雪御前"
+    },
+    {
+      "key": "summon_猫川_千姬",
+      "groups": [
+        [
+          "name:猫川"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N120",
+      "reason": "资料提示召唤位冲突：猫川 / 千姬"
+    },
+    {
+      "key": "summon_猫川_丑时之女",
+      "groups": [
+        [
+          "name:猫川"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N120",
+      "reason": "资料提示召唤位冲突：猫川 / 丑时之女"
+    },
+    {
+      "key": "summon_猫川_金鱼姬",
+      "groups": [
+        [
+          "name:猫川"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N120",
+      "reason": "资料提示召唤位冲突：猫川 / 金鱼姬"
+    },
+    {
+      "key": "summon_雪御前_千姬",
+      "groups": [
+        [
+          "name:雪御前"
+        ],
+        [
+          "name:千姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N126",
+      "reason": "资料提示召唤位冲突：雪御前 / 千姬"
+    },
+    {
+      "key": "summon_雪御前_丑时之女",
+      "groups": [
+        [
+          "name:雪御前"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N126",
+      "reason": "资料提示召唤位冲突：雪御前 / 丑时之女"
+    },
+    {
+      "key": "summon_雪御前_金鱼姬",
+      "groups": [
+        [
+          "name:雪御前"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N126",
+      "reason": "资料提示召唤位冲突：雪御前 / 金鱼姬"
+    },
+    {
+      "key": "summon_千姬_丑时之女",
+      "groups": [
+        [
+          "name:千姬"
+        ],
+        [
+          "name:丑时之女"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N145",
+      "reason": "资料提示召唤位冲突：千姬 / 丑时之女"
+    },
+    {
+      "key": "summon_千姬_金鱼姬",
+      "groups": [
+        [
+          "name:千姬"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N145",
+      "reason": "资料提示召唤位冲突：千姬 / 金鱼姬"
+    },
+    {
+      "key": "summon_丑时之女_金鱼姬",
+      "groups": [
+        [
+          "name:丑时之女"
+        ],
+        [
+          "name:金鱼姬"
+        ]
+      ],
+      "weight": -2,
+      "source": "评分总表!N157",
+      "reason": "资料提示召唤位冲突：丑时之女 / 金鱼姬"
+    }
+  ],
+  "combo_audit": [
+    {
+      "row": 2,
+      "name": "火系爆发队",
+      "status": "compiled"
+    },
+    {
+      "row": 3,
+      "name": "鬼吞禅镜双辅队",
+      "status": "compiled"
+    },
+    {
+      "row": 4,
+      "name": "火山鬼火压制队",
+      "status": "compiled"
+    },
+    {
+      "row": 5,
+      "name": "协战追击队",
+      "status": "compiled"
+    },
+    {
+      "row": 6,
+      "name": "拉条速控队",
+      "status": "compiled"
+    },
+    {
+      "row": 7,
+      "name": "龙珏间伤秒人队",
+      "status": "compiled"
+    },
+    {
+      "row": 8,
+      "name": "普攻队",
+      "status": "compiled"
+    },
+    {
+      "row": 9,
+      "name": "鲸初增伤队",
+      "status": "compiled"
+    },
+    {
+      "row": 10,
+      "name": "季伪回合队",
+      "status": "compiled"
+    },
+    {
+      "row": 11,
+      "name": "护盾消耗队",
+      "status": "compiled"
+    },
+    {
+      "row": 12,
+      "name": "克制复活队",
+      "status": "compiled"
+    },
+    {
+      "row": 13,
+      "name": "反击狰队",
+      "status": "compiled"
+    },
+    {
+      "row": 14,
+      "name": "控制跟伤队",
+      "status": "compiled"
+    },
+    {
+      "row": 15,
+      "name": "召唤物体系",
+      "status": "held_conflicting_summon_advice"
+    },
+    {
+      "row": 16,
+      "name": "双拉速攻队",
+      "status": "compiled"
+    },
+    {
+      "row": 17,
+      "name": "言灵鬼火污染队",
+      "status": "compiled"
+    },
+    {
+      "row": 18,
+      "name": "驱散解控队",
+      "status": "compiled"
+    },
+    {
+      "row": 19,
+      "name": "单核保人队",
+      "status": "compiled"
+    }
+  ],
+  "policy": {
+    "strength_scale": 10,
+    "redundant_fire_penalty": 1.5,
+    "note": "启发式选将权重，不代表胜率；未知条件不加分"
+  }
+}

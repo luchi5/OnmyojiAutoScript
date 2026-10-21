@@ -158,6 +158,7 @@ class GameUiAssets:
 	I_MAIN_GOTO_COLLECTION = RuleImage(roi_front=(70,590,36,41), roi_back=(70,590,120,100), threshold=0.7, method="Template matching", file="./tasks/GameUi/page/page_main_goto_collection.png")
 	# 庭院前往珍旅居 
 	I_MAIN_GOTO_TRAVEL = RuleImage(roi_front=(170,590,64,61), roi_back=(170,590,120,100), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_main_goto_travel.png")
+	I_CHECK_TRAVEL_TITLE = RuleImage(roi_front=(90,19,108,39), roi_back=(80,10,130,60), threshold=0.85, method="Template matching", file="./tasks/GameUi/page/page_check_travel_title.png")
 	# 珍旅居页面标志 
 	I_CHECK_TRAVEL = RuleImage(roi_front=(1134,583,78,77), roi_back=(1134,583,78,77), threshold=0.8, method="Template matching", file="./tasks/GameUi/page/page_check_travel.png")
 	# 式神录页面标志 

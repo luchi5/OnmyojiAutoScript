@@ -32,6 +32,7 @@ from module.config.config_model import ConfigModel
 from module.config.instance_guard import InstanceGuard
 from module.config.anti_ban import AntiBanGuard
 from module.device.device import Device
+from module.device.idle_shutdown import stop_idle_emulator, idle_emulator_running
 from module.device.env import IS_WINDOWS
 from module.base.utils import load_module
 from module.base.decorator import del_cached_property
@@ -545,15 +546,36 @@ class Script:
         close_emulator_wait = self._time_to_timedelta(close_emulator_wait_duration)
 
         if close_emulator_wait > timedelta(0) and next_run > datetime.now() + close_emulator_wait:
-            logger.info("Close emulator during wait")
-            self.device.emulator_stop()
+            # device is a lazy property whose initialization may boot the
+            # emulator. Do not initialize it only to shut it down on startup.
+            if 'device' in self.__dict__:
+                logger.info("Close emulator during wait")
+                if self.device.emulator_stop() is False:
+                    logger.warning("Emulator shutdown failed; do not mark it as stopped")
+                    return self.wait_until(next_run)
+            else:
+                if not stop_idle_emulator(self.config, logger):
+                    return self.wait_until(next_run)
             self._emulator_down = True
 
             if not self._wait_until_with_emulator_preheat(next_run):
                 return False
 
-            self.run("Restart")
-            return True
+            return self.run("GameStart")
+
+        # No task is due. Merely releasing a lazy Device or stopping its app
+        # must not boot a closed emulator in the short/medium idle branches.
+        if 'device' not in self.__dict__:
+            running = idle_emulator_running(self.config, logger)
+            if running is False:
+                logger.info("Emulator already closed; wait for task preheat without creating Device")
+                self._emulator_down = True
+                if not self._wait_until_with_emulator_preheat(next_run):
+                    return False
+                return self.run("GameStart")
+            if running is None:
+                logger.warning("Idle emulator state unknown; defer device initialization until task is due")
+                return self.wait_until(next_run)
 
         if close_game_wait <= timedelta(0):
             logger.info("Close game during wait")
@@ -561,8 +583,7 @@ class Script:
             self.device.release_during_wait()
             if not self.wait_until(next_run):
                 return False
-            self.run("Restart")
-            return True
+            return self.run("GameStart")
 
         if next_run > datetime.now() + close_game_wait:
             logger.info("Close game during wait")
@@ -570,8 +591,7 @@ class Script:
             self.device.release_during_wait()
             if not self.wait_until(next_run):
                 return False
-            self.run("Restart")
-            return True
+            return self.run("GameStart")
 
         logger.info("Wait without closing game (close_game wait duration not reached)")
         self.device.release_during_wait()
@@ -589,7 +609,7 @@ class Script:
         # close timers. Those timers belong to the close_game strategy only.
         logger.info("空闲策略：前往庭院，保持游戏和模拟器运行，忽略关闭计时")
         if not self.device.app_is_running():
-            if not self.run("Restart"):
+            if not self.run("GameStart"):
                 return False
         if not self.run("GotoMain"):
             if getattr(self, '_account_session_restart_pending', False):
@@ -622,8 +642,23 @@ class Script:
             time.sleep(1)
 
     def _recover_account_session(self, command: str, error: AccountLoggedInElsewhere) -> bool:
+        from module.device.account_session_recovery import claim_recovery
+        allowed = False
+        try:
+            if command not in ('GotoMain', 'Restart'):
+                allowed = claim_recovery(self.config_name)
+        except Exception as policy_error:
+            logger.error(f'无法核验顶号恢复记录：{policy_error}')
+        if not allowed:
+            self._account_session_restart_pending = False
+            logger.critical('半小时内再次顶号、任务已结束或恢复记录无法核验；停止账号，不再争抢登录')
+            try:
+                self.save_error_log()
+            except Exception:
+                pass
+            exit(1)
         logger.critical(str(error))
-        logger.warning('账号在其他设备登录，将按故障流程自动重启游戏并恢复任务')
+        logger.warning('允许一次异地登录恢复；半小时内再次顶号将停止账号')
         self.config.model.running_task = ''
         self._account_session_restart_pending = True
         try:
@@ -633,7 +668,7 @@ class Script:
         try:
             accepted = self.config.notifier.push(
                 title=f'{self.config_name} 自动恢复：账号在其他设备登录',
-                content='检测到其他设备登录，将自动重启游戏并恢复任务；同一任务连续失败三次仍按默认规则停止。'
+                content='检测到其他设备登录，将恢复一次；半小时内再次顶号则停止账号，超过半小时可再次恢复未完成任务。'
             )
             if not accepted:
                 logger.warning('顶号恢复通知请求失败，请检查推送服务状态；继续自动恢复')
@@ -647,8 +682,7 @@ class Script:
             self._account_session_restart_authorized = False
             return self.get_next_task()
         self._account_session_restart_pending = False
-        # One recovery run must work even when scheduled Restart is disabled.
-        # Only this in-memory Function is enabled; preserve the user setting.
+        # Recheck the live switch before starting a queued recovery.
         recovery_task = Function('restart', self.config.model.restart.dict())
         recovery_task.enable = True
         recovery_task.next_run = datetime.now().replace(microsecond=0)
@@ -659,9 +693,7 @@ class Script:
         return 'Restart'
 
     def _stop_when_restart_disabled(self, command: str, error: Exception) -> None:
-        """A disabled Restart forbids ordinary recovery, with takeover as the exception."""
-        if getattr(self, '_account_session_restart_active', False):
-            return
+        """Ordinary failures still respect the global Restart switch."""
         restart_enabled = None
         try:
             # Tasks can hold an old model for hours; respect an intervening UI toggle.
@@ -694,6 +726,8 @@ class Script:
 
     def _record_task_result(self, task: str, success: bool) -> None:
         """Use the same failure limit for scheduled work and idle takeovers."""
+        if getattr(self, '_account_session_restart_pending', False):
+            return  # External session loss is not a task failure.
         failed = self.failure_record.get(task, 0)
         failed = 0 if success else failed + 1
         self.failure_record[task] = failed
@@ -761,11 +795,25 @@ class Script:
         # A booting or running guest must never be restarted for an ADB/IPC failure.
         if status['is_process_started'] or status['is_android_started']:
             return
-        self._stop_when_restart_disabled(command, EmulatorNotRunningError('Emulator closed during wait'))
         logger.info('等待期间模拟器已关闭，重新初始化设备并按正常流程唤醒')
         self._emulator_down = True
         self.device = self._create_device()
         self._emulator_down = False
+
+    def _start_game_normally(self) -> bool:
+        """Start a closed game at a task boundary, never stop a running game."""
+        self._normal_start_checked = True
+        if self.device.app_is_running():
+            return True
+        logger.info('正常启动游戏；自动故障重启开关不影响任务启动')
+        module_path = str(Path.cwd() / 'tasks' / 'Restart' / 'login.py')
+        task_module = load_module('login', module_path)
+        handler = task_module.LoginHandler(config=self.config, device=self.device)
+        # A failed first login must stop instead of cycling the app.
+        handler._allow_login_restart = False
+        self.device.app_start()
+        handler.app_handle_login()
+        return True
 
     def run(self, command: str) -> bool:
         """
@@ -799,9 +847,14 @@ class Script:
         recovery_was_active = getattr(self.device, '_account_session_recovery', False)
         self.device._account_session_recovery = command == 'Restart'
         try:
-            if getattr(self, '_resume_device_check_pending', False):
+            resumed = getattr(self, '_resume_device_check_pending', False)
+            if resumed:
                 self._ensure_emulator_after_wait(command)
                 self.device._account_session_recovery = command == 'Restart'
+            if command == 'GameStart':
+                return self._start_game_normally()
+            if command != 'Restart' and (resumed or not getattr(self, '_normal_start_checked', False)):
+                self._start_game_normally()
             self.device.screenshot()
             module_name = 'script_task'
             module_path = str(Path.cwd() / 'tasks' / command / (module_name+'.py'))
@@ -904,7 +957,7 @@ class Script:
                 logger.info(f'重新显示: {target_window_name}')
             else:
                 show_window_by_name(target_window_name)
-
+                
         while 1:
             if date.today() > start_day:
                 with _log_switch_lock:

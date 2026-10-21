@@ -1,7 +1,9 @@
 # This Python file uses the following encoding: utf-8
 # @author runhey
 # github https://github.com/runhey
-from time import sleep
+from time import sleep, monotonic
+from module.atom.image import RuleImage
+from module.exception import GameStuckError
 import numpy as np
 
 from enum import Enum
@@ -171,18 +173,40 @@ class GeneralInvite(BaseTask, BondlingFairylandAssets, GeneralInviteAssets):
         if not self.is_in_room():
             return False
         logger.info('Exit room')
-        while 1:
+        prompt = RuleImage((510,300,260,33), (460,270,360,100),
+                           'Template matching', 0.85,
+                           './tasks/BondlingFairyland/exit_room_prompt.png')
+        confirm = RuleImage((714,420,76,35), (650,380,210,110),
+                            'Template matching', 0.85,
+                            './tasks/BondlingFairyland/exit_room_confirm.png')
+        deadline = monotonic() + 45
+        next_click = 0
+        back_clicks = 0
+        confirm_clicks = 0
+        while monotonic() < deadline:
             self.screenshot()
-            if not self.is_in_room() and \
-                    not self.appear_then_click(self.I_GI_SURE, interval=0.8) and \
-                    not self.appear(self.I_BACK_YELLOW):
-                break
-            if self.appear_then_click(self.I_GI_SURE, interval=0.5):
+            dialog = self.appear(prompt)
+            legacy_confirm = self.appear(self.I_GI_SURE)
+            if dialog or legacy_confirm:
+                # The dialog overlays the still-visible room/back button.
+                # Never click through it, even if its confirm is not recognized.
+                target = confirm if dialog else self.I_GI_SURE
+                if (monotonic() >= next_click and confirm_clicks < 3
+                        and self.appear(target)):
+                    self.click(target)
+                    confirm_clicks += 1
+                    next_click = monotonic() + 6
+                sleep(0.3)
                 continue
-            if not self.appear(self.I_GI_SURE) and self.appear_then_click(self.I_BACK_YELLOW, interval=0.8):
-                self.wait_until_appear(self.I_GI_SURE, wait_time=0.8)
-                continue
-        return True
+            if not self.is_in_room() and not self.appear(self.I_BACK_YELLOW):
+                return True
+            if (monotonic() >= next_click and back_clicks < 3
+                    and self.appear(self.I_BACK_YELLOW)):
+                self.click(self.I_BACK_YELLOW)
+                back_clicks += 1
+                next_click = monotonic() + 6
+            sleep(0.3)
+        raise GameStuckError('Cannot confirm leaving bondling room within 45 seconds')
 
     def click_fire(self):
         while 1:

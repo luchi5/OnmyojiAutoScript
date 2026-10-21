@@ -1,26 +1,15 @@
 """Visible guild opening settings, with migration from mainline schedulers."""
-from datetime import timedelta, time
-from pydantic import BaseModel, field_serializer
+from datetime import timedelta
+from pydantic import BaseModel
 
-from tasks.Component.config_base import format_timedelta
-from tasks.Component.config_scheduler import Scheduler
+from tasks.Component.config_scheduler import DedicatedTimeScheduler
 from tasks.Component.guild_retry_schedule import retry_delay
 
 
-class GuildOpeningScheduler(Scheduler):
+class GuildOpeningScheduler(DedicatedTimeScheduler):
     # These tasks use explicit calendar targets and their own retry settings.
     # Showing the generic force-time/retry controls alongside them is misleading.
-    @field_serializer(
-        'server_update', 'failure_interval', 'success_interval', 'delay_date', 'float_time',
-    )
-    def hide_opening_fields(self, value, info):
-        if info.context and info.context.get('hide', False):
-            return 0xABCDEF
-        if isinstance(value, timedelta):
-            return format_timedelta(value)
-        if isinstance(value, time):
-            return value.strftime('%H:%M:%S')
-        return value
+    pass
 
 
 def migrate_opening_settings(data, group_name, dokan=False):

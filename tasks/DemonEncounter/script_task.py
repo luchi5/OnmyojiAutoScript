@@ -75,12 +75,9 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             self.goto_page(page_shikigami_records)
             self.checkout_soul(soul_target)
         self.goto_page(page_demon_encounter_realworld)
-        # 顶部"今日挑战次数:X/1"检测, 0/1表示今日已打过, 直接结束
-        if self.check_challenge_done():
-            logger.info('Challenge count 0/1, already challenged today')
-            self.set_next_run(task='DemonEncounter', success=True, finish=False)
-            raise TaskEnd('DemonEncounter')
+        # Exploration rewards are independent of the boss challenge quota.
         self.execute_lantern()
+        self.finish_if_challenge_done()
         self.execute_boss()
 
         self.set_next_run(task='DemonEncounter', success=True, finish=False)
@@ -92,12 +89,23 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         DigitCounter 返回 (current, remain, total), current 即剩余次数
         :return: True表示剩余=0, 今日已打过
         """
-        current, _remain, total = self.O_DE_CHALLENGE_COUNT.ocr(self.device.image)
-        if total > 0:
-            logger.info(f'Demon encounter challenge count: {current}/{total}')
-            return current == 0
+        for attempt in range(3):
+            self.screenshot()
+            current, _remain, total = self.O_DE_CHALLENGE_COUNT.ocr(self.device.image)
+            if total > 0 and 0 <= current <= total:
+                logger.info(f'Demon encounter challenge count: {current}/{total}')
+                return current == 0
+            if attempt < 2:
+                time.sleep(0.3)
         logger.warning('Challenge count not recognized, assume attempts remain')
         return False
+
+    def finish_if_challenge_done(self):
+        """Player and script completions share the same successful daily schedule."""
+        if self.check_challenge_done():
+            logger.info('Demon encounter completed: no daily challenge attempts remain')
+            self.set_next_run(task='DemonEncounter', success=True, finish=False)
+            raise TaskEnd('DemonEncounter')
 
     def resolve_soul_target(self):
         """Respect separate boss selection and soul-switching enable flags."""
@@ -174,6 +182,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                     self.screenshot()
                     if self.appear(self.I_BOSS_FIRE) or self.appear(self.I_BEST_BOSS_FIRE):
                         return True
+                    self.finish_if_challenge_done()
                     # 没找到boss但地图中央出现宝箱, 导致点击宝箱出现50勾玉购买界面(事后补救)
                     if self.appear(self.I_JADE_50):
                         self.ui_click_until_smt_disappear(self.I_DE_FIND, self.I_JADE_50, interval=1)
@@ -327,29 +336,57 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 continue
         # 返回到封魔主界面
 
+    def wait_lantern_discovery(self):
+        """Wait for lagging discovery results instead of repeatedly clicking."""
+        deadline = time.monotonic() + 240
+        previous = None
+        stable = attempts = 0
+        next_click = 0
+        self.device.stuck_record_add('PAUSE')  # Existing 300-second wait guard.
+        try:
+            while time.monotonic() < deadline:
+                self.screenshot()
+                current, remain, total = self.O_DE_COUNTER.ocr(self.device.image)
+                if total != 4 or not 0 <= current <= 4 or remain != 4 - current:
+                    stable = 0
+                    time.sleep(1)
+                    continue
+                if current == 0:
+                    stable += 1
+                    if stable >= 2:
+                        return True
+                    time.sleep(1)
+                    continue
+                stable = 0
+                if previous is not None and current > previous:
+                    time.sleep(1)
+                    continue
+                if previous is None or current < previous:
+                    previous = current
+                    attempts = 0
+                    next_click = time.monotonic() + (2 if next_click else 0)
+                if time.monotonic() >= next_click:
+                    if attempts >= 3:
+                        break
+                    if self.appear_then_click(self.I_DE_FIND, interval=1):
+                        attempts += 1
+                        next_click = time.monotonic() + 60
+                        logger.info(f'逢魔点灯剩余{current}/4，等待加载，最多60秒；本状态第{attempts}次点击')
+                        self.device.stuck_record_add('PAUSE')
+                time.sleep(1)
+            return False
+        finally:
+            self.device.detect_record.discard('PAUSE')
+
     def execute_lantern(self):
         """
         点灯笼 四次
         :return:
         """
-        # 先点四次
-        ocr_timer = Timer(0.8)
-        ocr_timer.start()
-        while 1:
-            self.screenshot()
-            if not ocr_timer.reached():
-                continue
-            else:
-                ocr_timer.reset()
-            cu, re, total = self.O_DE_COUNTER.ocr(self.device.image)
-            if cu + re != total:
-                logger.warning('Lantern count error')
-                continue
-            if cu == 0 and re == 4:
-                break
-
-            if self.appear_then_click(self.I_DE_FIND, interval=2.5):
-                continue
+        if not self.wait_lantern_discovery():
+            logger.warning('逢魔点灯长时间无进展，保留未完成状态，10分钟后重试')
+            self.set_next_run(task='DemonEncounter', target=datetime.now() + timedelta(minutes=10), server=False)
+            raise TaskEnd('DemonEncounter lantern discovery pending')
         logger.info('Lantern count success')
         # 然后领取红色达摩
         self.screenshot()

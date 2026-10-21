@@ -66,6 +66,8 @@ class SoloExploration(BaseExploration):
 
         while 1:
             self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
             scene = self.get_current_scene()
             logger.info(f'[run_solo] Current scene: {scene.name}')  # TODO 2026.06.22 之后删掉这个刷屏的
             #
@@ -134,6 +136,8 @@ class SoloExploration(BaseExploration):
 
         while 1:
             self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
             scene = self.get_current_scene()
             # 探索大世界
             if scene == Scene.WORLD:
@@ -240,6 +244,8 @@ class SoloExploration(BaseExploration):
 
         while 1:
             self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
             scene = self.get_current_scene()
             logger.info(f'[run_member] Current scene: {scene.name}')  # TODO 2026.06.12 之后删掉这个刷屏的
             #
@@ -442,6 +448,8 @@ class ScriptTask(SoloExploration):
         random_click_cnt = 0
         while 1:
             self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
             scene = self.get_current_scene()
             if random_click_cnt >= 2:
                 break

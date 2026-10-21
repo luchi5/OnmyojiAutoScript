@@ -70,6 +70,17 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         self.goto_page(page_bondling_fairyland)
         logger.hr('第四步, 开始战斗准备', 2)
         self.current_count = 0
+        # Explicit one-shot continuation, never inherit another account's count.
+        resume = Path('config/bondling_resume') / (self.config.config_name + '.json')
+        if resume.exists():
+            saved = json.loads(resume.read_text(encoding='utf-8'))
+            count = saved['completed_count']
+            if (saved['target_count'] != cong.bondling_config.limit_count
+                    or not isinstance(count, int) or not 0 <= count < saved['target_count']):
+                raise ValueError('Bondling continuation does not match the configured target')
+            resume.replace(resume.with_suffix('.used.json'))
+            self.current_count = count
+            logger.info(f'Resume bondling count: {count} / {saved["target_count"]}')
         self.limit_count = cong.bondling_config.limit_count  # 默认limit_count值
         logger.hr('Goto bondling area')
         self.goto_ball_area(BondlingClass.get_index(cong.bondling_config.bondling_stone_class))
@@ -106,8 +117,19 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
         while 1:
             def create_bond_team():
                 click_count = 0
+                timeout = Timer(45).start()
                 while 1:
                     self.screenshot()
+                    if timeout.reached():
+                        raise GameStuckError('Bondling team creation timed out')
+                    # Handle the foreground warning before the room/help
+                    # controls that remain visible behind it.
+                    if self.appear(self.I_LOW_PLATE_CONTINUE):
+                        if self.appear(self.I_LOW_PLATE_UNCHECKED):
+                            self.appear_then_click(self.I_LOW_PLATE_UNCHECKED, interval=1)
+                            continue
+                        self.appear_then_click(self.I_LOW_PLATE_CONTINUE, interval=1)
+                        continue
                     if self.appear(self.I_GI_IN_ROOM):
                         return True
                     if self.check_and_invite(True):
@@ -117,10 +139,7 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                         sleep(1)
                         continue
                     if click_count >= 6:
-                        logger.error('Click fire failed')
-                        logger.error(
-                            'You might need to check your bondling number. It most possibly arrived to the max 500')
-                        raise BondlingNumberMax
+                        raise GameStuckError('Bondling team did not open after 6 help clicks')
                     if self.appear(self.I_CREATE_TEAM, interval=1):
                         self.ensure_private()
                         if self.appear_then_click(self.I_CREATE_TEAM, interval=2):
@@ -291,6 +310,8 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                 else:
                     if self.run_stone(bondling_config.bondling_stone_enable):
                         continue
+                    elif self.recheck_existing_ball(current_ball_index):
+                        logger.info('Existing summoned bondling confirmed despite empty stone stock')
                     elif bondling_config.bondling_search_enable and bondling_config.user_status == UserStatus.ALONE:
                         if self.run_search(bondling_config, limit_cnt=random.randint(5, 20)):
                             logger.info('Bondling search finish, try to run catch')
@@ -365,7 +386,8 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                     logger.info('确认消耗鸣契石召唤契灵')
                 continue
             if not self.appear(self.I_STONE_SURE):
-                sleep(random.uniform(1.5, 2))  # 等待购买后的动画, 否则已经买了但是下次再点击还会出现该界面
+                if not self.wait_summon_map():
+                    self._defer_stone_check('召唤后地图未稳定')
                 return True
             if cnt >= 6:
                 self._defer_stone_check('鸣契石召唤结果未能确认')
@@ -379,6 +401,31 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                 continue
 
         self._defer_stone_check('鸣契石召唤结果未能确认')
+
+    def wait_summon_map(self):
+        # Closing the purchase dialog does not mean the summoned balls are ready.
+        sleep(3)
+        timer = Timer(15).start()
+        stable = 0
+        while not timer.reached():
+            self.screenshot()
+            ready = (self.in_search_ui() and not self.appear(self.I_STONE_SURE)
+                     and not self.appear(self.I_UI_CONFIRM))
+            stable = stable + 1 if ready else 0
+            if stable >= 3:
+                return True
+            sleep(0.6)
+        return False
+
+    def recheck_existing_ball(self, index):
+        # Stock zero only forbids another summon; it says nothing about map stock.
+        for _ in range(2):
+            if not self.wait_summon_map():
+                self._defer_stone_check('鸣契石耗尽后地图未能确认')
+            if self.ball_click(index):
+                return True
+            self.ui_click_until_disappear(self.I_STONE_CLOSE, interval=1.2)
+        return False
 
     def _defer_stone_check(self, reason):
         self.ui_click_until_disappear(self.I_STONE_CLOSE, interval=1.2)
@@ -783,6 +830,12 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
                 return
             if timeout.reached():
                 raise GameStuckError('Bondling challenge timed out before battle entry')
+            if self.appear(self.I_LOW_PLATE_CONTINUE):
+                if self.appear(self.I_LOW_PLATE_UNCHECKED):
+                    self.appear_then_click(self.I_LOW_PLATE_UNCHECKED, interval=1)
+                    continue
+                self.appear_then_click(self.I_LOW_PLATE_CONTINUE, interval=1)
+                continue
             # Confirm foreground dialogs before clicking a button behind them.
             if self.appear(self.I_UI_CONFIRM):
                 self.appear_then_click(self.I_UI_CONFIRM, interval=1)

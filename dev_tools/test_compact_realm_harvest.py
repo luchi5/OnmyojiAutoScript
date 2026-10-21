@@ -8,6 +8,7 @@ import unittest
 import cv2
 import numpy as np
 from dev_tools.test_bondling_battle_entry import extract_methods, FakeClock, FakeTimer
+from tasks.KekkaiActivation.reward_bubble import find_reward_bubble
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,6 +41,7 @@ class CompactHarvestTests(unittest.TestCase):
     def task(self):
         clock = FakeClock(1)
         task = KekkaiActivationAssets()
+        task.device = SimpleNamespace(image=self.image)
         task.screenshot = clock.advance
         task.appear = lambda _: False
         task.appear_multi_scale = lambda rule: rule.match_multi_scale(self.image)
@@ -53,6 +55,7 @@ class CompactHarvestTests(unittest.TestCase):
         methods = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py',
             'ScriptTask', ('realm_card_markers', 'realm_card_marker', 'harvest_card'), {
                 'cached_property': lambda fn: fn, 'RuleImage': RuleImage,
+                'RuleClick': lambda rect, back, name: SimpleNamespace(roi_front=rect, name=name),
                 'Timer': lambda t: FakeTimer(clock, t),
                 'time': SimpleNamespace(sleep=lambda _: None), 'logger': Mock(),
             })
@@ -82,6 +85,34 @@ class CompactHarvestTests(unittest.TestCase):
                          old.method, old.threshold, old.file)
         self.assertTrue(rule.match_multi_scale(image, threshold=.7))
 
+    def test_account09_low_fish_reward_is_clicked_instead_of_growth_exp(self):
+        frame = cv2.imread(str(ROOT/'dev_tools/fixtures/realm_account09_fish_reward.png'))
+        self.image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        task = self.task()
+        state, card = task.realm_card_marker()
+        self.assertEqual(state, 'expired')
+        self.assertEqual(card.name, 'realm_card_reward_bubble')
+        self.assertTrue(task.harvest_card())
+        self.assertEqual(len(task.clicks), 1)
+        x, y, w, h = task.clicks[0]
+        self.assertTrue(740 <= x < 790 and 420 <= y < 465, task.clicks)
+
+    def test_account_8_one_star_moon_reward_is_recognized_and_clicked_once(self):
+        crop = cv2.imread(str(ROOT/'dev_tools/fixtures/realm_moon1_reward.png'))
+        self.image[120:405, 780:1020] = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+        task = self.task()
+        # The old three-star template does not recognize this real one-star icon.
+        old = next(rule for rule in task.realm_card_markers[1]
+                   if rule.file.endswith('harvest_moon_3.png'))
+        self.assertFalse(old.match_multi_scale(self.image))
+        state, card = task.realm_card_marker()
+        self.assertEqual(state, 'expired')
+        self.assertEqual(card.name, 'realm_card_reward_bubble')
+        self.assertTrue(task.harvest_card())
+        self.assertEqual(len(task.clicks), 1)
+        x, y, w, h = task.clicks[0]
+        self.assertTrue(865 <= x <= 900 and 155 <= y <= 190, task.clicks)
+
     def test_user_chest_crop_is_active_and_never_clicked(self):
         # User's cropped screenshot, normalized to game scale and positioned
         # above the compact plaque. This is not a full emulator capture.
@@ -110,7 +141,7 @@ class CompactHarvestTests(unittest.TestCase):
         h,w = chest.shape[:2]
         self.image[150:150+h,600:600+w] = chest
         self.assertEqual(task.realm_card_marker(), ('unknown',None))
-        task.harvest_card()
+        self.assertFalse(task.harvest_card())
         self.assertEqual(task.clicks, [])
 
     def test_card_panel_background_cannot_trigger_collection(self):
@@ -132,6 +163,39 @@ class CompactHarvestTests(unittest.TestCase):
         task = self.task()
         chest,cards = task.realm_card_markers
         self.assertNotIn(chest.file, [card.file for card in cards])
+
+    def test_unseen_card_art_is_collected_without_any_card_template(self):
+        # Preserve the real bubble's rim, replace only its card artwork.
+        # No image matcher (including the known card types) is allowed to match.
+        cv2.circle(self.image, (834, 348), 25, (15, 15, 15), -1)
+        cv2.putText(self.image, '?', (824, 360), cv2.FONT_HERSHEY_SIMPLEX,
+                    1, (20, 220, 200), 3)
+        task = self.task()
+        task.appear_multi_scale = lambda _: False
+        state, target = task.realm_card_marker()
+        self.assertEqual(state, 'expired')
+        self.assertEqual(target.name, 'realm_card_reward_bubble')
+        self.assertTrue(task.harvest_card())
+        self.assertEqual(len(task.clicks), 1)
+
+    def test_real_empty_realms_and_other_resource_bubbles_are_not_rewards(self):
+        for name in ('realm09_collected.png', 'realm15_collected.png',
+                     'realm_banner14_current.png', 'realm_banner15_current.png',
+                     'realm_skin_selector3.png', 'realm_skin_selector5.png'):
+            with self.subTest(frame=name):
+                frame = cv2.cvtColor(cv2.imread(str(ROOT/'dev_tools/fixtures'/name)),
+                                     cv2.COLOR_BGR2RGB)
+                self.assertIsNone(find_reward_bubble(frame))
+
+    def test_shape_detection_does_not_treat_active_chest_as_reward(self):
+        crop = cv2.imread(str(ROOT/'dev_tools/fixtures/realm_active_chest.png'))
+        self.image[:] = 0
+        self.image[298:643,740:925] = cv2.cvtColor(crop,cv2.COLOR_BGR2RGB)
+        self.assertIsNone(find_reward_bubble(self.image))
+
+    def test_unsupported_frame_size_is_not_a_click_target(self):
+        self.assertIsNone(find_reward_bubble(None))
+        self.assertIsNone(find_reward_bubble(np.zeros((360, 640, 3), np.uint8)))
 
 
 if __name__ == '__main__':

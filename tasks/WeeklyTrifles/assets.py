@@ -30,7 +30,7 @@ class WeeklyTriflesAssets:
 
 	# Image Rule Assets
 	# 进入普通召唤 
-	I_BM_ENTER = RuleImage(roi_front=(437,600,62,68), roi_back=(437,600,62,68), threshold=0.8, method="Template matching", file="./tasks/WeeklyTrifles/broken_amulet/broken_amulet_bm_enter.png")
+	I_BM_ENTER = RuleImage(roi_front=(437,600,62,68), roi_back=(425,580,150,110), threshold=0.8, method="Template matching", file="./tasks/WeeklyTrifles/broken_amulet/broken_amulet_bm_enter.png")
 	# 确定 
 	I_BM_CONFIRM = RuleImage(roi_front=(418,620,173,59), roi_back=(418,620,173,59), threshold=0.8, method="Template matching", file="./tasks/WeeklyTrifles/broken_amulet/broken_amulet_bm_confirm.png")
 	# 再次召唤 

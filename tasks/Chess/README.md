@@ -1,7 +1,13 @@
-> 本模块的源码与识别模板移植自 [xylolit-mu/OnmyojiAutoScript](https://github.com/xylolit-mu/OnmyojiAutoScript) 的 Chess 模块，遵循项目根目录的 GPLv3 许可证。
-> 2026-10-08：适配 runhey 主线任务入口、导航、资源命名及结算返回流程；保留原模块实现与来源归属。
-
 # 百鬼棋局开发说明
+
+2026-10-21 已同步 xy `self` 分支至 `90a03025cc6af474f013e1a995a1002df254af1c`。
+当前支持七角山（默认）、海国、冥火；旧荒川等已移除配置按 xy 的规则读取为七角山。
+新版通过 `runtime/frame.py`、`frame_cards.py` 在本地识别卡牌与纹章，处理开局六道选择和红叉浮窗，并更新鼬乐币 OCR 区域。
+本地分享防误点、庭院恢复、满币通知、周一调度和拖动后端适配仍保留。
+`runtime/frame.py` 是 xy Frame 的本地适配，资源生成时须保留该导入与 `I_REWARD_CHESS`、`I_CLOSE_RED`。
+正在运行的账号可能缓存旧模块，需在该账号进程下次停止并启动后完整加载；本次没有重启账号或服务。
+回归命令：`toolkit\python.exe -m unittest tests.test_chess_port tests.test_chess_navigation tests.test_chess_outside_page tests.test_chess_share_guard tests.test_chess_season_update`。
+下方旧开发说明保留为历史参考；涉及旧阵容、旧模板路径与价格 OCR 的部分以新版实现为准。
 
 本文档以当前 `tasks/Chess` 实现为准，说明任务结构、各组件职责、运行流程以及新增阵容的方法。
 

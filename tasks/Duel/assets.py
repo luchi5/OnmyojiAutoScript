@@ -77,3 +77,7 @@ class DuelAssets:
 	O_D_BAN_NAME = RuleOcr(roi=(92,97,82,25), area=(92,97,82,25), mode="Single", method="Default", keyword="", name="d_ban_name")
 
 
+
+	# Fixed title on the victory showcase, independent of moving characters.
+	I_D_TOP_HONOR = RuleImage(roi_front=(965,35,255,215), roi_back=(930,15,325,265), threshold=0.8, method="Template matching", file="./tasks/Duel/duel/duel_d_top_honor.png")
+	C_D_RESULT_CONTINUE = RuleClick(roi_front=(430,540,260,45), roi_back=(430,540,260,45), name="duel_result_continue")

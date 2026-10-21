@@ -4,6 +4,8 @@
 import time
 
 from module.logger import logger
+from module.exception import TaskEnd
+from tasks.RichMan.borrow_selection import borrow_cards, empty_borrow_slots, beginner_travel, borrow_only_page
 
 from tasks.GameUi.page import page_main, page_travel
 from tasks.GameUi.game_ui import GameUi
@@ -22,11 +24,23 @@ class ThousandThings(GameUi, RichManAssets):
         if not con.enable:
             logger.info('Thousand Things is disabled')
             return
+        self.screenshot()
+        if borrow_only_page(self.device.image):
+            logger.info('Borrow-only newcomer/returning page: lending and Thousand Things unavailable')
+            self._tt_leave_borrow()
+            return
         self.goto_page(page_travel)
 
+        self.screenshot()
+        if beginner_travel(self.device.image):
+            logger.info('Newcomer/returning travel area: skip lending and unavailable Thousand Things shop')
+            return
         if con.earn_money:
             logger.info('Start Earn Money')
             self.tt_earn_money()
+            self.screenshot()
+            if beginner_travel(self.device.image):
+                return
 
         while 1:
             self.screenshot()
@@ -170,21 +184,96 @@ class ThousandThings(GameUi, RichManAssets):
                 continue
         return True
 
+    def _tt_prepare_borrow(self):
+        pending = None
+        previous_empty = 3
+        unchanged = 0
+        added = False
+        replacing = False
+        replace_clicked = False
+        confirm_clicked = False
+        for _ in range(40):
+            self.screenshot()
+            if replacing and self.appear(self.I_UI_CONFIRM):
+                if not confirm_clicked:
+                    self.click(self.I_UI_CONFIRM)
+                    confirm_clicked = True
+                time.sleep(0.5)
+                continue
+            if self.appear(self.I_TT_SHIKIGAMI_REPLACE):
+                replacing = True
+                if not replace_clicked:
+                    self.click(self.I_TT_SHIKIGAMI_REPLACE)
+                    replace_clicked = True
+                time.sleep(0.5)
+                continue
+            if not self.appear(self.I_TT_CONFIRM):
+                time.sleep(0.5)
+                continue
+            cards = borrow_cards(self.device.image)
+            selected = sum(card[2] for card in cards)
+            empty = empty_borrow_slots(self.device.image)
+            if replacing:
+                # A replacement must return to the roster before confirming it.
+                return replace_clicked and bool(cards)
+            if pending is not None:
+                if empty < previous_empty:
+                    added = True
+                    pending = None
+                    unchanged = 0
+                else:
+                    unchanged += 1
+                    if unchanged >= 8:
+                        logger.warning('Borrow selection did not change; stop clicking this card')
+                        return False
+                    time.sleep(0.5)
+                    continue
+            if added and empty == 0:
+                return True
+            candidates = [(x, y) for x, y, chosen in cards if not chosen]
+            if not candidates:
+                return empty == 0 and selected > 0
+            pending = candidates[0]
+            previous_empty = empty
+            self.device.click(*pending, control_name='TT_BORROW_UNSELECTED_CARD')
+            time.sleep(0.5)
+        logger.warning('Borrow selection timed out; stop this attempt')
+        return False
+
+    def _tt_leave_borrow(self):
+        for _ in range(10):
+            self.screenshot()
+            if self.appear(self.I_TT_ENTER):
+                return
+            if borrow_only_page(self.device.image):
+                self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1)
+            else:
+                self.appear_then_click(self.I_UI_BACK_RED, interval=1)
+            time.sleep(0.5)
+        raise TaskEnd('Unable to leave borrowing screen safely')
+
     def tt_earn_money(self):
 
         # 进入界面
-        self.ui_click(self.I_TT_BORROW, self.I_TT_CONFIGURE)
-        self.ui_click(self.I_TT_CONFIGURE, self.I_TT_CONFIRM)
-        #替换式神
-        self.ui_click(self.I_TT_SHIKIGAMI, self.I_TT_SHIKIGAMI_REPLACE)
-        while 1:
+        for _ in range(20):
             self.screenshot()
-            if not self.appear(self.I_TT_SHIKIGAMI_REPLACE):
+            if borrow_only_page(self.device.image):
+                self._tt_leave_borrow()
+                return False
+            if self.appear(self.I_TT_CONFIGURE):
                 break
-            if self.appear_then_click(self.I_UI_CONFIRM):
-                continue
-            if self.appear_then_click(self.I_TT_SHIKIGAMI_REPLACE):
-                continue
+            self.appear_then_click(self.I_TT_BORROW, interval=1)
+            time.sleep(0.5)
+        else:
+            logger.warning('Lending configuration unavailable; skip this attempt')
+            self._tt_leave_borrow()
+            return False
+        self.ui_click(self.I_TT_CONFIGURE, self.I_TT_CONFIRM)
+        # Empty slots accept cards directly; a full roster opens replacement UI.
+        if not self._tt_prepare_borrow():
+            logger.warning('Skip lending setup; continue purchases after leaving the roster')
+            self._tt_leave_borrow()
+            return False
         self.ui_click(self.I_TT_CONFIRM, self.I_TT_BORROW_CONFIRM)
 
         # 获取奖励

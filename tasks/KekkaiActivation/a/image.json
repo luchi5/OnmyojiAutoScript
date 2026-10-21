@@ -198,6 +198,15 @@
     "description": "斗鱼6"
   },
   {
+    "itemName": "a_harvest_moon_1",
+    "imageName": "a_a_harvest_moon_1.png",
+    "roiFront": "874,164,51,48",
+    "roiBack": "780,120,240,285",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "一星太阴符咒到期领取"
+  },
+  {
     "itemName": "a_harvest_moon_3",
     "imageName": "a_a_harvest_moon_3.png",
     "roiFront": "897,159,46,40",

@@ -108,10 +108,14 @@ class MuMuProcessGuardTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs):
                 self.assertFalse(self.guard.matches(self.process(**kwargs)))
 
+    def test_real_nxdevice_vm_only_command_is_valid(self):
+        exe = str(self.root / "shell" / "MuMuNxDevice.exe")
+        self.assertTrue(self.guard.matches(self.process(args=[exe, '--vm', self.NAME])))
+        self.assertFalse(self.guard.matches(self.process(args=[exe, '--vm', 'MuMuPlayer-12.0-16'])))
+
     def test_nxdevice_partial_or_duplicate_identity_refuses_recovery(self):
         exe = str(self.root / "shell" / "MuMuNxDevice.exe")
         for args in (
-            [exe, "--vm", self.NAME],
             [exe, "-v", "6"],
             [exe, "--vm", self.NAME, "-v"],
             [exe, "--vm", self.NAME, "-v", "6", "-v", "16"],
@@ -257,6 +261,25 @@ class MuMuProcessGuardTests(unittest.TestCase):
             self.guard.ensure_stopped(grace=0)
         target.kill.assert_not_called()
         self.logger.info.assert_not_called()
+
+    def test_access_denied_while_process_exits_is_rechecked(self):
+        target = self.process()
+        target.cmdline.side_effect = MODULE.psutil.AccessDenied(target.pid)
+        target.is_running.return_value = False
+        self.live = [target]
+        self.guard.ensure_stopped(grace=0)
+        target.kill.assert_not_called()
+        self.time.sleep.assert_called_once_with(0.25)
+
+    def test_transient_access_denied_retries_same_identity(self):
+        target = self.process(vm='MuMuPlayer-12.0-16', index='16')
+        original = target.cmdline.return_value
+        target.cmdline.side_effect = [MODULE.psutil.AccessDenied(target.pid), original]
+        target.is_running.return_value = True
+        self.live = [target]
+        self.guard.ensure_stopped(grace=0)
+        target.kill.assert_not_called()
+        self.assertEqual(target.cmdline.call_count, 2)
 
     def test_disappeared_process_during_inspection_is_ignored(self):
         target = self.process()

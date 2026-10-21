@@ -5,7 +5,7 @@ import math
 import re
 from collections import Counter
 
-from tasks.Chess.badge.badge_hand_icons import (
+from tasks.Chess.resource.badge.badge_hand_icons import (
     BADGE_FILE_INDEX,
     BADGE_QUALITY_INDEX,
 )
@@ -58,6 +58,7 @@ def _names(value: str) -> frozenset[str]:
 
 GRIGRI_NAMES_BY_CATEGORY: dict[str, frozenset[str]] = {
     'bond': _names("""
+六道朱印
 流火朱印·贰 流火朱印 狐妖朱印·贰 狐妖朱印 寒霜朱印·贰 寒霜朱印
 鬼火朱印·贰 鬼火朱印 甲胄朱印·贰 甲胄朱印 护佑朱印·贰 护佑朱印
 强体朱印·贰 强体朱印 锻刃朱印·贰 锻刃朱印 嗜战朱印·贰 嗜战朱印
@@ -67,6 +68,7 @@ GRIGRI_NAMES_BY_CATEGORY: dict[str, frozenset[str]] = {
 大江山朱印·贰 大江山朱印 强运朱印·贰 强运朱印 黑夜山朱印·贰 黑夜山朱印
 """),
     'emblem': _names("""
+回响纹章·贰 回响纹章
 流火纹章·贰 流火纹章 狐妖纹章·贰 狐妖纹章 随机纹章 鬼火纹章·贰
 鬼火纹章 甲胄纹章·贰 甲胄纹章 护佑纹章·贰 护佑纹章 强体纹章·贰
 强体纹章 锻刃纹章·贰 锻刃纹章 嗜战纹章·贰 嗜战纹章 分裂纹章·贰
@@ -95,6 +97,7 @@ GRIGRI_NAMES_BY_CATEGORY: dict[str, frozenset[str]] = {
 狰之御祝 伤魂鸟御祝 破势御祝
 """),
     'functional': _names("""
+弹射炸弹 怨恨连斩 终极吸取 浪涌扇舞 螺螺螺锤 以伞为剑
 首领猎人 御火符咒 不屈灵符·叁 不屈灵符·贰 不屈灵符 气愈灵符·叁
 气愈灵符·贰 气愈灵符 强躯灵符·叁 强躯灵符·贰 强躯灵符 大妖灵符·叁
 大妖灵符·贰 大妖灵符 小鬼灵符·叁 小鬼灵符·贰 小鬼灵符 神赐符咒·叁

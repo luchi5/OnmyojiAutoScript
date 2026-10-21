@@ -75,6 +75,7 @@ class KekkaiActivationAssets:
 	# 斗鱼6 
 	I_A_HARVEST_FISH_6 = RuleImage(roi_front=(898,159,45,38), roi_back=(869,131,165,184), threshold=0.7, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_harvest_fish_6.png")
 	# 太阴3 
+	I_A_HARVEST_MOON_1 = RuleImage(roi_front=(874,164,51,48), roi_back=(780,120,240,285), threshold=0.8, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_harvest_moon_1.png")
 	I_A_HARVEST_MOON_3 = RuleImage(roi_front=(897,159,46,40), roi_back=(869,127,155,184), threshold=0.7, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_harvest_moon_3.png")
 	# 卸下 
 	I_A_DEMOUNT = RuleImage(roi_front=(939,575,55,47), roi_back=(903,551,107,91), threshold=0.8, method="Template matching", file="./tasks/KekkaiActivation/a/a_a_demount.png")

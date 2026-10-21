@@ -64,13 +64,18 @@ class WQExplore(BaseExploration, HighLight):
             self.TEMPLATE_GIF.match = self.TEMPLATE_GIF.match_origin
         while 1:
             self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
             if self.appear(self.I_UI_BACK_YELLOW) and self.appear(self.I_E_EXPLORATION_CLICK):
                 break
             if self.appear_then_click(goto, interval=2):
                 continue
 
         while 1:
-            scene = self.get_current_scene(reuse_screenshot=False)
+            self.screenshot()
+            if self.resume_exploration_encounter():
+                continue
+            scene = self.get_current_scene(reuse_screenshot=True)
             # 进入探索
             if scene == Scene.ENTRANCE:
                 if _cnt_exploration >= num:
@@ -116,12 +121,14 @@ class WQExplore(BaseExploration, HighLight):
                 # boss
                 if self.appear(self.I_BOSS_BATTLE_BUTTON):
                     if self.fire(self.I_BOSS_BATTLE_BUTTON):
+                        search_fail_cnt = 0
                         logger.info(f'Boss battle, minions cnt {self.minions_cnt}')
                         _cnt_exploration += 1
                         explore_only_boss = False
                     continue
                 # 小怪
                 if self.appear(self.TEMPLATE_GIF) and self.fire(self.TEMPLATE_GIF):
+                    search_fail_cnt = 0
                     explore_only_boss = False
                     logger.info(f'Fight, minions cnt {self.minions_cnt}')
                     continue
@@ -142,6 +149,18 @@ class WQExplore(BaseExploration, HighLight):
                         self.quit_explore()
                         continue
                     if self.swipe(self.S_SWIPE_BACKGROUND_RIGHT, interval=3):
+                        search_fail_cnt += 1
+                        if search_fail_cnt >= 6:
+                            # An animated background may never compare stable.
+                            # Return to the quest list to reread real progress
+                            # before the device's repeated-swipe guard fires.
+                            logger.warning('Wanted search found no target after six swipes; recheck quest progress')
+                            self._match_end.refresh()
+                            self.quit_explore()
+                            if not self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_CHECK_EXPLORATION,
+                                                 interval=4, timeout=20):
+                                raise GameStuckError('Wanted search recovery did not return to exploration world')
+                            return
                         continue
                 if not search_fail_timer.started():
                     search_fail_timer.start()

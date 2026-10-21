@@ -24,9 +24,14 @@ from tasks.KekkaiActivation.config import ActivationConfig
 from tasks.Utils.config_enum import ShikigamiClass
 from tasks.GameUi.page import page_main, page_guild
 from tasks.KekkaiActivation.config import CardType
+from tasks.KekkaiActivation.activation_button import ActivationButton
 
 """ 结界挂卡 """
 class ScriptTask(KU, KekkaiActivationAssets):
+
+    @cached_property
+    def I_A_ACTIVATE_YELLOW(self):
+        return ActivationButton()
 
     def run(self):
         con = self.config.kekkai_activation.activation_config
@@ -161,11 +166,15 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.screenshot()
             card_status = self.check_card_status()
             card_effect = self.check_card_effect()
+            # A yellow activation button is sufficient proof of selection.
+            # Background/empty-slot matching must not override that signal.
+            if not card_effect and self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.85):
+                card_status = True
 
             # 不稳定太，等待动画结束
             if not card_status and not card_effect:
                 # 黄色的 ”激活“
-                if self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.95):
+                if self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.85):
                     continue
                 if self.appear(self.I_A_DEMOUNT):
                     # 现在在动画里面
@@ -181,8 +190,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
                         raise GameStuckError('Expired realm card remained after two collection attempts')
                     expired_retries += 1
                     if self.collect_expired_card() is False:
-                        # A fresh chest overrides a failed/zero OCR reading.
-                        # Leave the card intact and retry the timer later.
+                        # Active chest or no recognized reward: leave the card
+                        # intact and retry later instead of restarting the game.
                         self.set_next_run('KekkaiActivation',
                                           target=datetime.now() + timedelta(minutes=5))
                         return False
@@ -237,7 +246,20 @@ class ScriptTask(KU, KekkaiActivationAssets):
             roi_front=(821,420,24,66), roi_back=(780,390,120,130),
             threshold=0.85, method='Template matching',
             file='./tasks/KekkaiActivation/a/snow_realm_card_collected.png')
-        entry_timer = Timer(20).start()
+        low_card = RuleImage(
+            roi_front=(765,492,17,48), roi_back=(730,460,90,110),
+            threshold=0.85, method='Template matching',
+            file='./tasks/KekkaiActivation/a/low_realm_card_empty.png')
+        # Only the three printed characters: exclude moving banners, glow,
+        # ornaments and the changing background around the plaque.
+        text_cards = [RuleImage(
+            roi_front=roi, roi_back=(730,380,150,180), threshold=0.85,
+            method='Template matching', file=f'./tasks/KekkaiActivation/a/{name}.png')
+            for name, roi in [('card_text_low', (768,500,11,31)),
+                              ('card_text_tree', (831,424,11,32))]]
+        entry_timer = Timer(45).start()
+        next_click = 0
+        clicks = 0
         while not entry_timer.reached():
             self.screenshot()
 
@@ -245,18 +267,32 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 break
             if self.appear(self.I_A_AUTO_INVITE):
                 break
-            if self.appear_then_click_multi_scale(self.I_SHI_CARD, interval=1):
+            # A click is never considered success: wait for the panel markers.
+            if time.monotonic() < next_click or clicks >= 3:
+                time.sleep(0.5)
                 continue
-            if self.appear_then_click(compact_card, interval=1.5):
+            for card in text_cards:
+                if self.appear(card):
+                    self.click(card)
+                    clicks += 1
+                    next_click = time.monotonic() + 10
+                    break
+            else:
+                card = None
+            if card is not None:
                 continue
-            if self.appear_then_click(compact_empty, interval=1.5):
-                continue
-            if self.appear_then_click_multi_scale(snow_card, interval=1.5):
-                continue
-            if self.appear_then_click_multi_scale(snow_collected, interval=1.5):
-                continue
+            for candidate, multi in ((low_card, False), (self.I_SHI_CARD, True),
+                                     (compact_card, False), (compact_empty, False),
+                                     (snow_card, True), (snow_collected, True)):
+                matched = self.appear_multi_scale(candidate) if multi else self.appear(candidate)
+                if matched:
+                    self.click(candidate)
+                    clicks += 1
+                    next_click = time.monotonic() + 10
+                    break
+            time.sleep(0.3)
         else:
-            raise GameStuckError('Realm card page was not confirmed within 20 seconds')
+            raise GameStuckError('Realm card page was not confirmed within 45 seconds')
         logger.info('Enter card page')
 
     def check_card_status(self, screenshot=False) -> bool:
@@ -324,7 +360,10 @@ class ScriptTask(KU, KekkaiActivationAssets):
         else:
             raise GameStuckError('Cannot return to realm to collect expired card')
         collected = self.harvest_card()
-        self.goto_cards()
+        # Unknown reward must reach the caller's five-minute retry instead of
+        # failing while reopening a panel hidden behind the reward bubble.
+        if collected:
+            self.goto_cards()
         return collected
 
     def screening_card(self, rule: str):
@@ -334,8 +373,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
         """
 
         if rule == '不筛选（第一张）':
-            card_class = '全部'
-            target_class = self.I_A_CARD_ALL
+            self._select_first_card()
+            return
         elif rule == CardType.TAIKO:
             card_class = CardClass.TAIKO
             target_class = self.I_A_CARD_KAIKO
@@ -347,12 +386,8 @@ class ScriptTask(KU, KekkaiActivationAssets):
             self.push_notify(content='Unknown card rule')
             return
 
-        selection_timeout = Timer(12).start() if rule == '不筛选（第一张）' else None
         while 1:
             self.screenshot()
-            if selection_timeout is not None and selection_timeout.reached():
-                self._card_not_found()
-
             if self.appear(target_class):
                 time.sleep(0.3)
                 self.screenshot()
@@ -363,17 +398,11 @@ class ScriptTask(KU, KekkaiActivationAssets):
         logger.info('Appear card class: {}'.format(card_class))
         while 1:
             self.screenshot()
-            if selection_timeout is not None and selection_timeout.reached():
-                self._card_not_found()
             if not self.appear(target_class):
                 break
             if self.appear_then_click(target_class, interval=1):
                 continue
         logger.info('Selected card class: {}'.format(card_class))
-
-        if rule == '不筛选（第一张）':
-            self._select_first_card(selection_timeout)
-            return
 
         # 找最优卡
         while 1:
@@ -399,15 +428,14 @@ class ScriptTask(KU, KekkaiActivationAssets):
         timeout = timeout if timeout is not None else Timer(12).start()
         while 1:
             self.screenshot()
-            if (not self.appear(self.I_A_EMPTY)
-                    and self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.95)):
+            if self.appear(self.I_A_ACTIVATE_YELLOW, threshold=0.85):
                 self.config.kekkai_activation.activation_config.card_not_found_count = 0
                 self.config.save()
                 self.save_image(content='确认挂卡: 不筛选（第一张）', push_flag=False, wait_time=0)
                 return
             if timeout.reached():
                 self._card_not_found()
-            self.click(self.C_A_SELECT_AUTO, interval=1)
+            self.click(self.C_A_SELECT_AUTO, interval=3)
 
     def _card_reward_limits(self, con=None):
         if con is None:
@@ -566,7 +594,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
         """Local rules for bubbles above normal and compact/snow card plaques."""
         def local(rule):
             return RuleImage(
-                roi_front=tuple(rule.roi_front), roi_back=(780, 120, 240, 285),
+                roi_front=tuple(rule.roi_front), roi_back=(720, 120, 300, 400),
                 threshold=0.8, method=rule.method, file=rule.file)
 
         # Despite its historical name, HARVEST_EXP is the active-card chest,
@@ -581,6 +609,9 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 file='./tasks/KekkaiActivation/a/a_a_harvest_umbrella.png')
         cards = [
             umbrella,
+            RuleImage(roi_front=(874,164,51,48), roi_back=(780,120,240,285),
+                      threshold=0.8, method='Template matching',
+                      file='./tasks/KekkaiActivation/a/a_a_harvest_moon_1.png'),
             self.I_A_HARVEST_FISH4,  # 斗鱼4/5区别不大 斗鱼的如果一直没有领的话
             self.I_A_HARVEST_KAIKO_4,  # 太鼓4
             self.I_A_HARVEST_KAIKO_3,   # 太鼓3
@@ -592,21 +623,27 @@ class ScriptTask(KU, KekkaiActivationAssets):
         return chest, [local(card) for card in cards]
 
     def realm_card_marker(self):
-        """Inspect the current frame without clicking; unknown uses panel fallback."""
+        """Exclude chests, then detect a reward bubble without naming its card."""
         if self.appear(self.I_A_CHECK_CARD) or self.appear(self.I_A_AUTO_INVITE):
             return 'unknown', None
         chest, cards = self.realm_card_markers
         # Prioritize the chest even if a card template also matches weakly.
         if self.appear_multi_scale(chest):
             return 'active', None
+        from tasks.KekkaiActivation.reward_bubble import find_reward_bubble
+        rect = find_reward_bubble(self.device.image)
+        if rect is not None:
+            return 'expired', RuleClick(rect, rect, name='realm_card_reward_bubble')
+        # Retain known-art matching for frames with an obscured or clipped rim.
         for card in cards:
             if self.appear_multi_scale(card):
                 return 'expired', card
         return 'unknown', None
 
     def harvest_card(self):
-        """Collect expired card icons only; False means an active chest blocked it."""
+        """Collect non-chest reward bubbles; the card panel verifies removal."""
         timeout = Timer(8).start()
+        clicked = False
         while not timeout.reached():
             self.screenshot()
             if self.ui_reward_appear_click():
@@ -617,11 +654,13 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 return False
             if marker == 'expired':
                 self.click(card, interval=1)
+                clicked = True
                 time.sleep(0.5)
             else:
                 time.sleep(0.3)
-        logger.info('Finished realm card collection pass')
-        return True
+        logger.info('Finished realm card collection pass' if clicked
+                    else 'No expired realm reward recognized; no collection attempted')
+        return clicked
 
 
 

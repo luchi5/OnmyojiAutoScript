@@ -2,6 +2,8 @@
 # @author runhey
 # github https://github.com/runhey
 import time
+import unicodedata
+from copy import deepcopy
 
 import cv2
 import numpy as np
@@ -28,13 +30,22 @@ class GeneralBuff(BaseTask, GeneralBuffAssets):
             if self.appear_then_click(self.I_BUFF_1, interval=2):
                 continue
 
-        check_image = self.I_AWAKE
-        while 1:
-            self.screenshot()
-            if self.appear(check_image):
-                break
+        self._locate_buff_top()
 
-            self.swipe(self.S_BUFF_UP, interval=2)
+    def _locate_buff_top(self):
+        """Return to the awakening row in one direction, with bounded retries."""
+        for attempt in range(4):
+            self.screenshot()
+            if not self.appear(self.I_CLOUD):
+                return False
+            if self.appear(self.I_AWAKE):
+                time.sleep(0.5)
+                return True
+            if attempt < 3:
+                self.swipe(self.S_BUFF_UP, interval=0)
+                time.sleep(1)
+        logger.warning('未找到觉醒加成定位基准，本次跳过金币加成操作')
+        return False
 
     def close_buff(self):
         """
@@ -81,45 +92,90 @@ class GeneralBuff(BaseTask, GeneralBuffAssets):
         self.I_OPEN_YELLOW.roi_back = list(area)  # 动态设置roi
         self.I_CLOSE_RED.roi_back = list(area)
 
-    def gold_50(self, is_open: bool = True):
-        """
-        金币50buff
-        :param is_open: 是否打开
-        :return:
-        """
-        logger.info(f'{"Open" if is_open else "Close"} gold 50 buff')
-        self.screenshot()
-        area = self.get_area(self.O_GOLD_50)
-        if not area:
-            logger.warning('No gold 50 buff')
+    @staticmethod
+    def _gold_row_area(buff, results):
+        # Compare complete individual rows, allowing only harmless formatting.
+        def normalize(text):
+            return ''.join(unicodedata.normalize('NFKC', text).split()).rstrip('。.')
+        matches = [r for r in results if normalize(r.ocr_text) == normalize(buff.keyword)]
+        if len(matches) != 1:
             return None
-        self.set_switch_area(area)
-        if is_open:
-            if not self.ui_click(click=self.I_CLOSE_RED, stop=self.I_OPEN_YELLOW, interval=1, timeout=10):
-                logger.warning('Open gold 50 buff failed')
-        else:
-            if not self.ui_click(click=self.I_OPEN_YELLOW, stop=self.I_CLOSE_RED, interval=1, timeout=10):
-                logger.warning('Close gold 50 buff failed')
+        box = matches[0].box
+        x = float(box[:, 0].min()) + buff.roi[0]
+        y = float(box[:, 1].min()) + buff.roi[1]
+        w = float(box[:, 0].max() - box[:, 0].min())
+        h = float(box[:, 1].max() - box[:, 1].min())
+        # A clipped or multiline OCR box is not safe for locating its switch.
+        if not (150 <= w <= buff.roi[2] and 10 <= h <= 32
+                and buff.roi[1] + 3 <= y
+                and y + h <= buff.roi[1] + buff.roi[3] - 3):
+            return None
+        left = int(x + w + 10)
+        if not 700 <= left <= 790:
+            return None
+        return left, int(y - 8), 80, int(h + 16)
 
-    def gold_100(self, is_open: bool = True):
-        """
-        金币100buff
-        :param is_open: 是否打开
-        :return:
-        """
-        logger.info(f'{"Open" if is_open else "Close"} gold 100 buff')
-        self.screenshot()
-        area = self.get_area(self.O_GOLD_100)
-        if not area:
-            logger.warning('No gold 100 buff')
-            return None
-        self.set_switch_area(area)
-        if is_open:
-            if not self.ui_click(click=self.I_CLOSE_RED, stop=self.I_OPEN_YELLOW, interval=1, timeout=10):
-                logger.warning('Open gold 100 buff failed')
-        else:
-            if not self.ui_click(click=self.I_OPEN_YELLOW, stop=self.I_CLOSE_RED, interval=1, timeout=10):
-                logger.warning('Close gold 100 buff failed')
+    def _set_gold_buff(self, buff, is_open):
+        # Each snapshot must prove both row identity and switch state.
+        opened, closed = deepcopy(self.I_OPEN_YELLOW), deepcopy(self.I_CLOSE_RED)
+        clicks = stable = misses = 0
+        last_y = None
+        deadline = time.monotonic() + 40
+        next_click = 0
+        self.reject_invite()
+        if not self._locate_buff_top():
+            return False
+        for _ in range(32):
+            if time.monotonic() >= deadline:
+                break
+            self.screenshot()
+            if not self.appear(self.I_CLOUD):
+                logger.warning(f'{buff.name}: 加成面板已关闭，停止操作')
+                return False
+            rows = buff.detect_and_ocr(self.device.image)
+            area = self._gold_row_area(buff, rows)
+            if area is None:
+                stable = 0
+                misses += 1
+                # Two fresh frames allow rendering to settle; absent rows are
+                # skipped without searching elsewhere or touching other buffs.
+                if misses >= 2:
+                    logger.info(f'{buff.name}: 当前未识别到金币加成，跳过')
+                    return False
+                time.sleep(0.3)
+                continue
+            misses = 0
+            opened.roi_back = closed.roi_back = area
+            on, off = self.appear(opened), self.appear(closed)
+            if on == off:
+                stable = 0
+                time.sleep(0.3)
+                continue
+            if on == is_open:
+                stable = stable + 1 if last_y is not None and abs(area[1] - last_y) <= 3 else 1
+                last_y = area[1]
+                if stable >= 2:
+                    logger.info(f'{buff.name}: 已核验金币加成{"开启" if is_open else "关闭"}')
+                    return True
+            else:
+                stable = 0
+                last_y = None
+                if time.monotonic() >= next_click:
+                    if clicks >= 3:
+                        break
+                    # Match and click use this same frame and this row only.
+                    self.click(closed if is_open else opened)
+                    clicks += 1
+                    next_click = time.monotonic() + 2
+            time.sleep(0.35)
+        logger.warning(f'{buff.name}: 金币加成{"开启" if is_open else "关闭"}未确认；查找/操作已达上限')
+        return False
+
+    def gold_50(self, is_open: bool = True) -> bool:
+        return self._set_gold_buff(self.O_GOLD_50, is_open)
+
+    def gold_100(self, is_open: bool = True) -> bool:
+        return self._set_gold_buff(self.O_GOLD_100, is_open)
 
     def exp_50(self, is_open: bool = True):
         """

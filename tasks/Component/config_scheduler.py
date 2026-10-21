@@ -2,8 +2,9 @@
 # @author runhey
 # github https://github.com/runhey
 from pydantic import Field
+from typing import ClassVar
 
-from tasks.Component.config_base import ConfigBase, TimeDelta, DateTime, Time
+from tasks.Component.config_base import ConfigBase, TimeDelta, DateTime, Time, dynamic_hide
 
 class Scheduler(ConfigBase):
     enable: bool = Field(default=False, description='enable_help')
@@ -15,6 +16,22 @@ class Scheduler(ConfigBase):
     server_update: Time = Field(default=Time(hour=9, minute=0, second=0), description='server_update_help')
     delay_date: int = Field(default=1, description='delay_date_help', ge=1, le=31)
     float_time: Time = Field(default=Time(hour=0, minute=0, second=0), description='float_time_help')
+
+
+class DedicatedTimeScheduler(Scheduler):
+    """Calendar targets belong to the task, never to legacy force-time fields."""
+    dedicated_time: ClassVar[bool] = True
+    next_run: DateTime = Field(default=DateTime.fromisoformat('2023-01-01 00:00:00'),
+                               description='dedicated_next_run_help')
+    hide_calendar_fields = dynamic_hide(
+        'server_update', 'failure_interval', 'success_interval', 'delay_date', 'float_time',
+    )
+
+
+class PartialDedicatedTimeScheduler(Scheduler):
+    """Keep real repeat intervals; completed raids have their own clock time."""
+    dedicated_time: ClassVar[bool] = True
+    hide_force_fields = dynamic_hide('server_update', 'delay_date', 'float_time')
 
 
 if __name__ == "__main__":

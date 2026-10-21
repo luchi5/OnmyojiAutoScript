@@ -10,5 +10,11 @@
     "roiFront": "105,23,52,47",
     "roiBack": "105,23,52,47",
     "description": "点击第五手上式神位置，获得式神名称"
+  },
+  {
+    "itemName": "d_result_continue",
+    "roiFront": "430,540,260,45",
+    "roiBack": "430,540,260,45",
+    "description": "结算展示继续，避开分享按钮"
   }
 ]

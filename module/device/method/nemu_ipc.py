@@ -3,6 +3,7 @@ import ctypes
 import os
 import random
 import sys
+import time
 from functools import partial, wraps
 from pathlib import Path
 
@@ -23,6 +24,10 @@ class NemuIpcIncompatible(Exception):
 
 class NemuIpcError(Exception):
     pass
+
+
+class NemuIpcUnavailable(RequestHumanTakeover):
+    """Expected transport failure; screenshot callers may use another transport."""
 
 
 class CaptureStd:
@@ -185,13 +190,17 @@ def retry(func):
                 logger.error(e)
                 break
             # Function call timeout
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as e:
+                if func.__name__ == 'screenshot' and _ == RETRY_TRIES - 1:
+                    raise NemuIpcUnavailable('Nemu screenshot timed out') from e
                 logger.warning(f'Func {func.__name__}() call timeout, retrying: {_}')
 
                 def init():
                     self.reconnect()
             # NemuIpcError
             except NemuIpcError as e:
+                if func.__name__ == 'screenshot' and _ == RETRY_TRIES - 1:
+                    raise NemuIpcUnavailable('Nemu screenshot connection failed') from e
                 logger.error(e)
 
                 def init():
@@ -312,9 +321,10 @@ class NemuIpcImpl:
             asyncio.TimeoutError: If function call timeout
         """
         func_wrapped = partial(func, *args, **kwargs)
-        # Increased timeout for slow PCs
-        # Default screenshot interval is 0.2s, so a 0.15s timeout would have a fast retry without extra time costs
-        result = await asyncio.wait_for(self._ev.run_in_executor(None, func_wrapped), timeout=0.15)
+        # Cold renderer connections need more time than steady-state captures.
+        timeout = {'nemu_connect': 5.0, 'nemu_disconnect': 5.0,
+                   'nemu_capture_display': 1.0}.get(func.__name__, 0.15)
+        result = await asyncio.wait_for(self._ev.run_in_executor(None, func_wrapped), timeout=timeout)
         return result
 
     def ev_run_sync(self, func, *args, **kwargs):
@@ -463,6 +473,17 @@ def serial_to_id(serial: str):
 
 
 class NemuIpc():
+    def _connect_nemu_ipc(self, folder, index):
+        ipc = NemuIpcImpl(folder, index, display_id=0)
+        for attempt in range(4):
+            try:
+                return ipc.__enter__()
+            except (NemuIpcError, asyncio.TimeoutError) as error:
+                if attempt == 3:
+                    raise NemuIpcUnavailable('Nemu connection not ready after 4 attempts') from error
+                logger.warning(f'Nemu renderer not ready, retry {attempt + 1}/3: {error}')
+                time.sleep(2 * (attempt + 1))
+
     @cached_property
     def nemu_ipc(self) -> NemuIpcImpl:
         """
@@ -474,11 +495,7 @@ class NemuIpc():
             index = serial_to_id(self.serial)
             if index is not None:
                 try:
-                    return NemuIpcImpl(
-                        nemu_folder=folder,
-                        instance_id=index,
-                        display_id=0
-                    ).__enter__()
+                    return self._connect_nemu_ipc(folder, index)
                 except (NemuIpcIncompatible, NemuIpcError) as e:
                     logger.error(e)
                     logger.error('Emulator info incorrect')
@@ -490,11 +507,9 @@ class NemuIpc():
             logger.error('Unable to use NemuIpc because emulator instance not found')
             raise RequestHumanTakeover
         try:
-            return NemuIpcImpl(
-                nemu_folder=self.emulator_instance.emulator.abspath('../'),
-                instance_id=self.emulator_instance.MuMuPlayer12_id,
-                display_id=0
-            ).__enter__()
+            return self._connect_nemu_ipc(
+                self.emulator_instance.emulator.abspath('../'),
+                self.emulator_instance.MuMuPlayer12_id)
         except (NemuIpcIncompatible, NemuIpcError) as e:
             logger.error(e)
             logger.error('Unable to initialize NemuIpc')

@@ -81,6 +81,7 @@ class BattleHarness:
         self.device = DeviceGuard(self.clock, self.logger)
         self.screenshots, self.clicks, self.result_clicks = 0, [], []
         self.after_prepare_records = []
+        self.finish_gold_result = lambda: None  # Settlement is covered separately.
         self.I_PREPARE_HIGHLIGHT = 'prepare'
         self.I_DE_WIN, self.I_GOLD_WIN, self.I_FALSE = 'de_win', 'gold_win', 'false'
         method = extract_methods(SOURCE, 'ScriptTask', ('battle_wait',), {

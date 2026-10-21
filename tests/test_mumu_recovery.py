@@ -16,7 +16,7 @@ def recovery_platform():
     cls = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'PlatformWindows')
     methods = [copy.deepcopy(n) for n in cls.body if isinstance(n, ast.FunctionDef)
                and n.name in {'emulator_start', 'emulator_stop'}]
-    ns = {'logger': Mock(), 'Emulator': Emulator}
+    ns = {'logger': Mock(), 'Emulator': Emulator, 'wait_for_launch_slot': Mock()}
     cls = ast.ClassDef(name='Platform', bases=[], keywords=[], body=methods, decorator_list=[])
     exec(compile(ast.fix_missing_locations(ast.Module(body=[cls], type_ignores=[])), str(path), 'exec'), ns)
     return ns['Platform']()

@@ -4,6 +4,8 @@
 import time
 
 from module.logger import logger
+from module.atom.gif import RuleGif
+from module.atom.image import RuleImage
 
 from tasks.GameUi.page import page_main, page_guild
 from tasks.GameUi.game_ui import GameUi
@@ -21,6 +23,12 @@ class Honor(Special):
         if not con.enable:
             logger.info('Honor is not enable')
             return
+        # Match both the normal and sold-out artwork without lowering confidence.
+        target = self.I_HONOR_BLUE
+        if not hasattr(target, 'targets'):
+            normal = RuleImage(tuple(target.roi_front), tuple(target.roi_back),
+                               target.method, target.threshold, target.file)
+            RuleGif.attach_to(target, [normal, self.I_HONOR_BLUE_SOLD])
         self._enter_honor()
         
         # 向下滑找到购买的物品

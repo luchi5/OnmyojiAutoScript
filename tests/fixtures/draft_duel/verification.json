@@ -1,0 +1,63 @@
+{
+  "verified_date": "2026-10-18",
+  "timezone": "Asia/Shanghai",
+  "source": "1号实际游戏内协同对弈大厅及帮助说明",
+  "test_pair": ["01-自己", "02-MAX托管至10.24"],
+  "user_resume_mode": "用户早上手动叫继续；不创建自动任务",
+  "opening_hours": {
+    "monday_to_friday": ["10:00", "23:00"],
+    "saturday_and_sunday": ["08:00", "23:00"]
+  },
+  "observed_rules": {
+    "unlocked_r_or_above_required": 50,
+    "weekly_trial_shikigami": 5,
+    "reserve_per_player": 5,
+    "deployed_per_player": 3,
+    "automatic_battle": true,
+    "series_ends_at_wins": 6,
+    "series_ends_at_losses": 2,
+    "weekly_first_entry_free": true,
+    "normal_entries_2_to_10_coin_cost": 300000,
+    "normal_entries_after_10_coin_cost": 100000,
+    "new_character_first_four_weeks": "每日首次免费，之后每次10万金币",
+    "weekly_challenge_cap": 300,
+    "unclaimed_settlement_rewards": "结算界面未领取的奖励通过邮件发放"
+  },
+  "account_1_lobby": {
+    "state": "未开启",
+    "entry_label": "本次免费",
+    "enrollment_attempts_completed": 0,
+    "series_played": 0,
+    "coins_spent": 0,
+    "team_plus_probe": "点击后仍停留原大厅，未取得邀请页样本",
+    "battle_button_probe": "点击后仍停留未开启大厅，未进入报名或匹配"
+  },
+  "screenshots": ["lobby_closed_20261018.png", "rules_top_20261018.png"],
+  "implementation": {
+    "offline_tests_passed": 63,
+    "python_compile_passed": true,
+    "configuration_registered_default_disabled": true,
+    "pair_preflight_offline_tested": true,
+    "joint_strategy_offline_tested": true,
+    "session_coordination_offline_tested": true,
+    "closed_lobby_real_fixture_tested": true,
+    "live_team_adapter_completed": false,
+    "live_draft_adapter_completed": false,
+    "live_battle_and_settlement_adapter_completed": false,
+    "live_end_to_end_passed": false,
+    "account_configuration_written": false,
+    "backend_restarted": false
+  },
+  "cleanup": {
+    "account_1_emulator_restored_stopped": true,
+    "account_2_emulator_never_started": true,
+    "existing_backend_processes_preserved": true
+  },
+  "next_steps": [
+    "开放时间内先核对1号/2号原有日常任务状态，避免同时操作同一设备。",
+    "核实双方游戏角色名和好友关系，采集邀请、接受邀请、双人就绪、报名与实际费用页面。",
+    "逐阶段采集选将、属性御魂详情、翻牌上阵、自动战斗、单场胜负和整轮结算。",
+    "补正向开放识别及UI适配器，再接入已测试的preflight/session/strategy模块。",
+    "完成至少一轮实机闭环后才能标记功能完成；离线测试不能代替实战验收。"
+  ]
+}

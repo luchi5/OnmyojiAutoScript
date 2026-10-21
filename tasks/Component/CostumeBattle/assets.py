@@ -104,7 +104,7 @@ class CostumeBattleAssets:
 	# 战斗胜利 
 	I_WIN_15 = RuleImage(roi_front=(544,190,68,67), roi_back=(390,30,510,290), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeBattle/battle15/battle15_win_15.png")
 	# 针对封魔的特殊 
-	I_DE_WIN_15 = RuleImage(roi_front=(590,152,87,129), roi_back=(390,30,510,290), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeBattle/battle15/battle15_de_win_15.png")
+	I_DE_WIN_15 = RuleImage(roi_front=(550,48,240,127), roi_back=(390,30,510,290), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeBattle/battle15/battle15_de_win_15.png")
 	# 失败 
 	I_FALSE_15 = RuleImage(roi_front=(597,190,57,66), roi_back=(390,30,510,290), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeBattle/battle15/battle15_false_15.png")
 	# 战斗信息标识 

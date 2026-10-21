@@ -103,7 +103,15 @@ class TicketDifficulty(str, Enum):
     HARD = 'ticket_hard'
 
 
+class BossCountMode(str, Enum):
+    AUTO = 'boss_auto_progress'
+    FIXED = 'boss_fixed_count'
+
+
 class EventClimb(GeneralClimb):
+    boss_count_mode: BossCountMode = Field(default=BossCountMode.AUTO,
+                                          description='boss_count_mode_help')
+    boss_limit: int = Field(default=20, ge=0, description='boss_limit_help')
     pass_difficulty: TicketDifficulty = Field(default=TicketDifficulty.CURRENT,
                                               description='pass_difficulty_help')
 

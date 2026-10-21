@@ -7,11 +7,13 @@ import unittest
 from unittest.mock import Mock
 
 import cv2
+import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from tasks.AbyssShadows.assets import AbyssShadowsAssets
 from tasks.AbyssShadows.selection_assets import AbyssSelectionAssets
+from module.atom.image import RuleImage
 from dev_tools.test_abyss_closeout_events import AREAS
 
 
@@ -33,9 +35,12 @@ def load_task():
     node.bases = [ast.Name(id='AbyssShadowsAssets', ctx=ast.Load()),
                   ast.Name(id='AbyssSelectionAssets', ctx=ast.Load())]
     keep = {'is_area_selection', 'is_area_sealed', 'check_current_area', 'change_area', 'select_boss'}
-    node.body = [n for n in node.body if isinstance(n, ast.FunctionDef) and n.name in keep]
+    node.body = [n for n in node.body if (isinstance(n, ast.FunctionDef) and n.name in keep)
+                 or (isinstance(n, ast.Assign) and isinstance(n.targets[0], ast.Name)
+                     and n.targets[0].id in ('I_ABYSS_ATTACK_XY', 'I_ABYSS_FINISHED_XY'))]
     env = dict(AreaType=AREAS, Timer=Timer, logger=Mock(), GamePageUnknownError=RuntimeError,
-               AbyssShadowsAssets=AbyssShadowsAssets, AbyssSelectionAssets=AbyssSelectionAssets)
+               AbyssShadowsAssets=AbyssShadowsAssets, AbyssSelectionAssets=AbyssSelectionAssets,
+               RuleImage=RuleImage)
     exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), '<task>', 'exec'), env)
     return env['ScriptTask']
 
@@ -64,6 +69,14 @@ def runtime(name):
 
 
 class AbyssSelectionTests(unittest.TestCase):
+    def test_real_attack_header_rejected_by_old_template_is_accepted_by_xy(self):
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        frame[40:110, 550:780] = shot('attack_header')
+        task = TASK()
+        self.assertFalse(task.I_IS_ATTACK.match(frame))
+        self.assertTrue(task.I_ABYSS_ATTACK_XY.match(frame))
+        self.assertFalse(task.I_ABYSS_FINISHED_XY.match(frame))
+
     def test_easy_main_selection_recognized_with_first_two_cards_sealed(self):
         task = runtime('selection')
         self.assertTrue(task.is_area_selection())

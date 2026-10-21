@@ -16,7 +16,10 @@ from tasks.RichMan.shrine import Shrine
 from tasks.RichMan.thousand_things import ThousandThings
 
 
-class ScriptTask(Mall, Guild, ThousandThings, Shrine):
+from tasks.RichMan.itachi_shop import ItachiCoinShop
+
+
+class ScriptTask(Mall, Guild, ThousandThings, Shrine, ItachiCoinShop):
 
     def run(self):
         con: RichMan = self.config.rich_man
@@ -26,6 +29,7 @@ class ScriptTask(Mall, Guild, ThousandThings, Shrine):
         self.execute_shrine(con.shrine)
         # 功勋商店
         self.execute_guild(con.guild_store)
+        self.execute_itachi_coin_shop(getattr(con, "itachi_coin_shop", None))
         # 商店
         self.execute_mall()
 

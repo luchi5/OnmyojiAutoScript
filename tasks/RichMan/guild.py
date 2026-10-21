@@ -61,13 +61,14 @@ class Guild(Buy, GameUi, RichManAssets):
         # 对应的图片, 对应的函数
         # 这里的顺序就是，在游戏中出现的顺序
         items = [
+            *([(self.I_GUILD_HONOR_GIFT, self._guild_honor_gift)] if getattr(con, "honor_gift", False) else []),
             *([(self.I_GUILD_BLUE, self._guild_mystery_amulet)] if con.mystery_amulet else []),
             *([(self.I_GUILD_SCRAP, self._guild_black_daruma_scrap)] if con.black_daruma_scrap else []),
             *([(self.I_GUILD_SKIN, self._guild_skin_ticket)] if con.skin_ticket else []),
         ]
-        items_all_done = False
+        items_all_done = not items
         swipe_no_progress = 0
-        while 1:
+        while items:
             self.screenshot()
             bought_this_round = False
             for item in items:
@@ -78,7 +79,7 @@ class Guild(Buy, GameUi, RichManAssets):
                 try:
                     func()
                     # 如果这里是最后一个，就是代表前面的都购买完成了
-                    if item == items[-1]:
+                    if len(items) == 1:
                         items_all_done = True
                     items.remove(item)
                     bought_this_round = True
@@ -112,6 +113,18 @@ class Guild(Buy, GameUi, RichManAssets):
                 continue
             if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1):
                 continue
+
+    def _guild_honor_gift(self):
+        logger.hr('Guild honor gift', 2)
+        self.screenshot()
+        if not self.buy_check_money(self.O_GUILD_TOTAL, 210):
+            return False
+        if self.check_remain(self.I_GUILD_HONOR_GIFT) <= 0:
+            logger.info('No guild honor gift available')
+            return False
+        self.buy_more(self.I_GUILD_HONOR_GIFT, 1)
+        time.sleep(0.5)
+        return True
 
     def _guild_mystery_amulet(self):
         # 蓝票

@@ -25,5 +25,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "三星白蛋"
+  },
+  {
+    "itemName": "honor_blue_sold",
+    "imageName": "honor_honor_blue_sold.png",
+    "roiFront": "421,389,100,100",
+    "roiBack": "154,113,864,476",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "蓝票售罄暗色图标"
   }
 ]

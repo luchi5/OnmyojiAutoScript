@@ -15,6 +15,7 @@ from tasks.Component.Costume.config import (
     BattleType, BattleSceneType, CarpBannerType
 )
 from tasks.Component.Costume.assets import CostumeAssets
+from tasks.Component.CostumeRealm.assets import CostumeRealmAssets
 from tasks.Component.CostumeBattle.assets import CostumeBattleAssets
 from tasks.Component.CostumeShikigami.assets import CostumeShikigamiAssets
 from tasks.Component.CostumeCarpBanner.assets import CostumeCarpBannerAssets
@@ -32,6 +33,8 @@ main_costume_model = {
         'I_PET_HOUSE': f'I_PET_HOUSE_{i}'
     } for i in range(1, 17)
 }
+main_costume_model[MainType.COSTUME_MAIN_10]['I_CHECK_MAIN'] = ['I_CHECK_MAIN_10', 'I_CHECK_MAIN_10_MOON']
+
 # 玉岚狐庭（issue #1824）
 main_costume_model[getattr(MainType, "COSTUME_MAIN_17")] = {
     'I_CHECK_MAIN': ['I_CHECK_MAIN_17_A', 'I_CHECK_MAIN_17_B', 'I_CHECK_MAIN_17_C'],
@@ -40,6 +43,9 @@ main_costume_model[getattr(MainType, "COSTUME_MAIN_17")] = {
     'I_MAIN_GOTO_TOWN': ['I_MAIN_GOTO_TOWN_17_A', 'I_MAIN_GOTO_TOWN_17_B', 'I_MAIN_GOTO_TOWN_17_C'],
     'I_PET_HOUSE': ['I_PET_HOUSE_17_A', 'I_PET_HOUSE_17_B', 'I_PET_HOUSE_17_C'],
 }
+# The courtyard title plaque can select theme 17 on a shifted theme 16 frame.
+# Both exploration lantern designs lead to the same page in this small ROI.
+main_costume_model[MainType.COSTUME_MAIN_17]['I_MAIN_GOTO_EXPLORATION'].append('I_MAIN_GOTO_EXPLORATION_16')
 main_costume_model[getattr(MainType, "COSTUME_MAIN_13")] = {
     'I_CHECK_MAIN': ['I_CHECK_MAIN_13',],
     'I_MAIN_GOTO_EXPLORATION': ['I_MAIN_GOTO_EXPLORATION_13', ],
@@ -122,6 +128,7 @@ class CostumeBase:
         logger.info(f'Current task: {current_task}')
         self.check_costume_main(config.costume_main_type)
         self.check_costume_carpbanner(config.costume_carpbanner_type)
+        self.check_costume_realm(config.costume_realm_type)
         self.check_costume_battle(config.costume_battle_type)
         self.check_costume_battle_scene(config.costume_battle_scene_type)
         self.check_costume_shikigami(config.costume_shikigami_type)
@@ -223,8 +230,30 @@ class CostumeBase:
         self._main_detection_cache = (image, threshold, candidates, matched)
         return matched
 
+    def check_costume_realm(self, realm_type):
+        if realm_type != RealmType.COSTUME_REALM_SHEN_AN:
+            return
+        for key in ('I_REALM_SHIN', 'I_SHI_DEFENSE', 'I_SHI_GROWN', 'I_SHI_CARD',
+                    'I_CARD_EXP', 'I_BOX_EXP', 'I_BOX_AP'):
+            if not hasattr(self, key):
+                continue
+            target = getattr(self, key)
+            # Keep the old icon too: friend's realms can use a different skin.
+            originals = getattr(target, '_realm_originals', None)
+            if originals is None:
+                originals = [_clone_image(item) for item in getattr(target, 'targets', [target])]
+                target._realm_originals = originals
+            variants = [_clone_image(getattr(CostumeRealmAssets, key))] + [_clone_image(item) for item in originals]
+            for variant in variants:
+                variant.roi_back = (0, 100, 1280, 600)
+            RuleGif.attach_to(target, variants)
+        for key in ('I_UTILIZE_EXP', 'I_BOX_EXP_MAX'):
+            if hasattr(self, key):
+                getattr(self, key).roi_back = (0, 100, 1280, 600)
+
     def check_costume_carpbanner(self, carpbanner_type: CarpBannerType):
         if carpbanner_type == CarpBannerType.COSTUME_CARPBANNER_DEFAULT:
+            self._add_realm_label_variants()
             return
         logger.info(f'Switch carp banner theme {carpbanner_type} (override realm assets) ({I18n.trans_zh_cn(carpbanner_type)})')
         carpbanner_assets = CostumeCarpBannerAssets()
@@ -236,6 +265,41 @@ class CostumeBase:
             assert_value: RuleImage = getattr(carpbanner_assets, value)
             # 执行替换（覆盖结界皮肤的同名key）
             self.replace_img(key, assert_value)
+        self._add_realm_label_variants()
+
+    def _add_realm_label_variants(self):
+        """Recognize the narrow text plaques independently of the realm background."""
+        for key in ('I_REALM_SHIN', 'I_CARD_EXP', 'I_BOX_AP'):
+            if hasattr(self, key):
+                target = getattr(self, key)
+                for item in getattr(target, 'targets', [target]):
+                    item.roi_back = (0, 100, 1280, 600)
+        for key, label in (('I_SHI_GROWN', 'grown'), ('I_SHI_CARD', 'card'),
+                           ('I_SHI_DEFENSE', 'defense')):
+            if not hasattr(self, key):
+                continue
+            target = getattr(self, key)
+            originals = [_clone_image(item) for item in getattr(target, 'targets', [target])]
+            path = f'./tasks/Component/CostumeCarpBanner/realm_labels/{label}.png'
+            if any(item.file == path for item in originals):
+                continue
+            variant = RuleImage(roi_front=(0, 0, 13, 43 if label != 'defense' else 42),
+                                roi_back=(180, 180, 920, 430), threshold=0.85,
+                                method='Template matching', file=path)
+            alternate = _clone_image(variant)
+            alternate.file = path.replace('.png', '_2.png')
+            screen = RuleImage(roi_front=(0, 0, 13, 50),
+                               roi_back=(180, 180, 920, 430), threshold=0.85,
+                               method='Template matching',
+                               file=path.replace('.png', '_screen.png'))
+            compact = RuleImage(roi_front=(0, 0, 12, 40),
+                                roi_back=(350, 400, 550, 200), threshold=0.85,
+                                method='Template matching',
+                                file=path.replace('.png', '_compact.png'))
+            name = target.name
+            RuleGif.attach_to(target, originals + [variant, alternate, screen, compact])
+            target.preserve_variant_rules = True
+            target.name = name
 
     def check_costume_battle(self, battle_type: BattleType):
         if battle_type == BattleType.COSTUME_BATTLE_DEFAULT:

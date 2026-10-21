@@ -5,7 +5,7 @@ next invocation even when their original GameUi/result modules are cached.
 """
 
 from module.logger import logger
-from module.atom.image import RuleImage
+from tasks.Chess.runtime.image import ChessImage as RuleImage
 from tasks.GameUi.page import page_chess
 
 
@@ -16,14 +16,38 @@ class ChessLobbyRecoveryMixin:
         threshold=0.9, method='Template matching',
         file='./tasks/Chess/res/rank_progress.png',
     )
+    # The new season starts at /100 rather than /200. Identify the paired
+    # progress-track ornaments instead of depending on a changing score.
+    I_CHESS_RANK_TRACK_LEFT = RuleImage(
+        roi_front=(126, 423, 20, 25), roi_back=(120, 418, 35, 40),
+        threshold=0.9, method='Template matching',
+        file='./tasks/Chess/res/rank_track_cap.png',
+    )
+    I_CHESS_RANK_TRACK_RIGHT = RuleImage(
+        roi_front=(640, 423, 20, 25), roi_back=(634, 418, 35, 40),
+        threshold=0.9, method='Template matching',
+        file='./tasks/Chess/res/rank_track_cap_right.png',
+    )
+
+    def _chess_rank_progress_visible(self) -> bool:
+        return (self.appear(self.I_CHESS_RANK_PROGRESS)
+                or (self.appear(self.I_CHESS_RANK_TRACK_LEFT)
+                    and self.appear(self.I_CHESS_RANK_TRACK_RIGHT)))
 
     def _chess_outside_page_visible(self) -> bool:
         # These are positive global page markers, not guesses based on missing
         # battle icons. Unknown result/loading frames keep their existing flow.
-        return (not self.appear(self.I_CHESS_RANK_PROGRESS)
+        return (not self._chess_rank_progress_visible()
+                and not self.chess_result_continue_visible()
+                and not self._chess_reward_visible()
+                # The centered first-place return button is a stronger signal
+                # than courtyard skins. Other rank markers can resemble collection.
+                and not self.appear(self.I_CHESS_EXIT_TO_LOBBY_2)
                 and (self.appear(self.I_CHECK_MAIN) or self.appear(self.I_CHECK_COLLECTION)))
 
     def _recover_chess_outside_page(self) -> bool:
+        if getattr(self, '_chess_outside_recovering', False):
+            return False
         if not self._chess_outside_page_visible():
             return False
         self._chess_share_advancing = False
@@ -31,14 +55,21 @@ class ChessLobbyRecoveryMixin:
             'Chess flow reached courtyard/collection; stop result clicks '
             'and navigate back to Chess lobby'
         )
-        self.goto_page(page_chess)
-        return True
+        self._chess_outside_recovering = True
+        try:
+            self.goto_page(page_chess)
+            if self._chess_outside_page_visible():
+                from module.exception import GameStuckError
+                raise GameStuckError('Chess lobby recovery did not leave the outside page')
+            return True
+        finally:
+            self._chess_outside_recovering = False
 
     def chess_lobby_visible(self) -> bool:
         return not self._chess_outside_page_visible() and super().chess_lobby_visible()
 
     def chess_result_page_visible(self) -> bool:
-        return (self.appear(self.I_CHESS_RANK_PROGRESS)
+        return (self._chess_rank_progress_visible()
                 or (not self._chess_outside_page_visible() and super().chess_result_page_visible()))
 
     def _click_chess_result_continue(self) -> None:
@@ -48,7 +79,7 @@ class ChessLobbyRecoveryMixin:
         return super()._click_chess_result_continue()
 
     def _advance_chess_result_stage(self) -> bool:
-        if self.appear(self.I_CHESS_RANK_PROGRESS):
+        if self._chess_rank_progress_visible():
             self._click_chess_result_continue()
             return True
         if self._recover_chess_outside_page():

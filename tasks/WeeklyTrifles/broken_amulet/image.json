@@ -3,7 +3,7 @@
     "itemName": "bm_enter",
     "imageName": "broken_amulet_bm_enter.png",
     "roiFront": "437,600,62,68",
-    "roiBack": "437,600,62,68",
+    "roiBack": "425,580,150,110",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "进入普通召唤"

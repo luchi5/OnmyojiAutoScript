@@ -9,7 +9,7 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def harness(item='随机御魂',quantities=('10','10')):
     clock=FakeClock(1)
-    h=SimpleNamespace(device=SimpleNamespace(image=None),O_BUY_NUMBER=SimpleNamespace(roi=(0,0,10,10)),
+    h=SimpleNamespace(device=SimpleNamespace(image=None,click_record_remove=Mock()),O_BUY_NUMBER=SimpleNamespace(roi=(0,0,10,10)),
         I_BUY_PLUS='plus',I_BUY_ADD='add',I_BUY_SUB='sub',C_BUY_MORE='purchase')
     h.screenshot=Mock(side_effect=clock.advance);h.appear=lambda r:r=='plus'
     h.appear_then_click=Mock(return_value=True);h.click=Mock();h.ui_reward_appear_click=Mock(return_value=True)
@@ -46,17 +46,42 @@ class PurchaseTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError,'result unknown'):h._buy_bondling_checked('entry',10,1)
         h.click.assert_called_once_with('purchase')
 
+    def test_maximum_arrow_replaces_repeated_adds(self):
+        h=harness(quantities=['1','25','25'])
+        h._buy_bondling_checked('entry',25,1)
+        h.appear_then_click.assert_called_once_with('plus',interval=0.8)
+        h.click.assert_called_once_with('purchase')
+
+    def test_maximum_over_target_is_reduced_before_purchase(self):
+        h=harness(quantities=['1','12','11','10','10'])
+        h._buy_bondling_checked('entry',10,1)
+        self.assertEqual([c.args[0] for c in h.appear_then_click.call_args_list],['plus','sub','sub'])
+        h.click.assert_called_once_with('purchase')
+
+    def test_long_adjustment_only_clears_guard_for_verified_progress(self):
+        h=harness(quantities=['1']+[str(x) for x in range(25,9,-1)]+['10'])
+        h._buy_bondling_checked('entry',10,1)
+        self.assertEqual(h.device.click_record_remove.call_count,15)
+        self.assertTrue(all(c.args==('sub',) for c in h.device.click_record_remove.call_args_list))
+
+    def test_unresponsive_quantity_keeps_click_guard_and_never_buys(self):
+        h=harness(quantities=['1']*60)
+        with self.assertRaisesRegex(RuntimeError,'quantity not confirmed'):
+            h._buy_bondling_checked('entry',25,1)
+        h.device.click_record_remove.assert_not_called()
+        h.click.assert_not_called()
+
 class LocationTests(unittest.TestCase):
     def locate(self, sold=False):
         # Random soul moves to the fourth column; don't reuse the first button.
         row=SimpleNamespace(ocr_text='随机御魂',box=[[936,25],[1031,25],[1031,52],[936,52]])
         def reader(**kw):
             return SimpleNamespace(detect_and_ocr=lambda im:
-                [row] if kw['name']=='bondling_shop_names' else [SimpleNamespace(ocr_text='每周限购100')])
+                [row] if kw['name']=='bondling_shop_names' else [SimpleNamespace(ocr_text='每周限购',box=[[50,10],[72,10],[72,100],[50,100]])], ocr=lambda im:'100')
         ns={'RuleOcr':reader,'RuleImage':lambda **kw:kw,'RuleClick':lambda **kw:SimpleNamespace(**kw),
-            'GameStuckError':RuntimeError,'re':re}
+            'GameStuckError':RuntimeError,'re':re,'logger':Mock()}
         h=SimpleNamespace(device=SimpleNamespace(image=None),appear=lambda r:sold)
-        f=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',('_locate_bondling_product',),ns)['_locate_bondling_product']
+        f=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',('_locate_bondling_product_once',),ns)['_locate_bondling_product_once']
         return f(h,1)
     def test_sold_out_soul_is_skipped(self):
         self.assertIsNone(self.locate(True))
@@ -66,3 +91,17 @@ class LocationTests(unittest.TestCase):
         self.assertEqual(count,100)
 
 if __name__=='__main__':unittest.main()
+
+class StockRecoveryTests(unittest.TestCase):
+    def test_insufficient_balance_skips_stock(self):
+        ns={'RuleImage':object,'RuleOcr':object,'logger':Mock()}
+        f=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',('_bondlings_base',),ns)['_bondlings_base']
+        h=SimpleNamespace(screenshot=Mock(),device=SimpleNamespace(image=None),
+            O_BL_CHECK_MONEY=SimpleNamespace(ocr=lambda im:(19,3981,4000)),_locate_bondling_product=Mock())
+        f(h,SimpleNamespace(name='soul'),None,1,100,25,20)
+        h._locate_bondling_product.assert_not_called()
+    def test_unknown_stock_retries_then_skips(self):
+        ns={'GameStuckError':RuntimeError,'logger':Mock(),'time':SimpleNamespace(sleep=lambda _:None)}
+        f=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',('_locate_bondling_product',),ns)['_locate_bondling_product']
+        h=SimpleNamespace(screenshot=Mock(),_locate_bondling_product_once=Mock(side_effect=RuntimeError('unknown')))
+        self.assertIsNone(f(h,1));self.assertEqual(h.screenshot.call_count,3)

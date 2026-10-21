@@ -241,8 +241,8 @@ class RuleImage(RuleImageMallResourceMixin):
         if best_score > threshold and best_loc is not None:
             self.roi_front[0] = best_loc[0] + self.roi_back[0]
             self.roi_front[1] = best_loc[1] + self.roi_back[1]
-            self.roi_front[2] = scaled_w
-            self.roi_front[3] = scaled_h
+            self.roi_front[2] = int(mat_w * best_scale)
+            self.roi_front[3] = int(mat_h * best_scale)
             return True
         else:
             return False

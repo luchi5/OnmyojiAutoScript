@@ -16,7 +16,6 @@ from module.server.config_manager import ConfigManager
 
 
 class MainManager(ConfigManager):
-    # config_cache: Config = None  # 缓存当前切换的配置
     script_process: dict[str: ScriptProcess] = None  # 脚本进程
     push_data_thread: Thread = None  # 数据推送线程
     signal_kill_server: bool = False
@@ -29,18 +28,6 @@ class MainManager(ConfigManager):
             self.script_process[script_name] = ScriptProcess(script_name)
         self.push_data_thread = Thread(target=self.start_push_data_thread, daemon=True)
         self.push_data_thread.start()
-
-    # def ensure_config_cache(self, config_name: str, reload: bool = False):
-    #     if self.config_cache is None:
-    #         if config_name not in self._all_script_files:
-    #             logger.warning(f'[{config_name}] script file does not exist')
-    #             return None
-    #         self.config_cache = Config(config_name)
-    #     elif self.config_cache.config_name != config_name:
-    #         self.config_cache = Config(config_name)
-    #     if reload:
-    #         self.config_cache = Config(config_name)
-    #     return self.config_cache
 
     @staticmethod
     def config_cache(name: str) -> Config:

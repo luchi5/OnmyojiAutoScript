@@ -1,0 +1,329 @@
+{
+  "version": 1,
+  "layout": {
+    "itemName": "fetter_badge",
+    "imageName": "fetter/fetter_badge_badge_1.png",
+    "roiBack": "166,439,970,281",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "profile": "High",
+    "description": "纹章识别",
+    "roiBadge": "574,548,65,20",
+    "badgeSerial": 1,
+    "roiRange": [
+      "564,665,79,23",
+      "562,551,86,137",
+      "578,589,53,48"
+    ],
+    "badges": [
+      {
+        "imageName": "fetter/fetter_badge_badge_1.png"
+      }
+    ],
+    "rangeOperations": [
+      {
+        "type": "ocr",
+        "mode": "Single",
+        "method": "Default",
+        "keyword": ""
+      },
+      {
+        "type": "click"
+      },
+      {
+        "imageName": "",
+        "method": "Template matching",
+        "threshold": 0.8,
+        "type": "image"
+      }
+    ],
+    "badgeGrayscale": true
+  },
+  "calibration": {
+    "scale": 0.588,
+    "inset_offset": [
+      20,
+      53
+    ],
+    "image_size": [
+      53,
+      48
+    ],
+    "inset": 2,
+    "reference_name": "分裂纹章",
+    "reference_screenshot": "MuMu-20261015-103654-895.png",
+    "reference_sha256": "e847ff1144fc90b5ac78190ee969f80f81e91d18d4d4de56b38d0bbc7b77571e",
+    "badge_score": 0.979590892791748,
+    "image_score": 0.9894891977310181
+  },
+  "entries": {
+    "haiguo": {
+      "name": "海国纹章",
+      "file": "emblem_haiguo.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        130,
+        77,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "jiazhou": {
+      "name": "甲胄纹章",
+      "file": "emblem_jiazhou.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        315,
+        77,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "dajiangshan": {
+      "name": "大江山纹章",
+      "file": "emblem_dajiangshan.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        500,
+        77,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "mingfu": {
+      "name": "冥府纹章",
+      "file": "emblem_mingfu.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        684,
+        77,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "huangchuan": {
+      "name": "荒川纹章",
+      "file": "emblem_huangchuan.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        130,
+        355,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "qijiaoshan": {
+      "name": "七角山纹章",
+      "file": "emblem_qijiaoshan.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        315,
+        355,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "pinganjing": {
+      "name": "平安京纹章",
+      "file": "emblem_pinganjing.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        500,
+        355,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "fenlie": {
+      "name": "分裂纹章",
+      "file": "emblem_fenlie.png",
+      "source": "fetter1.png",
+      "source_roi": [
+        684,
+        355,
+        154,
+        264
+      ],
+      "source_sha256": "3d4ee12e2ad4b0cd0cdb088fa481dc59ead350d707b815bd73df28197c5d074c",
+      "validated_in_game_screenshot": true,
+      "ocr_aliases": []
+    },
+    "yixing": {
+      "name": "易形纹章",
+      "file": "emblem_yixing.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        130,
+        78,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "shizhan": {
+      "name": "嗜战纹章",
+      "file": "emblem_shizhan.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        315,
+        78,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "duanren": {
+      "name": "锻刃纹章",
+      "file": "emblem_duanren.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        500,
+        78,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": [
+        "锻刀纹章"
+      ]
+    },
+    "qiangti": {
+      "name": "强体纹章",
+      "file": "emblem_qiangti.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        684,
+        78,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "huyou": {
+      "name": "护佑纹章",
+      "file": "emblem_huyou.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        130,
+        356,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "guihuo": {
+      "name": "鬼火纹章",
+      "file": "emblem_guihuo.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        315,
+        356,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "hanshuang": {
+      "name": "寒霜纹章",
+      "file": "emblem_hanshuang.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        500,
+        356,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "huyao": {
+      "name": "狐妖纹章",
+      "file": "emblem_huyao.png",
+      "source": "fetter2.png",
+      "source_roi": [
+        684,
+        356,
+        154,
+        264
+      ],
+      "source_sha256": "4efd85f67b2df9b7b86f10cdbd885e825e45215603863cdc43eb2cabcad120b6",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "liuhuo": {
+      "name": "流火纹章",
+      "file": "emblem_liuhuo.png",
+      "source": "fetter3.png",
+      "source_roi": [
+        130,
+        434,
+        154,
+        264
+      ],
+      "source_sha256": "ac9468291799817805c756b6569f89f0a64c8ce3e93fdba281f59548dd2ec311",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "huixiang": {
+      "name": "回响纹章",
+      "file": "emblem_huixiang.png",
+      "source": "fetter3.png",
+      "source_roi": [
+        315,
+        434,
+        154,
+        264
+      ],
+      "source_sha256": "ac9468291799817805c756b6569f89f0a64c8ce3e93fdba281f59548dd2ec311",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    },
+    "yinian": {
+      "name": "遗念纹章",
+      "file": "emblem_yinian.png",
+      "source": "fetter3.png",
+      "source_roi": [
+        500,
+        434,
+        154,
+        264
+      ],
+      "source_sha256": "ac9468291799817805c756b6569f89f0a64c8ce3e93fdba281f59548dd2ec311",
+      "validated_in_game_screenshot": false,
+      "ocr_aliases": []
+    }
+  }
+}

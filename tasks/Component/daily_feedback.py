@@ -6,7 +6,6 @@ and notification failures must not affect the account's game tasks.
 import copy
 import hashlib
 import json
-import os
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -20,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 STATE_DIR = ROOT / 'config' / 'daily_feedback'
 OPTIONS_PATH = STATE_DIR / 'settings.json'
 KINDS = frozenset(('talisman', 'collective'))
-PUBLIC_ORIGIN = 'http://127.0.0.1:22300'
+PUBLIC_ORIGIN = 'https://luchi.ddns.net:22290'
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 
 
@@ -196,31 +195,15 @@ def finalize_feedback(config, now=None):
         return False
 
 
-def _valid_public_origin(origin):
-    if not isinstance(origin, str) or re.search(r'[\s\\]', origin):
-        return None
-    try:
-        parsed = urlsplit(origin)
-        port = parsed.port
-        if port is not None and not 1 <= port <= 65535:
-            return None
-        if (parsed.scheme in ('http', 'https') and parsed.hostname
-                and parsed.username is None and parsed.password is None
-                and not parsed.netloc.endswith(':')
-                and parsed.path in ('', '/') and not parsed.query and not parsed.fragment):
-            return origin.rstrip('/')
-    except ValueError:
-        pass
-    return None
-
-
-def _configured_public_origin():
-    return _valid_public_origin(os.environ.get('OAS_PUBLIC_FEEDBACK_ORIGIN')) or PUBLIC_ORIGIN
-
-
 def _feedback_url(config, day):
     # The URL contains an account/date, never any push credentials.
-    origin = _valid_public_origin(_options().get('public_origin')) or _configured_public_origin()
+    origin = _options().get('public_origin', PUBLIC_ORIGIN)
+    if not isinstance(origin, str):
+        origin = PUBLIC_ORIGIN
+    parsed = urlsplit(origin)
+    if (parsed.scheme != 'https' or parsed.netloc != 'luchi.ddns.net:22290'
+            or parsed.path not in ('', '/') or parsed.query or parsed.fragment):
+        origin = PUBLIC_ORIGIN
     return origin.rstrip('/') + '/daily-feedback?' + urlencode({'account': _account(config), 'date': day})
 
 

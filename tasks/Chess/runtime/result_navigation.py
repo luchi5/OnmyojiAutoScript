@@ -3,13 +3,15 @@ from __future__ import annotations
 """百鬼棋局局内页面的全局恢复与退出流程。"""
 
 import time
+import random
 import json
 from pathlib import Path
 
 from module.atom.click import RuleClick
-from module.atom.image import RuleImage
+from tasks.Chess.runtime.image import ChessImage as RuleImage
 from tasks.GameUi.assets import GameUiAssets
 from tasks.GlobalGame.dialog_buttons import DialogButtonRule
+from tasks.GlobalGame.assets import GlobalGameAssets
 from module.exception import GameStuckError
 from module.logger import logger
 from tasks.Chess.assets import ChessAssets
@@ -53,12 +55,41 @@ class ChessResultNavigationMixin:
     CHESS_EXIT_TIMEOUT = 60.0
     CHESS_EXIT_SCREENSHOT_INTERVAL = 0.35
     CHESS_LOBBY_CONFIRM_FRAMES = 2
+    I_CHESS_RESULT_CONTINUE_HINT = RuleImage(
+        roi_front=(548, 675, 187, 23), roi_back=(535, 664, 215, 42),
+        threshold=0.9, method='Template matching',
+        file=str(Path(__file__).resolve().parents[1] / 'res/result_continue_hint.png'),
+    )
     # 棋局右下角的开战和分享按钮位置重叠，结算推进只点击左侧空白。
     # 使用固定的规则名称，让主仓库连续点击保护仍正常累计。
     CHESS_RESULT_CONTINUE = RuleClick(
         roi_front=(24, 150, 40, 280), roi_back=(24, 150, 40, 280),
         name='CHESS_RESULT_CONTINUE',
     )
+
+    def select_chess_sixrealms_if_visible(self) -> bool:
+        """完成开局必选场地；选定同一项后最多点击两次，等待页面消失。"""
+        if not self.appear(ChessAssets.I_SELECT_SIXREALMS):
+            return False
+        target = random.choice((ChessAssets.C_SIXREALMS_1,
+                                ChessAssets.C_SIXREALMS_2,
+                                ChessAssets.C_SIXREALMS_3))
+        click_limit = random.randint(1, 2)
+        logger.info(f'Chess six-realms selection: target={target.name}, clicks={click_limit}')
+        deadline = time.monotonic() + self.CHESS_EXIT_TIMEOUT
+        clicks = 0
+        while time.monotonic() < deadline:
+            if not self.appear(ChessAssets.I_SELECT_SIXREALMS):
+                logger.info('Chess six-realms selection completed')
+                return True
+            if clicks < click_limit:
+                self.device.click_record_remove(target)
+                self.click(target)
+                clicks += 1
+            self.device.stuck_record_clear()
+            time.sleep(self.CHESS_EXIT_SCREENSHOT_INTERVAL)
+            self.screenshot()
+        raise GameStuckError('Chess: six-realms selection did not disappear after choosing a field')
 
     def chess_share_panel_visible(self) -> bool:
         """棋局分享标志、平台栏和右上关闭按钮同时出现才关闭面板。"""
@@ -79,6 +110,15 @@ class ChessResultNavigationMixin:
     def _click_chess_result_continue(self) -> None:
         self.click(self.CHESS_RESULT_CONTINUE, interval=1.5)
 
+    def chess_result_continue_visible(self) -> bool:
+        """The result-specific hint and share icon jointly identify the rank screen."""
+        return (self.appear(self.I_CHESS_RESULT_CONTINUE_HINT)
+                and self.appear(ChessAssets.I_SHARE))
+
+    def _chess_reward_visible(self) -> bool:
+        return (self.appear(ChessAssets.I_REWARD_CHESS)
+                or self.appear(GlobalGameAssets.I_UI_REWARD))
+
     def _advance_chess_result_stage(self) -> bool:
         """优先处理奖励和分享阶段，避免背景被识别成大厅。"""
         if self.chess_share_panel_visible():
@@ -86,7 +126,11 @@ class ChessResultNavigationMixin:
             logger.info('Chess share panel detected; close the panel without sharing')
             self.click(self.I_CHESS_SHARE_PANEL_CLOSE, interval=1.5)
             return True
-        if self.appear(ChessAssets.I_REWARD_CHESS):
+        if self.chess_result_continue_visible():
+            self._chess_share_advancing = True
+            self._click_chess_result_continue()
+            return True
+        if self._chess_reward_visible():
             self._chess_share_advancing = False
             self._click_chess_result_continue()
             return True
@@ -119,7 +163,7 @@ class ChessResultNavigationMixin:
             self.chess_share_panel_visible()
             or self.appear(self.I_CHESS_EXIT_TO_LOBBY)
             or self.appear(self.I_CHESS_EXIT_TO_LOBBY_2)
-            or self.appear(ChessAssets.I_REWARD_CHESS)
+            or self._chess_reward_visible()
             or self.appear(ChessAssets.I_SHARE)
             or self.appear(self.I_CHECK_CHESS_RANK)
             or self.appear(self.I_CHESS_RANK_GOTO_LOBBY)

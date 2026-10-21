@@ -29,6 +29,12 @@ class PopupTests(unittest.TestCase):
                     task.click.assert_not_called()
 
     def harness(self, frames):
+        pet_patch = patch('tasks.GlobalGame.battle_reward_popup.close_pet_treasure_popup', return_value=False)
+        pet_patch.start()
+        self.addCleanup(pet_patch.stop)
+        popup_patch = patch('tasks.GlobalGame.battle_reward_popup.close_soul_bonus_popup', return_value=False)
+        popup_patch.start()
+        self.addCleanup(popup_patch.stop)
         clock = FakeClock(1)
         module = SimpleNamespace(close_autumn_popup=Mock(side_effect=frames))
         method = extract_methods(ROOT/'tasks/base_task.py', 'BaseTask', ('screenshot',),

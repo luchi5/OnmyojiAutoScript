@@ -2,6 +2,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock
 
 from dev_tools.test_bondling_battle_entry import extract_methods
 
@@ -22,6 +23,7 @@ class WantedInviteTests(unittest.TestCase):
         clicks = []
         task = SimpleNamespace(
             screenshot=lambda: None,
+            resume_exploration_encounter=lambda: False,
             appear=lambda marker: marker in markers,
             ui_click=lambda button, stop, **kwargs: clicks.append(button),
             click=clicks.append,
@@ -53,6 +55,37 @@ class WantedInviteTests(unittest.TestCase):
 
 
 class WantedExploreTests(unittest.TestCase):
+    def test_animated_map_without_targets_returns_before_repeated_swipe_guard(self):
+        from tasks.Component.Costume.config import MainType
+        scene = SimpleNamespace(ENTRANCE=1, WORLD=2, MAIN=3, BATTLE_PREPARE=4, UNKNOWN=0)
+        timer = SimpleNamespace(reached=lambda: True, started=lambda: True, reset=lambda: None)
+        swipes = []
+        def swipe(*args, **kwargs):
+            swipes.append(True)
+            if len(swipes) >= 10:
+                self.fail('Reached device repeated-swipe guard without checking wanted progress')
+            return True
+        task = SimpleNamespace(
+            current_main_type=MainType.COSTUME_MAIN_16,
+            TEMPLATE_GIF=SimpleNamespace(match_origin=lambda: None),
+            device=SimpleNamespace(image=None),
+            screenshot=lambda: None, resume_exploration_encounter=lambda: False,
+            appear=lambda r: isinstance(r, str) and r in {'I_UI_BACK_YELLOW', 'I_E_EXPLORATION_CLICK'},
+            get_current_scene=lambda **kwargs: scene.MAIN,
+            _match_end=SimpleNamespace(stable=lambda *args, **kwargs: False, refresh=Mock()),
+            swipe=swipe, quit_explore=Mock(), ui_click=Mock(return_value=True),
+        )
+        for name in ('I_UI_BACK_YELLOW', 'I_E_EXPLORATION_CLICK', 'I_BATTLE_REWARD',
+                     'I_BOSS_BATTLE_BUTTON', 'I_CHECK_EXPLORATION', 'S_SWIPE_BACKGROUND_RIGHT'):
+            setattr(task, name, name)
+        method = extract_methods(ROOT / 'tasks/WantedQuests/explore.py', 'WQExplore', ('explore',),
+            {'RuleImage': object, 'logger': LOGGER, 'Timer': lambda *args: timer,
+             'Scene': scene, 'GameStuckError': RuntimeError})['explore']
+        self.assertIsNone(method(task, 'goto', 3))
+        self.assertLess(len(swipes), 10)
+        task.quit_explore.assert_called_once()
+        task.ui_click.assert_called_once()
+
     def explore_frame(self, marker):
         markers = {'I_UI_BACK_YELLOW', 'I_E_EXPLORATION_CLICK', marker}
         shots = 0
@@ -79,7 +112,8 @@ class WantedExploreTests(unittest.TestCase):
                                 BATTLE_PREPARE=4, UNKNOWN=0)
 
         def get_scene(**kwargs):
-            screenshot()
+            if not kwargs.get("reuse_screenshot", False):
+                screenshot()
             return scene.MAIN
 
         task = SimpleNamespace(
@@ -87,6 +121,7 @@ class WantedExploreTests(unittest.TestCase):
             TEMPLATE_GIF=SimpleNamespace(match_origin=lambda: None,
                                          match_with_multi_scale=lambda: None),
             screenshot=screenshot,
+            resume_exploration_encounter=lambda: False,
             appear=lambda rule: ((isinstance(rule, str) and rule in markers)
                                  or (rule is task.TEMPLATE_GIF and marker == 'TEMPLATE_GIF')),
             get_current_scene=get_scene,
@@ -139,6 +174,7 @@ class WantedExploreTests(unittest.TestCase):
             TEMPLATE_GIF=SimpleNamespace(match_origin=lambda: None),
             _match_end=SimpleNamespace(refresh=lambda: refreshes.append(True)),
             screenshot=lambda: None,
+            resume_exploration_encounter=lambda: False,
             appear=lambda rule: isinstance(rule, str) and rule in {
                 'I_UI_BACK_YELLOW', 'I_E_EXPLORATION_CLICK', 'I_BOSS_BATTLE_BUTTON'},
             get_current_scene=get_scene,

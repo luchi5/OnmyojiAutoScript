@@ -25,7 +25,7 @@ class DailyFeedbackTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='oas-feedback-test-')
         self.root = Path(self.temp.name)
-        self.config = self.make_config('demo-account-005')
+        self.config = self.make_config('05-托管10-20')
         self.now = datetime(2026, 10, 7, 22, 30, 45, 123456)
         self.patches = [
             patch.object(DF, 'ROOT', self.root),
@@ -132,7 +132,7 @@ class DailyFeedbackTests(unittest.TestCase):
         self.assertNotIn(self.config.config_name, str(self.directory()))
 
     def test_accounts_cannot_read_each_others_evidence(self):
-        other = self.make_config('demo-account-006')
+        other = self.make_config('06-全托管至11-3')
         self.options(accounts=[self.config.config_name, other.config_name])
         self.save()
         self.assertNotEqual(self.directory(), self.directory(other))
@@ -271,50 +271,24 @@ class DailyFeedbackTests(unittest.TestCase):
         self.assertTrue(self.finish())
         url = self.push.call_args.args[3]
         parsed = urlsplit(url)
-        self.assertEqual(parsed.scheme, urlsplit(DF.PUBLIC_ORIGIN).scheme)
-        self.assertEqual(parsed.netloc, urlsplit(DF.PUBLIC_ORIGIN).netloc)
+        self.assertEqual(parsed.scheme, 'https')
+        self.assertEqual(parsed.netloc, 'luchi.ddns.net:22290')
         self.assertEqual(parsed.path, '/daily-feedback')
         self.assertEqual(parse_qs(parsed.query), {
             'account': [self.config.config_name], 'date': ['2026-10-07']})
         self.assertNotIn(self.config.private_token, url)
         self.assertNotIn(self.config.private_token, self.push.call_args.args[2])
 
-    def test_invalid_public_origin_cannot_insert_credentials_or_paths(self):
-        for origin in ['ftp://feedback.example.invalid', 'https://feedback.example.invalid:bad',
-                       'https://feedback.example.invalid/secret-path',
-                       'https://feedback.example.invalid?token=secret',
-                       'https://user:secret@feedback.example.invalid',
-                       'https://feedback.example.invalid#fragment',
-                       'https://feedback.example.invalid\n', 'https://[broken',
-                       'https://feedback.example.invalid:0', 'https://feedback.example.invalid:65536',
-                       'https://@feedback.example.invalid', 'https://feedback.example.invalid:']:
+    def test_untrusted_public_origin_cannot_redirect_feedback_url(self):
+        for origin in ['http://luchi.ddns.net:22290', 'https://evil.invalid',
+                       'https://luchi.ddns.net:22290/?token=secret',
+                       'https://luchi.ddns.net:22290/#secret',
+                       'https://secret@luchi.ddns.net:22290']:
             with self.subTest(origin=origin):
                 self.options(public_origin=origin)
                 url = DF._feedback_url(self.config, '2026-10-07')
                 self.assertTrue(url.startswith(DF.PUBLIC_ORIGIN + '/daily-feedback?'))
                 self.assertNotIn('secret', url)
-
-    def test_public_origin_can_be_configured_for_the_operator(self):
-        with patch.dict(DF.os.environ, {'OAS_PUBLIC_FEEDBACK_ORIGIN': 'https://feedback.example.invalid'}):
-            self.options(public_origin=None)
-            url = DF._feedback_url(self.config, '2026-10-07')
-            self.assertEqual(urlsplit(url).netloc, 'feedback.example.invalid')
-            self.assertEqual(urlsplit(url).scheme, 'https')
-            self.assertEqual(parse_qs(urlsplit(url).query)['account'], [self.config.config_name])
-
-    def test_local_settings_origin_takes_precedence_over_environment(self):
-        with patch.dict(DF.os.environ, {'OAS_PUBLIC_FEEDBACK_ORIGIN': 'https://fallback.example.invalid'}):
-            self.options(public_origin='https://configured.example.invalid:8443/')
-            self.assertEqual(urlsplit(DF._feedback_url(self.config, '2026-10-07')).netloc,
-                             'configured.example.invalid:8443')
-
-    def test_invalid_configured_origin_uses_the_local_default(self):
-        for origin in ('https://user:password@feedback.example.invalid',
-                       'https://feedback.example.invalid/private',
-                       'https://feedback.example.invalid:bad',
-                       'https://feedback.example.invalid?secret=example'):
-            with self.subTest(origin=origin), patch.dict(DF.os.environ, {'OAS_PUBLIC_FEEDBACK_ORIGIN': origin}):
-                self.assertTrue(DF._feedback_url(self.config, '2026-10-07').startswith(DF.PUBLIC_ORIGIN + '/'))
 
     def test_concurrent_kind_writes_keep_both_metadata_entries(self):
         with ThreadPoolExecutor(max_workers=2) as pool:

@@ -39,9 +39,13 @@ class GeneralBattle(BattleWait, GeneralBuff):
         self.current_count += 1
         logger.info(f"Current count: {self.current_count}")
         # 战前设置
-        self.battle_before(buff, config)
+        prepared = self.battle_before(buff, config)
+        if prepared is False:
+            logger.warning('Battle preparation was delayed; retry for up to 20 seconds')
+            if self.battle_before(buff, config, timeout=20) is False:
+                raise GameStuckError('Battle preparation did not become ready within bounded retry')
         # 绿标
-        if self.is_in_battle(False):
+        if self.is_in_real_battle(False):
             self.green_mark(config.green_enable, config.green_mark)
         # 战中设置
         win = self.battle_wait(random_click_swipt_enable=config.random_click_swipt_enable)
@@ -52,12 +56,21 @@ class GeneralBattle(BattleWait, GeneralBuff):
 
     def battle_before(self, buff: BuffClass | list[BuffClass], config: GeneralBattleConfig, timeout: float = 5) -> bool:
         """战斗前设置
-        :return: True:进入战斗或点击了准备按钮且识别不到准备按钮了 False:超过timeout s还没有进入战斗且没有点击过准备
+        :return: True:已进入战斗或结算 False:超过timeout s还没有确认战斗或结算
         """
         timeout_timer = Timer(timeout).start()
         confed = False
         while not timeout_timer.reached():
             self.screenshot()
+            # Fast battles can finish between screenshots, especially with a
+            # locked team. Let the existing result handler consume that page.
+            if (self.appear(self.I_WIN, threshold=0.8)
+                    or self.appear(self.I_DE_WIN)
+                    or self.appear(self.I_FALSE, threshold=0.8)
+                    or self.appear(self.I_REWARD, threshold=0.6)
+                    or self.appear(self.I_REWARD_GOLD, threshold=0.8)):
+                logger.info('Battle already settled; hand off to result handling')
+                return True
             if self.is_in_real_battle(False):  # 战斗阶段
                 return True
             if self.appear_then_click(self.I_DISABLE_7DAYS_DIFF_SOUL, interval=0.6):  # 关闭御魂不一致提示
@@ -628,11 +641,16 @@ class GeneralBattle(BattleWait, GeneralBuff):
             BuffClass.EXP_50_CLOSE: (self.exp_50, False),
             BuffClass.EXP_100_CLOSE: (self.exp_100, False),
         }
+        failed = []
         for b in buff:
             func, is_open = match_method[b]
-            func(is_open)
+            if func(is_open) is False:
+                failed.append(str(b))
             time.sleep(0.1)
-        logger.info(f'Open buff success')
+        if failed:
+            logger.warning(f'加成状态未确认: {", ".join(failed)}')
+        else:
+            logger.info('Buff operations finished')
         while 1:
             self.screenshot()
             if not self.appear(self.I_CLOUD):

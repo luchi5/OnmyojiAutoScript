@@ -28,7 +28,9 @@ class IdleHarness:
         self._create_device = self.wake_device
         methods = extract_methods(SOURCE, 'Script',
             ('_handle_wait_during_idle', '_wait_goto_main', '_wait_close_game', '_wait_stay_there'),
-            {'logger': FakeLogger(), 'datetime': datetime, 'timedelta': timedelta})
+            {'logger': FakeLogger(), 'datetime': datetime, 'timedelta': timedelta,
+             'stop_idle_emulator': lambda *args: self.actions.append('check_stop_existing') or True,
+             'idle_emulator_running': lambda *args: getattr(self, 'probe_running', False)})
         for name, method in methods.items():
             setattr(self, name, method.__get__(self))
 
@@ -42,6 +44,38 @@ class IdleHarness:
 
 
 class IdlePolicyTests(unittest.TestCase):
+    def test_starting_long_idle_script_does_not_initialize_device_to_close_it(self):
+        harness = IdleHarness('close_game', interrupted=True)
+        del harness.device
+        self.assertFalse(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
+        self.assertEqual(harness.actions, ['check_stop_existing', 'preheat'])
+        self.assertTrue(harness._emulator_down)
+        self.assertNotIn('device', harness.__dict__)
+
+    def test_long_idle_start_resumes_restart_only_after_preheat_finishes(self):
+        harness = IdleHarness('close_game')
+        del harness.device
+        self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
+        self.assertEqual(harness.actions, ['check_stop_existing', 'preheat', 'GameStart'])
+
+    def test_closed_cold_start_never_creates_device_for_short_or_medium_wait(self):
+        for minutes in (7, 15, 30):
+            with self.subTest(minutes=minutes):
+                harness = IdleHarness('close_game', interrupted=True)
+                del harness.device
+                self.assertFalse(harness._handle_wait_during_idle(datetime.now() + timedelta(minutes=minutes)))
+                self.assertEqual(harness.actions, ['preheat'])
+                self.assertNotIn('device', harness.__dict__)
+                self.assertTrue(harness._emulator_down)
+
+    def test_unknown_cold_state_waits_without_claiming_closed(self):
+        harness = IdleHarness('close_game', interrupted=True)
+        del harness.device
+        harness.probe_running = None
+        self.assertFalse(harness._handle_wait_during_idle(datetime.now() + timedelta(minutes=15)))
+        self.assertEqual(harness.actions, ['wait'])
+        self.assertFalse(harness._emulator_down)
+
     def test_courtyard_ignores_both_close_timers_during_long_wait(self):
         harness = IdleHarness()
         self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
@@ -56,12 +90,12 @@ class IdlePolicyTests(unittest.TestCase):
     def test_close_game_policy_can_still_close_emulator_for_long_wait(self):
         harness = IdleHarness('close_game')
         self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
-        self.assertEqual(harness.actions, ['close_emulator', 'preheat', 'Restart'])
+        self.assertEqual(harness.actions, ['close_emulator', 'preheat', 'GameStart'])
 
     def test_close_game_policy_only_closes_game_for_medium_wait(self):
         harness = IdleHarness('close_game')
         self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(minutes=15)))
-        self.assertEqual(harness.actions, ['close_game', 'release', 'wait', 'Restart'])
+        self.assertEqual(harness.actions, ['close_game', 'release', 'wait', 'GameStart'])
 
     def test_close_game_policy_keeps_game_for_short_wait(self):
         harness = IdleHarness('close_game')
@@ -71,13 +105,13 @@ class IdlePolicyTests(unittest.TestCase):
     def test_courtyard_immediately_restores_an_emulator_that_was_already_down(self):
         harness = IdleHarness(down=True)
         self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
-        self.assertEqual(harness.actions, ['wake_emulator', 'Restart', 'GotoMain', 'release', 'wait'])
+        self.assertEqual(harness.actions, ['wake_emulator', 'GameStart', 'GotoMain', 'release', 'wait'])
         self.assertFalse(harness._emulator_down)
 
     def test_courtyard_starts_closed_game_before_navigation(self):
         harness = IdleHarness(app_running=False)
         self.assertTrue(harness._handle_wait_during_idle(datetime.now() + timedelta(hours=3)))
-        self.assertEqual(harness.actions, ['Restart', 'GotoMain', 'release', 'wait'])
+        self.assertEqual(harness.actions, ['GameStart', 'GotoMain', 'release', 'wait'])
 
     def test_failed_courtyard_navigation_returns_to_scheduler_recovery(self):
         harness = IdleHarness()

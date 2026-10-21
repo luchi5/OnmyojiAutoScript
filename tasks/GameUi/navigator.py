@@ -471,6 +471,10 @@ class GameUi(ChessBattleNavigationMixin, BaseTask, GameUiAssets):
             当前稳定页面；无法识别时返回 `None`。
         """
 
+        from tasks.Restart.sign_popup import handle_sign_popup
+        if not skip_first_screenshot:
+            self.device.screenshot()
+        handle_sign_popup(self)
         current = self.navigator.current_page
         if current is not None and self.confirm_page(current, skip_first_screenshot=skip_first_screenshot):
             return current

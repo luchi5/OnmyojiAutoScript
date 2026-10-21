@@ -40,6 +40,7 @@ class StoneHarness:
         self.confirmation_closes = confirmation_closes
         self.confirmation_required = confirmation_required
         self.confirmation_visible = False
+        self.wait_summon_map = lambda: True
         self.summoned = False
         self.current_count = 70
         self.config = SimpleNamespace(config_name='11')

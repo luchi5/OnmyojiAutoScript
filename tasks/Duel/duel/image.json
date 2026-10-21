@@ -187,5 +187,14 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "队伍试用"
+  },
+  {
+    "itemName": "d_top_honor",
+    "imageName": "duel_d_top_honor.png",
+    "roiFront": "965,35,255,215",
+    "roiBack": "930,15,325,265",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "拔得头筹结算展示固定标题"
   }
 ]

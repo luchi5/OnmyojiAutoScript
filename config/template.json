@@ -270,7 +270,7 @@
       "utilize_rule": "default",
       "utilize_friend": "",
       "select_friend_list": "same_server",
-      "shikigami_class": "N",
+      "shikigami_class": "默认/全部",
       "shikigami_order": 4,
       "guild_ap_enable": true,
       "guild_assets_enable": true,
@@ -800,6 +800,7 @@
       "pass_limit": 50,
       "ap_limit": 300,
       "boss_limit": 20,
+      "boss_count_mode": "boss_auto_progress",
       "enable_pass": true,
       "enable_ap": true,
       "enable_boss": true,
@@ -1645,6 +1646,13 @@
       "courtyard_skin": "courtyard_affairs_auto",
       "timeout_seconds": 60,
       "max_complete_clicks": 3
+    }
+  },
+  "draft_duel": {
+    "draft_duel_config": {
+      "user_status": "unassigned",
+      "teammate_name": "",
+      "friend_tab": "跨区"
     }
   }
 }

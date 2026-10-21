@@ -85,6 +85,7 @@ from tasks.Secret.config import Secret
 from tasks.WeeklyTrifles.config import WeeklyTrifles
 from tasks.MysteryShop.config import MysteryShop
 from tasks.Duel.config import Duel
+from tasks.DraftDuel.config import DraftDuel
 from tasks.Chess.config import Chess
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -160,6 +161,7 @@ class ConfigModel(ConfigBase):
     weekly_trifles: WeeklyTrifles = Field(default_factory=WeeklyTrifles)
     mystery_shop: MysteryShop = Field(default_factory=MysteryShop)
     duel: Duel = Field(default_factory=Duel)
+    draft_duel: DraftDuel = Field(default_factory=DraftDuel)
     chess: Chess = Field(default_factory=Chess)
 
     # 阴阳寮
@@ -471,7 +473,7 @@ class ConfigModel(ConfigBase):
             # 将 groups的参数，同导出的json一起合并, 用于前端显示
             result = []
             for key, value in groups["properties"].items():
-                # deal with exclude
+                # deal with exclude 
                 if key in jsons and jsons[key] == 0xABCDEF:
                     continue
 

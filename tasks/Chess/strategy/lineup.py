@@ -12,14 +12,10 @@ OASX 下拉选项和主任务运行时选择均由本注册表生成。
 from enum import Enum
 
 from tasks.Chess.strategy.lineup_strategy import (
-    ARAKAWA,
-    DAJIANGSHAN,
     HAIGUO,
-    HUYAO,
-    MINGFU,
     QIJIAOSHAN,
-    LIUHUO,
 )
+from tasks.Chess.strategy.minghuo import MINGHUO
 
 
 LINEUP_REGISTRY = {
@@ -31,29 +27,13 @@ LINEUP_REGISTRY = {
         'display_name': '海国',
         'strategy': HAIGUO,
     },
-    'dajiangshan': {
-        'display_name': '大江山',
-        'strategy': DAJIANGSHAN,
-    },
-    'huyao': {
-        'display_name': '狐妖',
-        'strategy': HUYAO,
-    },
-    'mingfu': {
-        'display_name': '冥府',
-        'strategy': MINGFU,
-    },
-    'liuhuo': {
-        'display_name': '流火',
-        'strategy': LIUHUO,
-    },
-    'arakawa': {
-        'display_name': '荒川',
-        'strategy': ARAKAWA,
+    'minghuo': {
+        'display_name': '冥火',
+        'strategy': MINGHUO,
     },
 }
 
-DEFAULT_LINEUP_KEY = 'arakawa'
+DEFAULT_LINEUP_KEY = 'qijiaoshan'
 
 # 枚举值使用中文，使 OASX 下拉框直接显示中文；运行时通过下面的解析
 # 函数还原成稳定的拼音键。

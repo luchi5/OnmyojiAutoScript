@@ -5,6 +5,8 @@ import re
 import time
 
 from module.logger import logger
+from module.atom.image import RuleImage
+from tasks.RichMan.mall.tab_state import special_tab_state
 
 from tasks.GameUi.page import page_main, page_guild
 from tasks.GameUi.game_ui import GameUi
@@ -35,7 +37,22 @@ class MallNavbar(GameUi, RichManAssets):
         :return:
         """
         self._enter_scales()
-        self.ui_click(self.I_MALL_BONDLINGS_SURE, self.I_MALL_BONDLINGS_ON)
+        return self._enter_optional_tab(self.I_MALL_BONDLINGS_SURE, self.I_MALL_BONDLINGS_ON)
+
+    def _enter_optional_tab(self, target, selected, alternate=None):
+        # Optional tabs may be locked or moved by newcomer categories.
+        for attempt in range(4):
+            self.screenshot()
+            if self.appear(selected):
+                return True
+            if attempt < 3:
+                if self.appear(target):
+                    self.click(target)
+                elif alternate is not None and self.appear(alternate):
+                    self.click(alternate)
+                time.sleep(1)
+        logger.warning('商店分类未开放或未能切换，跳过本项购买')
+        return False
 
     def _enter_sundry(self):
         """
@@ -50,7 +67,28 @@ class MallNavbar(GameUi, RichManAssets):
         :return:
         """
         self._enter_sundry()
-        self.ui_click(self.I_SIDE_SURE_SPECIAL, self.I_SIDE_CHECK_SPECIAL)
+        selected = RuleImage(roi_front=(1172,91,70,74), roi_back=(1160,75,110,510),
+                             threshold=0.9, method="Template matching",
+                             file="./tasks/RichMan/mall/navbar/navbar_side_sure_special.png")
+        unselected = RuleImage(roi_front=(1170,292,76,80), roi_back=(1160,75,110,510),
+                               threshold=0.85, method="Template matching",
+                               file="./tasks/RichMan/mall/navbar/special_unselected.png")
+        for attempt in range(4):
+            self.screenshot()
+            if self.appear(selected):
+                return True
+            state = special_tab_state(self.device.image)
+            if state is not None:
+                x, y, active = state
+                if active:
+                    return True
+                if attempt < 3:
+                    unselected.roi_front = [x - 10, y - 15, 20, 30]
+                    self.click(unselected)
+            if attempt < 3:
+                time.sleep(1)
+        logger.warning('特殊分类未找到或未选中，跳过本项购买')
+        return False
 
     def _enter_honor(self):
         """

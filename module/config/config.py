@@ -330,6 +330,12 @@ class Config(ConfigState, ConfigManual, ConfigWatcher, ConfigMenu):
 
         # 依次判断是否有自定义的下次运行时间
         run = []
+        # Dedicated task clocks and retries must survive old JSON force-time
+        # settings. An explicit target also wins over generic intervals.
+        if getattr(scheduler, 'dedicated_time', False) is True:
+            server = False
+            if target is not None:
+                success = None
         if success is not None:
             interval = (
                 scheduler.success_interval

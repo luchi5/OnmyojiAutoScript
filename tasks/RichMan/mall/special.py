@@ -23,10 +23,15 @@ class Special(Buy, MallNavbar):
             logger.info('Special room is not enable')
             return
 
-        self._enter_special()
+        if not (con.totem_pass or con.medium_bondling_discs > 0 or con.low_bondling_discs > 0):
+            return
+        if not self._enter_special():
+            return
         # 向下滑找到购买的物品
-        totem_bought, medium_bought, low_bought = False, False, False
-        while 1:
+        totem_bought = not con.totem_pass
+        medium_bought = con.medium_bondling_discs <= 0
+        low_bought = con.low_bondling_discs <= 0
+        for attempt in range(7):
             self.screenshot()
             if not totem_bought and self.appear(self.I_SP_BUY_TOTEM):
                 self._special_totom(con.totem_pass)
@@ -46,6 +51,9 @@ class Special(Buy, MallNavbar):
                 logger.info('Swipe to bottom')
                 break
 
+            if attempt == 6:
+                logger.warning("特殊商店查找达到上限，跳过未找到的商品")
+                break
             if self.swipe(self.S_SP_DOWN, interval=2):
                 time.sleep(2)
 

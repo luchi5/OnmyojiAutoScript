@@ -23,6 +23,7 @@ from tasks.Component.GeneralBattle.battle_wait import battle_wait_strategy, batt
 from tasks.Component.GeneralBattle.battle import Battle
 from tasks.ActivityShikigami.assets import ActivityShikigamiAssets
 from tasks.ActivityShikigami.current_event import CurrentEventTicket
+from tasks.ActivityShikigami.current_boss import CurrentEventBoss
 from tasks.ActivityShikigami.config import SwitchSoulConfig, GeneralBattleConfig, ActivityShikigami
 from tasks.Component.BaseActivity.base_activity import BaseActivity
 from tasks.Component.BaseActivity.config_activity import GeneralClimb
@@ -125,7 +126,8 @@ class StateMachine(BaseTask):
             logger.info(f"Climb type {self.climb_type} time out")
             raise LimitTimeOut
         # 次数达到限制
-        if get_count(self) >= get_limit(self):
+        # Boss has its own automatic/fixed budget check before each challenge.
+        if self.climb_type != 'boss' and get_count(self) >= get_limit(self):
             logger.info(f"Climb type {self.climb_type} count limit reached")
             raise LimitCountOut
 
@@ -144,7 +146,7 @@ class StateMachine(BaseTask):
         return True
 
 
-class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, CurrentEventTicket, ActivityShikigamiAssets):
+class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, CurrentEventTicket, CurrentEventBoss, ActivityShikigamiAssets):
     """
     更新前请先看 ./README.md
     """
@@ -152,20 +154,27 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Current
     def run(self) -> None:
         self.limit_time: timedelta = self.conf.general_climb.limit_time_v
         sequence = self.conf.general_climb.run_sequence_v
-        if 'pass' not in sequence:
-            raise RequestHumanTakeover('本期暂支持磐长故地活动门票，请在运行顺序中配置 pass')
+        if not any(mode in sequence for mode in ('pass', 'boss')):
+            raise RequestHumanTakeover('本期支持活动门票pass和首领战boss，请配置运行顺序')
+        completed = True
         # 旧配置常含全部模式，本期尚未适配的模式不得沿用旧入口消耗其他资源。
         for index, climb_type in enumerate(sequence):
-            if climb_type != 'pass':
-                logger.warning(f'Current event supports pass only; skip {climb_type}')
+            if climb_type not in ('pass', 'boss'):
+                logger.warning(f'Current event supports pass/boss only; skip {climb_type}')
                 continue
             self.run_idx = index
             try:
-                self.put_status()
-                self._run_pass()
+                if climb_type == 'boss':
+                    self._run_boss()
+                else:
+                    self.put_status()
+                    self._run_pass()
             except LimitCountOut:
                 logger.info('Event ticket battle count limit reached')
             except LimitTimeOut:
+                if climb_type == 'boss':
+                    completed = False
+                    logger.warning('BOSS总运行时间已到，额外奖励未确认达到100/100，不标为完成')
                 break
 
         # 返回庭院
@@ -173,7 +182,7 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Current
         self.goto_page(game.page_main)
         if self.conf.general_climb.active_souls_clean:
             self.set_next_run(task='SoulsTidy', success=False, finish=False, target=datetime.now())
-        self.set_next_run(task="ActivityShikigami", success=True)
+        self.set_next_run(task="ActivityShikigami", success=completed)
         raise TaskEnd
 
     def _run_pass(self):
@@ -224,29 +233,26 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Current
         self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_MAIN, interval=4.5)
 
     def _run_boss(self):
-        """
-        更新前请先看 ./README.md
-        """
-        logger.hr(f'Start run climb type BOSS')
-
-        self.ui_clicks([self.I_TO_BATTLE_BOSS],
-                       stop=self.I_CHECK_BATTLE_BOSS, interval=1)
-
-
-        while 1:
-            self.screenshot()
-            self.put_status()
-            # --------------------------------------------------------------
-            if not self.ocr_appear(self.O_FIRE):
-                self.appear_then_click(self.I_CHECK_BATTLE_BOSS, interval=4)
-                continue
-
-            if self.conf.general_climb.random_sleep:
-                random_sleep(probability=0.2)
-            if self.start_battle():
-                continue
-
-        self.ui_click(self.I_UI_BACK_YELLOW, stop=self.I_TO_BATTLE_BOSS, interval=4.5)
+        """Run either a configured win count or the automatic reward budget."""
+        fixed = self.boss_fixed_limit()
+        label = f'指定胜利{fixed}场，忽略奖励数字' if fixed is not None else '自动补满100次额外奖励'
+        logger.hr(f'Start BOSS: 神降尘世，{label}', 1)
+        self.battle_state_reset()
+        if self.boss_budget_exhausted():
+            return
+        self.goto_page(game.page_climb_boss)
+        if fixed is None:
+            self.boss_load_progress()
+            completed = self.boss_read_bonus(expected_min=getattr(self, '_boss_completed', None))
+            if completed is not None:
+                self._boss_completed = completed
+                self.boss_record_progress(completed)
+            if self.boss_budget_exhausted():
+                logger.info('BOSS自动计数已达100，无需挑战')
+                return
+        self.switch_soul(self.I_EVENT_BOSS_RECORDS, self.I_EVENT_BOSS_PAGE)
+        while self.boss_battle_once():
+            pass
 
     def _run_ap100(self):
         """

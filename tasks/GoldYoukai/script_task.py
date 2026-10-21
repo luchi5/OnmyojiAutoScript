@@ -2,6 +2,9 @@
 # @author runhey
 # github https://github.com/runhey
 from cached_property import cached_property
+import time
+from module.atom.click import RuleClick
+from module.exception import GameStuckError
 
 from module.exception import TaskEnd
 from module.logger import logger
@@ -19,8 +22,41 @@ from tasks.GoldYoukai.config import GoldYoukaiConfig
 
 
 class ScriptTask(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, SwitchSoul, GoldYoukaiAssets):
+    GOLD_RESULT_CONTINUE = RuleClick(roi_front=(560,675,160,30), roi_back=(560,675,160,30),
+                                     name='GOLD_RESULT_CONTINUE')
+
+    def finish_gold_result(self):
+        """A missing victory marker alone never proves that settlement ended."""
+        deadline = time.monotonic() + 35
+        stable = clicks = 0
+        next_click = 0
+        while time.monotonic() < deadline:
+            self.screenshot()
+            result = any(self.appear(marker) for marker in
+                         (self.I_DE_WIN, self.I_GOLD_WIN, self.I_FALSE, self.I_REWARD))
+            if result:
+                stable = 0
+                if time.monotonic() >= next_click:
+                    if clicks >= 6:
+                        break
+                    self.click(self.GOLD_RESULT_CONTINUE)
+                    clicks += 1
+                    next_click = time.monotonic() + 2
+            elif (self.is_in_room() or self.appear(self.I_CHECK_TEAM)
+                  or self.appear(self.I_CHECK_MAIN) or self.appear(self.I_CHECK_EXPLORATION)):
+                stable += 1
+                if stable >= 2:
+                    return
+            else:
+                stable = 0
+            time.sleep(0.35)
+        raise GameStuckError('GoldYoukai settlement exit not confirmed; do not navigate away')
 
     def run(self):
+        # A restarted worker may inherit the previous victory screen.
+        self.screenshot()
+        if any(self.appear(marker) for marker in (self.I_GOLD_WIN, self.I_DE_WIN, self.I_FALSE)):
+            self.finish_gold_result()
         # 切换御魂
         if self.config.gold_youkai.switch_soul.enable:
             self.goto_page(page_shikigami_records)
@@ -93,15 +129,18 @@ class ScriptTask(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, SwitchSoul, 
             if self.appear(self.I_DE_WIN):
                 logger.info('Win battle')
                 self.ui_click_until_disappear(self.I_DE_WIN)
+                self.finish_gold_result()
                 return True
             if self.appear(self.I_GOLD_WIN):
                 logger.info('Win battle')
                 self.ui_click_until_disappear(self.I_GOLD_WIN)
+                self.finish_gold_result()
                 return True
 
             if self.appear(self.I_FALSE):
                 logger.warning('False battle')
                 self.ui_click_until_disappear(self.I_FALSE)
+                self.finish_gold_result()
                 return False
 
     def gold_exit(self, con):

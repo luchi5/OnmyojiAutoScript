@@ -44,6 +44,8 @@ class ConfigMenu:
                               'Hunt' , 'AbyssShadows', 'GuildBanquet', 'DemonRetreat', 'GuildActivityMonitor']
         # 每周任务
         self.menu["Weekly Task"] = ['TrueOrochi', 'RichMan', 'Secret', 'WeeklyTrifles', 'MysteryShop', 'Duel', 'Chess']
+        if 'draft_duel' in ConfigModel.model_fields:
+            self.menu["Weekly Task"].insert(self.menu["Weekly Task"].index('Duel') + 1, 'DraftDuel')
         # 活动的任务
         self.menu["Activity Task"] = ['ActivityShikigami', 'MetaDemon', 'FrogBoss', 'FloatParade', 'Quiz', 'KittyShop', 'DyeTrials', 'BudokaiTournament']
         # 开发工具

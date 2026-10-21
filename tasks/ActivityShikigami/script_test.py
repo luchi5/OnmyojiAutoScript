@@ -5,12 +5,17 @@ from abc import ABC
 from module.config.config import Config
 from module.device.device import Device
 
-from tasks.ActivityShikigami.page import page_climb_act, page_climb_ticket
+from tasks.ActivityShikigami.page import page_climb_act, page_climb_ticket, page_climb_boss
 from tasks.ActivityShikigami.assets import ActivityShikigamiAssets
 from tasks.ActivityShikigami.script_task import ScriptTask
 
 
 class ImplScriptTask(ScriptTask, ABC):
+    def test_boss_page(self) -> int:
+        # Navigation/OCR only: do not click challenge or spend stamina.
+        self.goto_page(page_climb_boss)
+        return self.boss_read_bonus()
+
     def test_battle_main(self) -> bool:
         # 本期导航检查不点击挑战、不消耗门票。
         self.goto_page(page_climb_ticket)

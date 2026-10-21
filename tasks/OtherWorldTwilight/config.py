@@ -22,6 +22,7 @@ class OtherWorldTwilightConfig(ConfigBase):
     user_status: UserStatus = Field(default=UserStatus.LEADER, description='user_status_help')
     # 限制时间
     limit_time: Time = Field(default=Time(minute=30), description='limit_time_help')
+    exhaust_double_rewards: bool = Field(default=False, description='owt_exhaust_double_rewards_help')
     # 限制次数
     limit_count: int = Field(default=30, description='limit_count_help', ge=1)
 

@@ -162,8 +162,6 @@ class ScriptTask(GameUi, GeneralBattle, GeneralInvite, SwitchSoul, HuntAssets):
         self.device.click_record_clear()
         # 战斗过程 随机点击和滑动 防封
         logger.info("Start battle process")
-        stuck_timer = Timer(180)
-        stuck_timer.start()
         while 1:
             self.screenshot()
             # Preset confirmation can arrive after battle_before's deadline.
@@ -184,11 +182,10 @@ class ScriptTask(GameUi, GeneralBattle, GeneralInvite, SwitchSoul, HuntAssets):
                 logger.info('Netherworld click prepare after maybe failed')
                 self.device.stuck_record_add('BATTLE_STATUS_S')
                 continue
-            # 如果三分钟还没打完，再延长五分钟
-            if stuck_timer and stuck_timer.reached():
-                stuck_timer = None
-                self.device.stuck_record_clear()
-                self.device.stuck_record_add('BATTLE_STATUS_S')
+            # Only verified battle frames extend waiting; unknown screens still time out.
+            if self.is_in_real_battle(is_screenshot=False):
+                self.device.stuck_timer.reset()
+                self.device.stuck_timer_long.reset()
 
 
 if __name__ == '__main__':

@@ -2,6 +2,11 @@
   "project": "OnmyojiAutoScript",
   "suites": [
     {
+      "path": "dev_tools/test_image_multiscale_roi.py",
+      "required": true,
+      "scope": "AST matching method with synthetic OpenCV images; verifies click regions without project or device imports"
+    },
+    {
       "path": "dev_tools/test_config_concurrent_updates.py",
       "required": true,
       "scope": "Temporary configs and isolated multiprocessing writers; production logger is stubbed"
@@ -87,41 +92,6 @@
       "scope": "AST Dokan exit via town and overlay ordering with fake navigation"
     },
     {
-      "path": "dev_tools/test_wanted_secret_story.py",
-      "required": true,
-      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
-    },
-    {
-      "path": "dev_tools/test_dokan_cheering_entry.py",
-      "required": true,
-      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
-    },
-    {
-      "path": "dev_tools/test_utilize_growth_entry.py",
-      "required": true,
-      "scope": "AST transition replay with fake frames, clocks and clicks; no device imports"
-    },
-    {
-      "path": "dev_tools/test_dokan_soul_gate.py",
-      "required": true,
-      "scope": "AST disabled and enabled soul-switch routes with fake UI; no device imports"
-    },
-    {
-      "path": "dev_tools/test_dokan_soul_transition.py",
-      "required": true,
-      "scope": "Dokan records entry and interrupted soul-switch replay with a real prepare-button crop"
-    },
-    {
-      "path": "dev_tools/test_activation_card_entry.py",
-      "required": true,
-      "scope": "AST bounded realm card entry with fake frames and clicks"
-    },
-    {
-      "path": "dev_tools/test_own_growth_fill.py",
-      "required": true,
-      "scope": "AST own-growth max-level and bounded candidate replay without devices"
-    },
-    {
       "path": "dev_tools/test_six_realms_island_entry.py",
       "required": true,
       "scope": "Moving island targets, missing markers and bounded entry without devices"
@@ -170,6 +140,11 @@
       "path": "dev_tools/test_activity_ticket_event.py",
       "required": true,
       "scope": "AST ticket flow, fake OCR and sanitized UI crops; no device, account config or server imports"
+    },
+    {
+      "path": "dev_tools/test_dokan_soul_transition.py",
+      "required": true,
+      "scope": "Dokan records entry and interrupted soul-switch replay with a real prepare-button crop"
     }
   ],
   "stub_project_logger": true

@@ -4,6 +4,15 @@ from module.atom.image import RuleImage
 
 
 class ChessImage(RuleImage):
+    METHOD_TEMPLATE_MATCH = 'Template matching'
+    METHOD_MASKED_TEMPLATE_MATCH = 'Masked template matching'
+    METHOD_MULTI_SCALE_TEMPLATE_MATCH = 'Multi-scale template matching'
+    METHOD_SIFT_FLANN = 'Sift Flann'
+
+    def __init__(self, roi_front, roi_back, method, threshold, file, profile='High'):
+        self.profile = profile
+        super().__init__(roi_front, roi_back, method, threshold, file)
+
     def match_all_any(self, image, threshold=None, roi=None, nms_threshold=0.3):
         """A smaller card ROI cannot contain a larger template.
 

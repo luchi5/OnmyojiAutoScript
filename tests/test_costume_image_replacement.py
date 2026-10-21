@@ -55,6 +55,41 @@ def reload_task_override():
 
 
 class CostumeImageReplacementTests(unittest.TestCase):
+    def test_shifted_courtyard_uses_matching_exploration_lantern(self):
+        files = list((ROOT / 'log/error/1792579366086').glob('*.png'))
+        if not files:
+            self.skipTest('Local incident screenshot is not part of the public repository')
+        image = cv2.cvtColor(cv2.imdecode(np.fromfile(files[0], np.uint8), cv2.IMREAD_COLOR),
+                             cv2.COLOR_BGR2RGB)
+        class Holder(CostumeBase):
+            pass
+        from tasks.Component.Costume.config import MainType
+        holder = Holder()
+        holder.I_MAIN_GOTO_EXPLORATION = fresh_rule('tasks/GameUi/assets.py', 'I_MAIN_GOTO_EXPLORATION')
+        holder._activate_main_costume(MainType.COSTUME_MAIN_17)
+        self.assertTrue(holder.I_MAIN_GOTO_EXPLORATION.match(image))
+        x, y = holder.I_MAIN_GOTO_EXPLORATION.coord()
+        self.assertTrue(680 <= x <= 740 and 220 <= y <= 290)
+
+    def test_fox_demon_victory_recognizes_saved_account15_result(self):
+        files = list((ROOT / 'log/error/1792578436679').glob('*.png'))
+        if not files:
+            self.skipTest('Local incident screenshot is not part of the public repository')
+        image = cv2.cvtColor(cv2.imdecode(np.fromfile(files[0], np.uint8), cv2.IMREAD_COLOR),
+                             cv2.COLOR_BGR2RGB)
+        class Holder(CostumeBase):
+            pass
+        holder = Holder()
+        holder.I_DE_WIN = fresh_rule('tasks/Component/GeneralBattle/assets.py', 'I_DE_WIN')
+        holder.I_DE_WIN.load_image()
+        reference = holder.I_DE_WIN
+        self.assertFalse(reference.match(image))
+        holder.check_costume_battle(BattleType.COSTUME_BATTLE_15)
+        self.assertIs(holder.I_DE_WIN, reference)
+        self.assertTrue(reference.match(image))
+        for name in ('failure', 'invitation'):
+            self.assertFalse(reference.match(frame(name)))
+
     def test_loaded_default_pixels_are_replaced_without_breaking_page_reference(self):
         rule = default_false()
         self.assertEqual(rule.image.shape[:2], (100, 100))

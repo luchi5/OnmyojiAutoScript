@@ -72,6 +72,7 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
         点击预设
         :return:
         """
+        entry_recoveries = 0
         while 1:
             self.screenshot()
             if self.appear(self.I_SOU_SWITCH_1):
@@ -87,6 +88,17 @@ class SwitchSoul(BaseTask, SwitchSoulAssets):
             if self.appear(self.I_SOUL_PRESET):
                 self.click(self.I_SOUL_PRESET, interval=3)
                 continue
+            # A delayed navigation back tap can return to the courtyard after
+            # records was confirmed. Re-enter instead of waiting for presets
+            # that cannot appear on the courtyard page.
+            navigate = getattr(self, 'goto_page', None)
+            if (navigate is not None and entry_recoveries < 2
+                    and self.appear(GameUiAssets.I_CHECK_MAIN)
+                    and not self.appear(GameUiAssets.I_CHECK_RECORDS)):
+                from tasks.GameUi.page import page_shikigami_records
+                entry_recoveries += 1
+                logger.warning('Soul preset entry returned to courtyard; re-enter records')
+                navigate(page_shikigami_records, skip_first_screenshot=False)
         logger.info('Click preset in switch soul')
 
     def switch_soul_one(self, group: int, team: int) -> None:

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi import WebSocket, WebSocketDisconnect
 from datetime import datetime
+from module.config.manual_wait import next_wait_run
 from module.config.utils import convert_to_underscore
 from module.config.config_model import ConfigConflictError, EXPECTED_UNSET
 
@@ -189,7 +190,18 @@ async def sync_next_run(script_name: str, task: str, target_dt: str, expected_va
     expected = _expected_value(expected_value)
     expected_args = {} if expected is EXPECTED_UNSET else {'expected_value': expected}
     try:
-        if (convert_to_underscore(task) == 'talisman_pass' and closeout_enabled(config)
+        if target is None:
+            config.reload()
+            task_key = convert_to_underscore(task)
+            settings = getattr(config.model, task_key, None)
+            if settings is None or not hasattr(settings, 'scheduler'):
+                raise HTTPException(status_code=400, detail='Unknown scheduled task')
+            try:
+                target = next_wait_run(task_key, settings)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from None
+            config.model.script_set_arg(task, 'scheduler', 'next_run', target, **expected_args)
+        elif (convert_to_underscore(task) == 'talisman_pass' and closeout_enabled(config)
                 and target is not None and target <= datetime.now()):
             # Preserve explicit immediate-run intent for dynamic closeout as well.
             config.model.script_set_arg(task, 'scheduler', 'next_run', target, **expected_args)

@@ -150,11 +150,12 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         # 判断勾协
         self._burst()
         from tasks.GlobalGame.autumn_popup import close_autumn_popup
+        from tasks.GlobalGame.battle_reward_popup import close_soul_bonus_popup, close_pet_treasure_popup
         # Do not let task loops click controls behind a still-visible overlay.
         popup_timeout = Timer(8).start()
-        while close_autumn_popup(self):
+        while close_autumn_popup(self) or close_soul_bonus_popup(self) or close_pet_treasure_popup(self):
             if popup_timeout.reached():
-                raise GameStuckError('Guild autumn popup did not close within 8 seconds')
+                raise GameStuckError('Announcement popup did not close within 8 seconds')
             sleep(0.3)
             self.device.screenshot()
 
@@ -710,7 +711,7 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         target_time = (datetime.now() + timedelta(days=time_delta)).replace(hour=custom_time.hour,
                                                                             minute=custom_time.minute,
                                                                             second=custom_time.second)
-        self.set_next_run(task, target=target_time)
+        self.set_next_run(task, target=target_time, server=False)
 
     #  ---------------------------------------------------------------------------------------------------------------
     #

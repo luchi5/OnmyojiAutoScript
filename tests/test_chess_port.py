@@ -41,23 +41,21 @@ class ChessPortTests(unittest.TestCase):
     def test_generated_assets_and_all_lineups_load_with_mainline_rule_image(self):
         task = self.make_task()
         rules = [value for value in vars(ChessAssets).values() if isinstance(value, RuleImage)]
-        rules.extend([task.store_gold_rule, *task.board_occupancy_rules])
-        rules.extend(rule for _, rule in task.shikigami_hand_rules)
-        rules.extend(rule for _, rule in task.all_shikigami_shop_rules)
+        rules.extend(task.board_occupancy_rules)
         rules.extend(rule for _, rule in task.soul_hand_rules)
         for key in LINEUP_REGISTRY:
             task.select_lineup_strategy(key)
-            self.assertTrue(task.lineup_shikigami_hand_rules)
-            self.assertTrue(task.shikigami_shop_rules)
-            rules.extend(rule for _, rule in task.lineup_shikigami_hand_rules)
-            rules.extend(rule for _, rule in task.shikigami_shop_rules)
+            for name in task.get_lineup_strategy()['shikigami']:
+                self.assertIn(name, task.frame_portraits['card'])
+                self.assertIn(name, task.frame_portraits['store'])
             rules.append(task.hakuzosu_protect_rule)
+        self.assertTrue(task.frame_emblem_portraits)
         for rule in rules:
             with self.subTest(file=rule.file):
                 self.assertTrue(Path(rule.file).is_file())
                 self.assertGreater(rule.image.size, 0)
-        # These paths formerly required the xy frame_id keyword and Device field.
-        self.assertEqual(task._read_shop_slot_price(1), (None, ''))
+        # A runhey Device without xy's image_frame_id still supports Frame scans.
+        self.assertEqual(task._frame_card_scan('store'), [])
         # Hand templates have different sizes; small cards must not trigger
         # OpenCV's size assertion or its reversed-input false matches.
         self.assertEqual(task.classify_hand_card((200, 500, 47, 64))['type'], 'unknown')

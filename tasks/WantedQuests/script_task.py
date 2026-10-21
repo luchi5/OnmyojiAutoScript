@@ -408,6 +408,16 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1.5):
                 continue
 
+    def dismiss_secret_stage_bonus(self):
+        marker = RuleImage(roi_front=(645,539,186,26), roi_back=(620,515,240,75),
+                           threshold=0.85, method='Template matching',
+                           file='./tasks/WantedQuests/wq/secret_stage_bonus.png')
+        if not self.appear(marker):
+            return False
+        self.click(RuleClick(roi_front=(480,625,340,45), roi_back=(480,625,340,45),
+                            name='secret_stage_bonus_continue'), interval=1.5)
+        return True
+
     def advance_secret_story(self, chat, interval=1):
         reader = RuleOcr(roi=(300,605,710,80), area=(300,605,710,80),
                          mode='Full', method='Default', keyword='', name='secret_dialogue_text')
@@ -433,6 +443,9 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         enma_story = RuleImage(roi_front=(810,535,95,35), roi_back=(795,520,125,65),
                               threshold=0.9, method='Template matching',
                               file='./tasks/WantedQuests/wq/secret_story_enma.png')
+        yamausagi_story = RuleImage(roi_front=(320,532,70,36), roi_back=(305,517,100,66),
+                                   threshold=0.9, method='Template matching',
+                                   file='./tasks/WantedQuests/wq/secret_story_yamausagi.png')
         if not self.ui_click(goto, self.I_WQSE_FIRE, timeout=20):
             raise GameStuckError('Wanted secret mission entry did not appear')
         won_count = 0
@@ -441,10 +454,12 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             retry_from_wanted = False
             while not entry_timer.reached():
                 self.screenshot()
+                if self.dismiss_secret_stage_bonus():
+                    continue
                 if self.appear(self.I_WQSE_FIRE):
                     break
                 # 奖励结束后仍可能有剧情，必须处理完才能等到下一次挑战入口。
-                if won_count and (self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story)):
+                if won_count and (self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story) or self.appear(yamausagi_story)):
                     self.advance_secret_story(chat, interval=1.5)
                     continue
                 # 普通秘闻获胜后可能回到本周竞速；其选中层并非悬赏目标。
@@ -464,7 +479,9 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             entry_timer = Timer(90).start()
             while not entry_timer.reached():
                 self.screenshot()
-                if self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story):
+                if self.dismiss_secret_stage_bonus():
+                    continue
+                if self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story) or self.appear(yamausagi_story):
                     self.advance_secret_story(chat, interval=0.8)
                     continue
                 if not self.appear(self.I_UI_BACK_RED, threshold=0.7):
@@ -488,9 +505,11 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         exit_timer = Timer(90).start()
         while not exit_timer.reached():
             self.screenshot()
+            if self.dismiss_secret_stage_bonus():
+                continue
             if self.appear(self.I_CHECK_SECRET_ZONES):
                 break
-            if (self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story)):
+            if (self.appear(story) or self.appear(self.I_SECRET_STORY) or self.appear(kingyo_story) or self.appear(enma_story) or self.appear(yamausagi_story)):
                 self.advance_secret_story(chat, interval=1.5)
                 continue
             if self.appear_then_click(self.I_UI_BACK_RED, interval=1):

@@ -2,7 +2,7 @@
 # @author AzurTian
 import difflib
 from time import sleep
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from module.base.timer import Timer
 
@@ -27,6 +27,9 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralRoom, GameUi, SwitchSoul, 
 
     def run(self) -> bool:
         self.conf = self.config.other_world_twilight
+        bonus_mode = self.conf.other_world_twilight_config.exhaust_double_rewards
+        if bonus_mode and self.conf.other_world_twilight_config.user_status != UserStatus.ALONE:
+            raise ScriptError('打完双倍奖励模式目前仅支持单人挑战，请将身份设为单人')
         if self.conf.switch_soul.enable:
             self.goto_page(page_shikigami_records)
             self.run_switch_soul(self.conf.switch_soul.switch_group_team)
@@ -37,10 +40,20 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralRoom, GameUi, SwitchSoul, 
         match self.conf.other_world_twilight_config.user_status:
             case UserStatus.LEADER: success = self.run_leader()
             case UserStatus.MEMBER: success = self.run_member()
-            case UserStatus.ALONE: self.run_alone()
+            case UserStatus.ALONE:
+                if bonus_mode:
+                    success = self.run_double_rewards()
+                else:
+                    self.run_alone()
             case _: raise ScriptError('Unknown OtherWorldTwilight user status')
         self.goto_page(page_main)
-        if success:
+        if bonus_mode:
+            now = datetime.now()
+            target = ((now + timedelta(days=7 - now.weekday())).replace(
+                hour=10, minute=0, second=0, microsecond=0) if success
+                else now + timedelta(minutes=10))
+            self.set_next_run('OtherWorldTwilight', success=success, server=False, target=target)
+        elif success:
             self.set_next_run('OtherWorldTwilight', finish=True, success=True)
         else:
             self.set_next_run('OtherWorldTwilight', finish=True, success=False)
@@ -183,6 +196,95 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralRoom, GameUi, SwitchSoul, 
                     logger.warning(f'Unknown page: {current_page}, goto page_owt')
                     self.goto_page(page_owt)
                     unknown_page_timer.clear()
+
+    def read_double_rewards_stable(self):
+        from tasks.OtherWorldTwilight.reward_counter import read_remaining
+        previous = None
+        for _ in range(5):
+            self.screenshot()
+            if self.get_current_page(False) != page_owt:
+                return None
+            try:
+                value = read_remaining(self.device.image)
+            except Exception as error:
+                logger.warning(f'Double reward OCR failed: {type(error).__name__}')
+                value = None
+            if value is not None and value == previous:
+                return value
+            previous = value
+            sleep(0.5)
+        return None
+
+    def run_double_rewards(self):
+        self.goto_page(page_owt)
+        self.check_lock(self.conf.general_battle_config.lock_team_enable, self.I_OWT_LOCK, self.I_OWT_UNLOCK)
+        previous = None
+        no_progress = 0
+        while True:
+            remaining = self.read_double_rewards_stable()
+            if remaining is None:
+                logger.warning('Double reward count unreadable; defer without starting battle')
+                return False
+            logger.info(f'OtherWorldTwilight double rewards remaining: {remaining}/60')
+            if remaining == 0:
+                return True
+            if previous is not None:
+                if remaining > previous:
+                    logger.warning('Double reward count increased unexpectedly; defer')
+                    return False
+                no_progress = no_progress + 1 if remaining == previous else 0
+                if no_progress >= 3:
+                    logger.warning('Three battles without confirmed bonus consumption; defer')
+                    return False
+            if datetime.now() - self.start_time >= self.conf.other_world_twilight_config.limit_time_v:
+                return False
+            previous = remaining
+            # A stable positive counter authorizes only one battle.
+            timer = Timer(20).start()
+            entered = False
+            clicks = 0
+            while not timer.reached():
+                self.screenshot()
+                page = self.get_current_page(False)
+                if page in (page_battle_prepare, page_battle, page_reward):
+                    self.run_general_battle(self.conf.general_battle_config)
+                    entered = True
+                    break
+                if page == page_owt and clicks < 3:
+                    if self.appear_then_click(self.I_OWT_FIRE, interval=2):
+                        clicks += 1
+                sleep(0.3)
+            if not entered:
+                logger.warning('Double reward challenge did not enter battle; defer')
+                return False
+            if not self.wait_double_reward_page():
+                return False
+
+    def wait_double_reward_page(self):
+        """Let settlement return naturally before considering navigation recovery."""
+        unknown_frames = 0
+        for _ in range(30):
+            self.screenshot()
+            page = self.get_current_page(False)
+            if page == page_owt:
+                return True
+            if page in (page_battle_prepare, page_battle, page_reward):
+                unknown_frames = 0
+                if page == page_reward:
+                    self.appear_then_click(self.I_REWARD, action=self.C_REWARD_1, interval=1.5)
+                    self.appear_then_click(self.I_REWARD_GOLD, action=self.C_REWARD_1, interval=1.5)
+            else:
+                unknown_frames += 1
+            sleep(0.5)
+        # Never back out of a visible battle or reward. Only a sustained unknown
+        # page permits one navigation fallback; normal settlement never uses it.
+        if unknown_frames >= 20:
+            logger.warning('Settlement page remained unknown; recover OWT navigation once')
+            self.goto_page(page_owt)
+            self.screenshot()
+            return self.get_current_page(False) == page_owt
+        logger.warning('Settlement did not return to challenge page; defer')
+        return False
 
     def is_room_dead(self) -> bool:
         # 如果在探索界面或者是出现在组队界面，那就是可能房间死了

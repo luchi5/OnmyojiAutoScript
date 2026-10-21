@@ -46,12 +46,12 @@ class MuMuProcessGuard:
             if not exe.startswith(root):
                 return False
             vm, index = self._option(args, '--vm'), self._option(args, '-v')
-            if (self.name in args and (vm != self.name or index is None)
+            if (self.name in args and (vm != self.name or ("-v" in args and index is None))
                     or vm is None and index == self.index):
                 raise RuntimeError(f'Incomplete identity for MuMu process {process.pid}; stop recovery')
-            if vm == self.name and index != self.index:
+            if vm == self.name and index is not None and index != self.index:
                 raise RuntimeError(f'Conflicting identity for MuMu process {process.pid}; stop recovery')
-            return vm == self.name and index == self.index
+            return vm == self.name and (index is None or index == self.index)
         uuid = self._option(args, '--startvm')
         comment = self._option(args, '--comment')
         if (self.name in args and (comment != self.name or not uuid)
@@ -73,8 +73,24 @@ class MuMuProcessGuard:
             except psutil.NoSuchProcess:
                 continue
             except psutil.AccessDenied as error:
-                # Unknown identity is not proof of exit or permission to kill.
-                raise RuntimeError('Cannot verify MuMu processes; stop recovery') from error
+                # Windows can deny command-line access while a VM is exiting.
+                # Retry that same process briefly; never assume an inaccessible
+                # live process has exited or grant permission to kill it.
+                for attempt in range(3):
+                    time.sleep(0.25)
+                    try:
+                        if not process.is_running():
+                            break
+                        if self.matches(process):
+                            result.append(process)
+                        break
+                    except psutil.NoSuchProcess:
+                        break
+                    except psutil.AccessDenied:
+                        if attempt == 2:
+                            raise RuntimeError(
+                                f'Cannot verify MuMu processes (PID {process.pid}); stop recovery'
+                            ) from error
         return result
 
     def wait_stopped(self, timeout):

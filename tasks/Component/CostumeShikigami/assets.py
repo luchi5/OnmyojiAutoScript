@@ -329,7 +329,7 @@ class CostumeShikigamiAssets:
 	# description 
 	I_SOU_SWITCH_SURE_5 = RuleImage(roi_front=(668,401,180,61), roi_back=(668,401,180,61), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeShikigami/sk5/sk5_sou_switch_sure_5.png")
 	# 用于判断是否在式神录里面 
-	I_SOU_CHECK_IN_5 = RuleImage(roi_front=(268,74,50,49), roi_back=(268,74,50,49), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeShikigami/sk5/sk5_sou_check_in_5.png")
+	I_SOU_CHECK_IN_5 = RuleImage(roi_front=(268,74,50,49), roi_back=(250,60,140,75), threshold=0.8, method="Template matching", file="./tasks/Component/CostumeShikigami/sk5/sk5_sou_check_in_5.png")
 	# 检查是否为第一组 
 	I_SOU_CHECK_GROUP_1_5 = RuleImage(roi_front=(1086,91,22,57), roi_back=(1086,91,22,57), threshold=0.9, method="Template matching", file="./tasks/Component/CostumeShikigami/sk5/sk5_sou_check_group_1_5.png")
 	# description 

@@ -15,7 +15,10 @@ class AppControl(Adb, Uiautomator2):
         method = self.config.script.device.control_method
         # if self.is_wsa:
         #     package = self.app_current_wsa()
-        if method in AppControl._app_u2_family:
+        # Minitouch/scrcpy control does not require ATX for a foreground-app
+        # query. After emulator wake, ATX/7912 can lag behind a working ADB
+        # shell; avoid creating that extra port forward just to inspect focus.
+        if method == 'uiautomator2':
             package = self.app_current_uiautomator2()
         else:
             package = self.app_current_adb()

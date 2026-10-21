@@ -55,6 +55,7 @@ class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAs
                 continue
             self._burst()
 
+
             # 中断棋局登录时先取消返回战斗，再完成遗留结算。
             if self.appear_then_click(self.I_RETURN_CHESS_CANCEL, interval=0.8):
                 logger.info('Cancel returning to interrupted Chess battle; wait for result flow')
@@ -181,6 +182,8 @@ class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAs
                 return True
             except (GameTooManyClickError, GameStuckError) as e:
                 logger.warning(e)
+                if not getattr(self, '_allow_login_restart', True):
+                    raise RequestHumanTakeover('正常启动登录失败，停止本次运行，不自动重启游戏') from e
                 self.device.app_stop()
                 self.device.app_start()
                 continue
@@ -203,6 +206,11 @@ class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAs
             if not self.device.check_screen_size_sample():
                 continue
             self._burst()
+
+            from tasks.Restart.sign_popup import handle_sign_popup
+            if handle_sign_popup(self):
+                timer_harvest.reset()
+                continue
 
             # 点击'获得奖励'
             if self.ui_reward_appear_click():
@@ -247,23 +255,23 @@ class LoginHandler(ChessBattleNavigationMixin, BaseTask, RestartAssets, GameUiAs
                 timer_harvest.reset()
                 continue
             # 签到
-            if self.appear_then_click(self.I_HARVEST_SIGN, interval=1.5):
+            if self.config.restart.harvest_config.enable_sign and self.appear_then_click(self.I_HARVEST_SIGN, interval=1.5):
                 self.wait_until_appear(self.I_HARVEST_SIGN_2, wait_time=2)
                 timer_harvest.reset()
                 continue
             # 某些活动的特殊签到，有空看到就删掉
-            if self.appear_then_click(self.I_HARVEST_SIGN_3, interval=0.7):
+            if self.config.restart.harvest_config.enable_sign and self.appear_then_click(self.I_HARVEST_SIGN_3, interval=0.7):
                 timer_harvest.reset()
                 continue
-            if self.appear_then_click(self.I_HARVEST_SIGN_4, interval=1):
+            if self.config.restart.harvest_config.enable_sign and self.appear_then_click(self.I_HARVEST_SIGN_4, interval=1):
                 timer_harvest.reset()
                 continue
-            if self.appear_then_click(self.I_HARVEST_SIGN_2, interval=1.5):
+            if self.config.restart.harvest_config.enable_sign and self.appear_then_click(self.I_HARVEST_SIGN_2, interval=1.5):
                 self.wait_until_appear(self.I_LOGIN_RED_CLOSE, wait_time=2)
                 timer_harvest.reset()
                 continue
             # 999天的签到福袋
-            if self.appear_then_click(self.I_HARVEST_SIGN_999, interval=1.5):
+            if self.config.restart.harvest_config.enable_sign_999 and self.appear_then_click(self.I_HARVEST_SIGN_999, interval=1.5):
                 timer_harvest.reset()
                 continue
             # 判断是否勾选了收取邮件（不收取邮件可以查看每日收获）

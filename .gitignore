@@ -8,6 +8,13 @@ config/*.yaml
 config/*.json
 config/daily_closeout/
 config/daily_feedback/
+config/chess_weekly_notify/
+config/abyss_progress/
+config/account_session_recovery/
+config/bondling_resume/
+config/secret_status/
+data/ActivityShikigami/
+/migration-records/
 log/daily_feedback_debug/
 config/tmp*
 !config/template*.json
@@ -278,53 +285,3 @@ oas.bat
 
 # Per-instance FrogBoss prediction and result history
 data/frog_oas/
-
-# Local account state and private deployment material
-config/**
-!config/
-!config/template*.json
-!config/findjade/
-!config/findjade/find_jade.json
-.env.*
-*.pem
-*.key
-*.p12
-*.pfx
-*.crt
-*.db
-*.sqlite*
-migration-records/
-local-backups/
-start-*.cmd
-
-# Upstream maintainer automation is not part of this fork runtime.
-/.github/agents/agentic-workflows.md
-/.github/aw/actions-lock.json
-/.github/skills/agentic-workflows/SKILL.md
-/.github/workflows/agentics-maintenance.yml
-/.github/workflows/assets/.gitignore
-/.github/workflows/assets/tasks-i18n-2026-04-22.md
-/.github/workflows/auto-create-pr.yaml
-/.github/workflows/auto-merge-pr.yaml
-/.github/workflows/copilot-setup-steps.yml
-/.github/workflows/github-mirror.yml
-/.github/workflows/issue-handle-bug.lock.yml
-/.github/workflows/issue-handle-bug.md
-/.github/workflows/issue-handle-enhancement.lock.yml
-/.github/workflows/issue-handle-enhancement.md
-/.github/workflows/issue-handle-other.lock.yml
-/.github/workflows/issue-handle-other.md
-/.github/workflows/issue-handle-question.lock.yml
-/.github/workflows/issue-handle-question.md
-/.github/workflows/issue-triage.lock.yml
-/.github/workflows/issue-triage.md
-/.github/workflows/pr-review-checklist.lock.yml
-/.github/workflows/pr-review-checklist.md
-/.github/workflows/pr-review-intent.lock.yml
-/.github/workflows/pr-review-intent.md
-/.github/workflows/shared/engine.md
-/.github/workflows/shared/network.md
-/.github/workflows/shared/review-checklist.md
-/.github/workflows/tools/extract_tasks_i18n.py
-/.github/workflows/weekly-report.lock.yml
-/.github/workflows/weekly-report.md

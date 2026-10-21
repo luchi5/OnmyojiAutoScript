@@ -1,314 +1,238 @@
-"""Exercise real normal/smart Abyss loops against synthetic enemy areas.
-
-Uses actual quota, enemy, smart-switch and battle-return methods from AST.
-No project runtime, configuration file, notification or emulator is loaded.
-"""
+"""Run the actual Abyss checkpoint/closeout flow without emulator IO."""
 import ast
 import copy
-from datetime import datetime
-from enum import Enum
+from datetime import datetime, timedelta
 from pathlib import Path
+import os
 import sys
+import tempfile
 from types import SimpleNamespace as S
 import unittest
 from unittest.mock import Mock, patch
+from dev_tools.test_abyss_workflow import workflow, TIMES
 
-
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ.get('ABYSS_TEST_ROOT', Path(__file__).resolve().parents[1]))
 SOURCE = ROOT / 'tasks/AbyssShadows/script_task.py'
 
-
-class TaskEnd(Exception):
-    pass
-
-
+class TaskEnd(Exception):pass
 class Clock(datetime):
-    current = datetime(2026, 10, 9, 19, 40)
-
+    current=datetime(2026,10,16,19,10)
     @classmethod
-    def now(cls):
-        return cls.current
-
+    def now(cls):return cls.current
 
 class Marker(str):
     @property
-    def name(self):
-        return str(self)
+    def name(self):return str(self)
 
+AREAS=S(DRAGON=Marker('dragon'),PEACOCK=Marker('peacock'),
+        FOX=Marker('fox'),LEOPARD=Marker('leopard'))
+CLICKS=S(BOSS=Marker('boss'),GENERAL_1=Marker('general1'),GENERAL_2=Marker('general2'),
+         ELITE_1=Marker('elite1'),ELITE_2=Marker('elite2'),ELITE_3=Marker('elite3'))
 
-class Enemy(Enum):
-    BOSS = 1
-    GENERAL = 2
-    ELITE = 3
-
-
-AREAS = S(DRAGON=Marker('dragon'), PEACOCK=Marker('peacock'),
-          FOX=Marker('fox'), LEOPARD=Marker('leopard'))
-CLICKS = S(BOSS=Marker('boss'), GENERAL_1=Marker('general1'), GENERAL_2=Marker('general2'),
-           ELITE_1=Marker('elite1'), ELITE_2=Marker('elite2'), ELITE_3=Marker('elite3'))
-
+class Timer:
+    def __init__(self,*args):self.checks=0
+    def start(self):return self
+    def reached(self):
+        self.checks+=1
+        return self.checks>8
 
 def load_task():
-    tree = ast.parse(SOURCE.read_text(encoding='utf-8-sig'), filename=str(SOURCE))
-    original = next(n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == 'ScriptTask')
-    selected = copy.deepcopy(original)
-    selected.bases = []
-    keep = {'run', 'fight_and_switch', 'find_enemy', 'run_boss_fight',
-            'run_general_fight', 'run_elite_fight', 'run_general_battle_back',
-            'fight_count', 'quota_complete'}
-    selected.body = [n for n in selected.body if isinstance(n, ast.FunctionDef) and n.name in keep]
-    env = {'datetime': Clock, 'logger': Mock(), 'TaskEnd': TaskEnd, 'AbyssShadows': object,
-           'AreaType': AREAS, 'CilckArea': CLICKS, 'EmemyType': Enemy,
-           'page_shikigami_records': 'shikigami_records', 'print': Mock(),
-           'time': S(time=Mock(return_value=100.0))}
-    exec(compile(ast.fix_missing_locations(ast.Module(body=[selected], type_ignores=[])),
-                 str(SOURCE), 'exec'), env)
-    return env['ScriptTask']
+    tree=ast.parse(SOURCE.read_text(encoding='utf-8-sig'))
+    selected=copy.deepcopy(next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='ScriptTask'))
+    selected.bases=[]
+    keep={'run','init_target_plan','refresh_target_counts','save_target_plan','target_area',
+          'target_click','execute_target','schedule_abyss','defer_abyss','finish_abyss',
+          'run_general_battle_back','_preset_selection_interrupted','wait_abyss_attack'}
+    selected.body=[n for n in selected.body if isinstance(n,ast.FunctionDef) and n.name in keep]
+    env={'datetime':Clock,'timedelta':timedelta,'logger':Mock(),'TaskEnd':TaskEnd,
+         'AbyssShadows':object,'AreaType':AREAS,'CilckArea':CLICKS,'Path':Path,
+         '__file__':str(SOURCE),'page_shikigami_records':'records','Timer':Timer,
+         'GamePageUnknownError':RuntimeError,'time':S(time=Mock(return_value=100.0))}
+    for name in ('TargetPlan','QUOTAS','enemy_type','legacy_order','next_run','opening_slots','parse_order'):
+        env[name]=getattr(workflow,name)
+    env['ProgressStore']=lambda root,account,day:workflow.ProgressStore(env['test_root'],account,day)
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[selected],type_ignores=[])),str(SOURCE),'exec'),env)
+    return env['ScriptTask'],env
 
+ACTUAL,ENV=load_task()
 
-ACTUAL = load_task()
-
-
-def runtime(*, smart=False, enemies=True, stale_counts=False):
-    task = ACTUAL()
-    task.config = S(abyss_shadows=S(
-        switch_soul_config=S(enable=False, enable_switch_by_name=False),
-        abyss_shadows_combat_time=S(CombatTime_enable=smart, boss_combat_time=0,
-                                    general_combat_time=0, elite_combat_time=0),
-        abyss_shadows_time=S(custom_run_time_friday='fri', custom_run_time_saturday='sat',
-                             custom_run_time_sunday='sun'),
-    ))
-    task.boss_fight_count, task.general_fight_count, task.elite_fight_count = (
-        (2, 4, 6) if stale_counts else (0, 0, 0))
-    task.device = Mock()
-    task.screenshot = Mock()
-    task.goto_page = Mock()
-    task.goto_abyss_shadows = Mock()
-    task.select_boss = Mock(return_value=True)
-    task.wait_until_disappear = Mock()
-    task.wait_until_appear = Mock(return_value=False)
-    task.goto_main = Mock()
-    task.custom_next_run = Mock()
-    task.set_next_run = Mock()
-    task.current_area = AREAS.DRAGON
+def runtime(*,smart=False,enemies=True):
+    task=ACTUAL()
+    task.config=S(config_name='01-test',abyss_shadows=S(
+        switch_soul_config=S(enable=False,enable_switch_by_name=False),
+        abyss_shadows_combat_time=S(CombatTime_enable=smart,boss_combat_time=0,general_combat_time=0,elite_combat_time=0),
+        abyss_shadows_time=TIMES,scheduler=S(failure_interval=timedelta(minutes=3)),
+        general_battle_config=S(preset_enable=False,lock_team_enable=False)))
+    task.device=Mock();task.screenshot=Mock();task.goto_page=Mock();task.goto_main=Mock()
+    task.goto_abyss_shadows=Mock();task.set_next_run=Mock();task.wait_until_appear=Mock(return_value=True)
+    task.wait_abyss_attack=Mock(return_value='attack')
+    task.current_area=AREAS.DRAGON;task.sealed=set()
     def change(area):
-        task.current_area = area
+        if area in task.sealed:return False
+        task.current_area=area
         return True
-    task.change_area = Mock(side_effect=change)
-    task.check_current_area = lambda: task.current_area
-    task.battles = []
-    for name in ('WAIT_TO_START', 'ABYSS_MAP_EXIT', 'ABYSS_MAP', 'ABYSS_NAVIGATION',
-                 'EQUIPPING', 'WIN', 'EXIT', 'EXIT_ENSURE'):
-        setattr(task, 'I_' + name, Marker(name))
-    task.appear = Mock(side_effect=lambda marker: marker in (task.I_ABYSS_MAP, task.I_ABYSS_NAVIGATION))
-    task.appear_then_click = Mock(side_effect=lambda marker, **kw: marker == task.I_WIN)
-    used = set()
-
+    task.change_area=Mock(side_effect=change);task.select_boss=Mock(side_effect=change)
+    task.is_area_selection=Mock(return_value=True);task.is_area_sealed=lambda area:area in task.sealed
+    task.battles=[]
     def available(marker):
-        target = (task.current_area, marker)
-        if not enemies or target in used:
-            return False
-        used.add(target)
-        task.battles.append(target)
-        return True
-
-    task.click_emeny_area = Mock(side_effect=available)
+        if not enemies:return False
+        task.battles.append((task.current_area,marker));return True
+    task.click_emeny_area=Mock(side_effect=available);task.run_general_battle_back=Mock(return_value=True)
+    task.appear=Mock(return_value=False);task.appear_then_click=Mock(return_value=False)
+    task.ui_reward_appear_click=Mock(return_value=False)
+    for name in ('IS_ATTACK','ABYSS_ATTACK_XY','ABYSS_FINISHED_XY','EQUIPPING','WIN','EXIT','EXIT_ENSURE','ABYSS_NAVIGATION'):
+        setattr(task,'I_'+name,Marker(name))
     return task
-
 
 class AbyssCloseoutEvents(unittest.TestCase):
     def setUp(self):
-        Clock.current = datetime(2026, 10, 9, 19, 40)
-        self.report = Mock()
-        self.patch = patch.dict(sys.modules, {
-            'tasks.Component.daily_closeout': S(report_closeout_outcome=self.report),
-        })
-        self.patch.start()
-        self.addCleanup(self.patch.stop)
-
-    def run_to_end(self, task):
-        with self.assertRaises(TaskEnd):
-            task.run()
-
-    def assert_outcome(self, outcome):
+        Clock.current=datetime(2026,10,16,19,10)
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        ENV['test_root']=Path(self.temp.name);self.report=Mock()
+        patcher=patch.dict(sys.modules,{'tasks.Component.daily_closeout':S(report_closeout_outcome=self.report)})
+        patcher.start();self.addCleanup(patcher.stop)
+    def run_to_end(self,task):
+        with self.assertRaises(TaskEnd):task.run()
+    def outcome(self,outcome):
         self.report.assert_called_once()
-        self.assertEqual(self.report.call_args.args[1:], ('AbyssShadows', outcome))
+        self.assertEqual(self.report.call_args.args[1:],('AbyssShadows',outcome))
 
-    def test_normal_actual_two_four_six_reports_completed(self):
-        task = runtime()
-        self.run_to_end(task)
-        self.assert_outcome('completed')
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
-        self.assertEqual(len(task.battles), 12)
+    def test_normal_and_smart_complete_twelve_unique_targets(self):
+        for smart in (False,True):
+            self.report.reset_mock();task=runtime(smart=smart);self.run_to_end(task)
+            self.outcome('completed');self.assertEqual(task._closeout_fight_counts,workflow.QUOTAS)
+            self.assertEqual(len(set(task.battles)),12)
+            task.set_next_run.assert_called_once_with(task='AbyssShadows',server=False,target=datetime(2026,10,17,20))
+            self.assertEqual(task.progress_store.load(),([],[]))
+
+    def test_missing_targets_fill_later_regions(self):
+        task=runtime(smart=True);available=task.click_emeny_area.side_effect
+        task.click_emeny_area.side_effect=lambda marker: (
+            False if task.current_area==AREAS.DRAGON and marker in (CLICKS.GENERAL_2,CLICKS.ELITE_3)
+            else available(marker))
+        self.run_to_end(task);self.outcome('completed')
+        self.assertEqual(task.target_plan.counts,workflow.QUOTAS);self.assertIn('C-2',task.target_plan.done)
+
+    def test_sealed_first_two_regions_are_skipped(self):
+        task=runtime();task.sealed={AREAS.DRAGON,AREAS.PEACOCK}
+        self.run_to_end(task);self.outcome('completed')
+        self.assertTrue(all(area in (AREAS.FOX,AREAS.LEOPARD) for area,_ in task.battles))
+
+    def test_exhausted_targets_finish_as_skipped(self):
+        task=runtime(enemies=False);self.run_to_end(task);self.outcome('skipped')
+        self.assertEqual(task.target_plan.counts,{'BOSS':0,'GENERAL':0,'ELITE':0})
+        self.assertEqual(task.click_emeny_area.call_count,24)
+
+    def test_unopened_returns_and_schedules_three_minutes(self):
+        task=runtime();task.select_boss.side_effect=None;task.select_boss.return_value=False
+        self.run_to_end(task);self.report.assert_not_called();task.run_general_battle_back.assert_not_called()
+        task.set_next_run.assert_called_once_with(task='AbyssShadows',server=False,target=datetime(2026,10,16,19,13))
         task.goto_main.assert_called_once()
-        task.custom_next_run.assert_called_once_with(
-            task='AbyssShadows', custom_time='sat', time_delta=1)
 
-    def test_smart_actual_two_four_six_reports_completed(self):
-        task = runtime(smart=True)
-        self.run_to_end(task)
-        self.assert_outcome('completed')
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
-        self.assertEqual(len(task.battles), 12)
+    def test_unknown_opening_page_defers_instead_of_stopping(self):
+        task=runtime();task.select_boss.side_effect=RuntimeError('Cannot identify opening page')
+        self.run_to_end(task);self.report.assert_not_called()
+        self.assertEqual(task.set_next_run.call_args.kwargs['target'],datetime(2026,10,16,19,13))
 
-    def test_normal_exhausted_targets_are_skipped_not_completed(self):
-        task = runtime(enemies=False)
-        self.run_to_end(task)
-        self.assert_outcome('skipped')
-        self.assertIn('boss=0/2', self.report.call_args.kwargs['detail'])
-        task.custom_next_run.assert_called_once_with(
-            task='AbyssShadows', custom_time='sat', time_delta=1)
+    def test_assembly_timeout_defers_without_battle(self):
+        task=runtime();task.wait_abyss_attack.return_value='waiting'
+        self.run_to_end(task);self.report.assert_not_called()
+        task.run_general_battle_back.assert_not_called();task.device.stuck_record_clear.assert_called_once()
 
-    def test_smart_empty_target_returns_do_not_prove_general_or_elite_quota(self):
-        task = runtime(smart=True, enemies=False)
-        self.run_to_end(task)
-        self.assert_outcome('skipped')
-        self.assertEqual((task.general_fight_count, task.elite_fight_count), (0, 0))
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0})
-        self.assertIn('general=0/4', self.report.call_args.kwargs['detail'])
+    def test_finished_activity_exits_without_battling(self):
+        task=runtime();task.wait_abyss_attack.return_value='finished'
+        self.run_to_end(task);self.outcome('skipped');task.run_general_battle_back.assert_not_called()
 
-    def test_smart_partial_targets_count_only_real_battles(self):
-        task = runtime(smart=True)
-        actual_click = task.click_emeny_area.side_effect
-        task.click_emeny_area.side_effect = lambda marker: (
-            False if marker in (CLICKS.GENERAL_2, CLICKS.ELITE_2, CLICKS.ELITE_3)
-            else actual_click(marker))
-        self.run_to_end(task)
-        self.assert_outcome('skipped')
-        self.assertEqual((task.boss_fight_count, task.general_fight_count,
-                          task.elite_fight_count), (2, 4, 4))
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 4})
+    def test_activity_finishes_between_targets_without_starting_another(self):
+        task=runtime();task._abyss_closeout_date=Clock.current.date();task.init_target_plan()
+        task.execute_target('A-1')
+        task.appear.side_effect=lambda marker:marker==task.I_ABYSS_FINISHED_XY
+        with self.assertRaises(TaskEnd):task.execute_target('A-2')
+        self.outcome('skipped');self.assertEqual(task.target_plan.done,['A-1'])
+        self.assertEqual(task.run_general_battle_back.call_count,1)
 
-    def test_both_modes_reset_closeout_proof_despite_stale_task_counts(self):
-        for smart in (False, True):
-            with self.subTest(smart=smart):
-                self.report.reset_mock()
-                task = runtime(smart=smart, stale_counts=True)
-                task._closeout_fight_counts = {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6}
-                self.run_to_end(task)
-                self.assert_outcome('completed')
-                self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
-                self.assertEqual(len(task.battles), 12)
+    def test_finished_map_after_battle_returns_before_saving_target(self):
+        task=runtime();task.wait_until_appear.return_value=False
+        task.appear.side_effect=lambda marker:marker==task.I_ABYSS_FINISHED_XY
+        self.assertTrue(ACTUAL.run_general_battle_back(task,'BOSS'))
+        task.appear_then_click.assert_not_called()
 
-    def test_failed_entry_keeps_retry_without_terminal_event(self):
-        task = runtime()
-        task.select_boss.return_value = False
-        self.run_to_end(task)
-        self.report.assert_not_called()
-        task.set_next_run.assert_called_once_with(
-            task='AbyssShadows', finish=False, server=True, success=False)
-        task.custom_next_run.assert_not_called()
+    def test_attack_wait_recognizes_xy_and_finished_states(self):
+        task=runtime()
+        for marker,result in ((task.I_ABYSS_ATTACK_XY,'attack'),(task.I_IS_ATTACK,'attack'),
+                              (task.I_ABYSS_FINISHED_XY,'finished')):
+            task.appear.side_effect=lambda shown:shown==marker
+            self.assertEqual(ACTUAL.wait_abyss_attack(task),result)
+        task.appear.side_effect=None;task.appear.return_value=False
+        self.assertEqual(ACTUAL.wait_abyss_attack(task),'waiting')
 
-    def test_missing_boss_does_not_skip_other_enemy_types_in_normal_mode(self):
-        task = runtime()
-        available = task.click_emeny_area.side_effect
-        task.click_emeny_area.side_effect = lambda marker: marker != CLICKS.BOSS and available(marker)
-        self.run_to_end(task)
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 4, 'ELITE': 6})
-        self.assert_outcome('skipped')
-
-    def test_both_modes_skip_sealed_first_areas_and_fill_from_remaining_areas(self):
-        for smart in (False, True):
-            with self.subTest(smart=smart):
-                self.report.reset_mock()
-                task = runtime(smart=smart)
-                def select(area):
-                    if area in (AREAS.DRAGON, AREAS.PEACOCK):
-                        return False
-                    task.current_area = area
-                    return True
-                task.select_boss.side_effect = select
-                task.change_area.side_effect = select
-                self.run_to_end(task)
-                self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
-                self.assert_outcome('completed')
-                self.assertTrue(all(area in (AREAS.FOX, AREAS.LEOPARD) for area, _ in task.battles))
-
-    def test_smart_fills_partial_groups_with_actual_targets_in_later_areas(self):
-        task = runtime(smart=True)
-        available = task.click_emeny_area.side_effect
-        def partial(marker):
-            if task.current_area == AREAS.DRAGON and marker in (CLICKS.GENERAL_2, CLICKS.ELITE_3):
-                return False
-            return available(marker)
-        task.click_emeny_area.side_effect = partial
-        self.run_to_end(task)
-        self.assert_outcome('completed')
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 2, 'GENERAL': 4, 'ELITE': 6})
-        self.assertEqual(len(task.battles), 12)
-
-    def test_interrupted_general_preparation_never_increments_counter(self):
-        task = runtime()
-        task.run_general_battle_back = Mock(side_effect=RuntimeError('interrupted'))
-        with self.assertRaisesRegex(RuntimeError, 'interrupted'):
-            task.run_general_fight()
-        self.assertEqual(task.general_fight_count, 0)
-
-    def test_weekday_does_not_emit_completion_or_skipped(self):
-        Clock.current = datetime(2026, 10, 7, 19, 40)
-        task = runtime()
-        self.run_to_end(task)
-        self.report.assert_not_called()
-        task.goto_abyss_shadows.assert_not_called()
-        task.custom_next_run.assert_called_once_with(
-            task='AbyssShadows', custom_time='fri', time_delta=2)
-
-    def test_return_to_main_must_finish_before_completion_event(self):
-        task = runtime()
-        task.goto_main.side_effect = RuntimeError('navigation interrupted')
-        with self.assertRaisesRegex(RuntimeError, 'navigation interrupted'):
-            task.run()
-        self.report.assert_not_called()
-        task.custom_next_run.assert_not_called()
-
-    def test_next_run_save_must_finish_before_completion_event(self):
-        task = runtime()
-        task.custom_next_run.side_effect = RuntimeError('schedule save failed')
-        with self.assertRaisesRegex(RuntimeError, 'schedule save failed'):
-            task.run()
+    def test_non_activity_day_and_before_start_do_not_enter(self):
+        for now in (datetime(2026,10,14,19),datetime(2026,10,16,18)):
+            Clock.current=now;task=runtime();self.run_to_end(task);task.goto_abyss_shadows.assert_not_called()
         self.report.assert_not_called()
 
-    def test_interrupted_real_battle_does_not_create_completion_event(self):
-        task = runtime()
-        task.wait_until_appear.side_effect = RuntimeError('battle interrupted')
-        with self.assertRaisesRegex(RuntimeError, 'battle interrupted'):
-            task.run()
-        self.report.assert_not_called()
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0})
+    def test_expired_opening_reports_expired_without_entering(self):
+        Clock.current=datetime(2026,10,16,20)
+        task=runtime();self.run_to_end(task);task.goto_abyss_shadows.assert_not_called()
+        self.outcome('expired')
 
-    def test_navigation_return_battle_path_records_once(self):
-        task = runtime()
-        task._closeout_fight_counts = {'BOSS': 0, 'GENERAL': 0, 'ELITE': 0}
-        task.appear_then_click.return_value = False
-        task.appear_then_click.side_effect = None
-        self.assertTrue(task.run_general_battle_back('GENERAL'))
-        self.assertEqual(task._closeout_fight_counts, {'BOSS': 0, 'GENERAL': 1, 'ELITE': 0})
+    def test_battle_exception_retains_progress_and_resume_does_not_repeat(self):
+        first=runtime(smart=True);first.run_general_battle_back.side_effect=[True,True,RuntimeError('emulator interrupted')]
+        with self.assertRaisesRegex(RuntimeError,'interrupted'):first.run()
+        self.report.assert_not_called();self.assertEqual(first.progress_store.load()[0],['A-1','B-1'])
+        second=runtime(smart=True);self.run_to_end(second);self.outcome('completed')
+        self.assertEqual(len(second.battles),10)
+        self.assertTrue(all(marker!=CLICKS.BOSS for _,marker in second.battles))
 
-    def test_saturday_and_sunday_keep_original_next_day_plans(self):
-        for day, time_name, delay in ((10, 'sun', 1), (11, 'fri', 5)):
-            with self.subTest(day=day):
-                self.report.reset_mock()
-                Clock.current = datetime(2026, 10, day, 19, 40)
-                task = runtime()
-                self.run_to_end(task)
-                self.assert_outcome('completed')
-                task.custom_next_run.assert_called_once_with(
-                    task='AbyssShadows', custom_time=time_name, time_delta=delay)
+    def test_resume_after_opening_window_keeps_started_run(self):
+        store=workflow.ProgressStore(ENV['test_root'],'01-test',Clock.current.date())
+        plan=workflow.TargetPlan([],done=['A-1','B-1']);store.save(plan)
+        Clock.current=datetime(2026,10,16,20,5)
+        task=runtime(smart=True);self.run_to_end(task);self.outcome('completed');self.assertEqual(len(task.battles),10)
 
-    def test_full_quota_crossing_midnight_does_not_prove_tomorrow_complete(self):
-        task = runtime()
-        task.goto_main.side_effect = lambda: setattr(Clock, 'current', datetime(2026, 10, 10, 0, 1))
-        self.run_to_end(task)
-        self.report.assert_not_called()
-        task.custom_next_run.assert_called_once_with(
-            task='AbyssShadows', custom_time='sat', time_delta=1)
+    def test_xy_two_attempt_limit_records_one_target(self):
+        task=runtime();task._abyss_closeout_date=Clock.current.date();task.init_target_plan()
+        task.run_general_battle_back.return_value=False;task.execute_target('A-1')
+        self.assertEqual(task.run_general_battle_back.call_count,2);self.assertEqual(task.target_plan.done,['A-1'])
 
-    def test_exhausted_targets_crossing_midnight_does_not_mark_tomorrow_skipped(self):
-        task = runtime(enemies=False)
-        task.goto_main.side_effect = lambda: setattr(Clock, 'current', datetime(2026, 10, 10, 0, 1))
-        self.run_to_end(task)
-        self.report.assert_not_called()
+    def test_target_disappears_after_first_attempt_is_done_once(self):
+        task=runtime();task._abyss_closeout_date=Clock.current.date();task.init_target_plan()
+        task.click_emeny_area.side_effect=[True,False];task.run_general_battle_back.return_value=False
+        task.execute_target('A-1');self.assertEqual(task.target_plan.done,['A-1'])
+        self.assertEqual(task.run_general_battle_back.call_count,1)
 
+    def test_unavailable_target_does_not_count_as_completed(self):
+        task=runtime(enemies=False);task._abyss_closeout_date=Clock.current.date();task.init_target_plan()
+        task.execute_target('A-1');self.assertEqual(task.target_plan.done,[])
+        self.assertIn('A-1',task.target_plan.unavailable)
 
-if __name__ == '__main__':
-    unittest.main()
+    def test_return_or_schedule_failure_keeps_checkpoint_and_no_closeout(self):
+        for method in ('goto_main','set_next_run'):
+            task=runtime();getattr(task,method).side_effect=RuntimeError('interrupted finish')
+            with self.assertRaisesRegex(RuntimeError,'interrupted finish'):task.run()
+            self.report.assert_not_called();self.assertEqual(len(task.progress_store.load()[0]),12)
+
+    def test_midnight_does_not_mark_new_day_completed(self):
+        task=runtime();task.goto_main.side_effect=lambda:setattr(Clock,'current',datetime(2026,10,17,0,1))
+        self.run_to_end(task);self.report.assert_not_called()
+
+    def test_existing_process_without_new_config_fields_uses_defaults(self):
+        task=runtime();self.assertFalse(hasattr(task.config.abyss_shadows,'process_manage'))
+        self.run_to_end(task);self.outcome('completed')
+
+    def test_switch_off_completion_honors_custom_order(self):
+        task=runtime();task.config.abyss_shadows.process_manage=S(attack_order='A-1',try_complete_enemy_count=False)
+        self.run_to_end(task);self.assertEqual(len(task.battles),1);self.outcome('skipped')
+
+    def test_smart_victory_is_drained_before_return_without_exit_click(self):
+        task=runtime(smart=True);task.config.abyss_shadows.abyss_shadows_combat_time.boss_combat_time=60
+        task.wait_until_appear.return_value=False;shown=[task.I_WIN];clicks=[]
+        task.appear.side_effect=lambda marker:marker==shown[0]
+        def click(marker,**kwargs):
+            if marker==shown[0]:
+                clicks.append(marker);shown[0]=task.I_ABYSS_NAVIGATION;return True
+            return False
+        task.appear_then_click.side_effect=click
+        self.assertTrue(ACTUAL.run_general_battle_back(task,'BOSS'));self.assertEqual(clicks,[task.I_WIN])
+
+if __name__=='__main__':unittest.main()

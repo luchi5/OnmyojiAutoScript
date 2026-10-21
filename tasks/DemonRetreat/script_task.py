@@ -69,7 +69,8 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
                 break
             if self.appear(self.I_RANK_LSIT):
                 logger.info("No rewards to claim")
-                if self.appear_then_click(self.I_DEMON_BACK_CHECK, interval=1):
+                if (self.appear_then_click(self.I_DEMON_BACK_CHECK, interval=1)
+                        or self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1)):
                     break
 
         # 保持好习惯，一个任务结束了就返回到庭院，方便下一任务的开始

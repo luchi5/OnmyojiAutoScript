@@ -169,6 +169,29 @@ class Harness:
 
 
 class PresetTransitionTests(unittest.TestCase):
+    def test_delayed_preparation_is_started_before_waiting_for_result(self):
+        h = Harness([frame()]*17 + [prepare(), prepare(), prepare(), battle()], demon=False)
+        h.conf.preset_enable = False
+        h.battle_wait = lambda **kwargs: True
+        self.assertTrue(h.run_general_battle(h.conf))
+        self.assertIn('I_PREPARE_HIGHLIGHT', h.clicks)
+        self.assertEqual(h.current_count, 1)
+
+    def test_missing_preparation_never_enters_passive_result_wait(self):
+        from module.exception import GameStuckError
+        h = Harness([frame()], demon=False)
+        h.conf.preset_enable = False
+        original = h.screenshot
+        def capture():
+            h.clock.now += 1
+            original()
+        h.screenshot = capture
+        h.battle_wait = lambda **kwargs: self.fail('Result wait entered without battle preparation')
+        h.run_general_battle.__func__.__globals__['GameStuckError'] = GameStuckError
+        with self.assertRaisesRegex(GameStuckError, 'preparation'):
+            h.run_general_battle(h.conf)
+        self.assertLess(h.screenshots, 30)
+
     def test_automatic_start_while_opening_menu_reaches_actual_reward_handler(self):
         h = Harness([prepare(), prepare(), battle(), frame('I_DE_WIN'), frame('I_REWARD')])
         self.assertTrue(h.run_general_battle(h.conf, buff=object()))

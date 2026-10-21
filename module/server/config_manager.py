@@ -2,7 +2,9 @@
 # @author runhey
 # github https://github.com/runhey
 import re
+from contextlib import ExitStack
 from pathlib import Path
+from filelock import FileLock
 
 from module.logger import logger
 
@@ -100,6 +102,12 @@ class ConfigManager:
         :return: True or False
         """
         config_path = Path.cwd() / 'config'
+        # Keep all names inside config, including the sidecar lock paths.
+        for name in (old_name, new_name):
+            if (not name or name in ('.', '..') or name[-1:] in (' ', '.')
+                    or any(c in name for c in '\\/:*?"<>|')
+                    or any(ord(c) < 32 for c in name)):
+                return False
         old_path = config_path / f'{old_name}.json'
         new_path = config_path / f'{new_name}.json'
         if not old_path.exists():
@@ -109,7 +117,31 @@ class ConfigManager:
             logger.error(f'{new_path} is exists')
             return False
         try:
-            old_path.rename(new_path)
+            # The router retires the old worker before calling this method.
+            # Use the same locks as the closeout coordinator: preserve outcomes,
+            # completed_date, queued intent and manual intent as one whole file.
+            sidecar_dir = config_path / 'daily_closeout'
+            sidecar_dir.mkdir(exist_ok=True)
+            old_state = sidecar_dir / f'{old_name}.json'
+            new_state = sidecar_dir / f'{new_name}.json'
+            with ExitStack() as stack:
+                for path in sorted({old_state, new_state}, key=lambda p: str(p).casefold()):
+                    stack.enter_context(FileLock(str(path) + '.lock', timeout=5))
+                if new_path.exists() or new_state.exists():
+                    # An orphan target might belong to a previously deleted
+                    # account. Never inherit/overwrite its completion proofs.
+                    logger.error('Rename destination configuration or closeout record already exists')
+                    return False
+                moved = False
+                try:
+                    if old_state.exists():
+                        old_state.rename(new_state)
+                        moved = True
+                    old_path.rename(new_path)
+                except Exception:
+                    if moved:
+                        new_state.rename(old_state)
+                    raise
             logger.info(f'rename {old_path} to {new_path}')
             return True
         except Exception as e:

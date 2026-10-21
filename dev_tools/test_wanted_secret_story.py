@@ -28,7 +28,7 @@ class Harness:
                               {'I_UI_BACK_RED', 'C_SECRET_CHAT'}):
             setattr(self, name, name)
         methods = extract_methods(ROOT/'tasks/WantedQuests/script_task.py', 'ScriptTask',
-                                  ('secret',), {
+                                  ('secret', 'dismiss_secret_stage_bonus'), {
             'Timer': lambda seconds: FakeTimer(self.clock, seconds),
             'logger': FakeLogger(), 'GameStuckError': RuntimeError,
             'page_exploration': 'exploration',
@@ -36,6 +36,7 @@ class Harness:
             'RuleImage': lambda **kw: Path(kw['file']).stem.replace('secret_story_', '') + '_story',
         })
         self.secret = methods['secret'].__get__(self)
+        self.dismiss_secret_stage_bonus = methods['dismiss_secret_stage_bonus'].__get__(self)
         self.advance_secret_story = self.click
 
     def screenshot(self):
@@ -71,6 +72,13 @@ class Harness:
 
 
 class SecretStoryTests(unittest.TestCase):
+    def test_kingyo_bonus_before_between_and_after_battles(self):
+        bonus = {'secret_stage_bonus_story'}
+        h = Harness([FIRE, bonus, set(), {'kingyo_story'}, bonus, FIRE, set(), bonus, ZONES, EXPLORE])
+        self.assertTrue(h.secret('goto', num=2))
+        self.assertEqual(h.battles, 2)
+        self.assertEqual(h.clicks, ['C_SECRET_CHAT'] * 4)
+
     def test_kingyo_story_between_battles_and_at_exit(self):
         h = Harness([FIRE, set(), {'kingyo_story'}, FIRE, set(), {'kingyo_story'}, ZONES, EXPLORE])
         self.assertTrue(h.secret('goto', num=2))

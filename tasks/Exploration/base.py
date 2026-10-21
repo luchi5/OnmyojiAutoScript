@@ -66,6 +66,21 @@ class BaseExploration(GameUi, GeneralBattle, GeneralRoom, GeneralInvite, Replace
         logger.info(f'Swipe end area diff: {diff:.2f}')
         return diff <= threshold
 
+    def resume_exploration_encounter(self) -> bool:
+        """Reconnect an interrupted transition before interpreting the map."""
+        settlement = any(self.appear(marker) for marker in
+                         (self.I_REWARD, self.I_WIN, self.I_FALSE))
+        if settlement or self.is_in_real_battle(False):
+            logger.info('Exploration encountered battle/settlement; resume battle handling')
+            self.battle_wait(random_click_swipt_enable=
+                             self._config.general_battle_config.random_click_swipt_enable)
+            return True
+        if self.is_in_prepare(False):
+            logger.info('Exploration encountered preparation; resume normal battle flow')
+            self.run_general_battle(self._config.general_battle_config)
+            return True
+        return False
+
     def get_current_scene(self, reuse_screenshot: bool = True) -> Scene:
         if not reuse_screenshot:
             self.screenshot()

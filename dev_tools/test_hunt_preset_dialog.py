@@ -20,6 +20,8 @@ class HuntPresetDialogTests(unittest.TestCase):
     def test_late_hunt_modal_is_closed_before_preparation(self):
         h = Harness([frame('I_CONFIRM_CLOSE_DIFF_SOUL', 'I_PREPARE_HIGHLIGHT'),
                      prepare(), battle(), frame('I_WIN')], demon=False)
+        h.device.stuck_timer = SimpleNamespace(reset=lambda: None)
+        h.device.stuck_timer_long = SimpleNamespace(reset=lambda: None)
         namespace = {'logger': Logger(), 'Timer': lambda seconds: Timer(h.clock, seconds)}
         h.battle_wait = extract(ROOT/'tasks/Hunt/script_task.py', 'ScriptTask',
                                ('battle_wait',), namespace)['battle_wait'].__get__(h)
