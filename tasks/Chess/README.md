@@ -5,10 +5,12 @@
 本轮接入手牌恢复、黄金复制术、百鬼投掷、特殊回合图标识别、符咒评分及全未知复核。2026-10-22 根据用户选择，手牌处理恢复购买前检查的第一版：式神、御魂合计达到 10 张时先紧急清理，重新数牌；仍满再尝试出售一张可识别的阵容手牌，再数牌，仍满则停止本次购买。清理动作本身不代表已有购买空间。每次购买点击最多两次并以连续两帧目标消失确认，确认成功才清除该格点击记录。
 百鬼投掷沿用 xy 试行开关（默认开启）：确认本人黄色昵称和锁，等待解锁稳定约 6 秒后投掷，每回合最多两次；没有所需御魂时等全部解锁后随机选择可识别目标。素材缺少狂骨、地藏像，不能将未收录目标当作已识别。
 本地分享防误点、庭院恢复、满币通知、周一调度、拖动后端和购买点击确认适配仍保留，鼬乐币 OCR 区域为 `(395, 660, 87, 25)`。
+600/600 通知按每次任务运行去重：同一次运行只发送一次，后续重新运行相同脚本（包括换登录的游戏账号）仍可再次发送；旧的按周通知记录不再阻止新运行。通知不依赖“刷满鼬乐币退出”开关，未读到有效 600/600 不发送；发送失败每次运行最多尝试 3 次。原下周一调度规则保留。
 `runtime/frame.py` 是 xy Frame 的本地适配，资源生成时须保留该导入与 `I_REWARD_CHESS`、`I_CLOSE_RED`。
 正在运行的账号可能缓存旧模块，需在该账号进程下次停止并启动后完整加载；本轮棋局同步没有重启账号或服务。
-回归命令：`toolkit\python.exe -m unittest tests.test_chess_port tests.test_chess_navigation tests.test_chess_outside_page tests.test_chess_share_guard tests.test_chess_season_update tests.test_chess_xy_october_update tests.test_chess_hand_capacity`。
+回归命令：`toolkit\python.exe -m unittest tests.test_chess_port tests.test_chess_navigation tests.test_chess_outside_page tests.test_chess_share_guard tests.test_chess_season_update tests.test_chess_xy_october_update tests.test_chess_hand_capacity tests.test_chess_coin_notice dev_tools.test_notify_receipts`。
 恢复第一版后的离线回归共 100 项，其中 99 通过、1 项因未包含的本地截图跳过；包含 17 号实际截图的 11 张手牌识别和无购买点击验证，17 号未启动。新增百鬼投掷尚未实机验证。
+本次通知变更回归共 128 项，其中 127 通过、1 项本地截图缺失跳过；采用离线请求替身，无真实推送、无账号进程重启。
 下方旧开发说明保留为历史参考；涉及旧阵容、旧模板路径与价格 OCR 的部分以新版实现为准。
 
 本文档以当前 `tasks/Chess` 实现为准，说明任务结构、各组件职责、运行流程以及新增阵容的方法。

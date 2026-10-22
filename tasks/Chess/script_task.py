@@ -1,6 +1,7 @@
 # This Python file uses the following encoding: utf-8
 
 import time
+from uuid import uuid4
 from datetime import datetime, time as clock_time, timedelta
 
 from module.exception import GameStuckError, TaskEnd
@@ -42,11 +43,11 @@ class ChessLegacyScriptTask(
     I_CLOSE_RED = ChessAssets.I_CLOSE_RED
 
     def _notify_weekly_coin_full(self, *, confirmed: bool = False, now=None) -> bool:
-        """Optional Bark notice for a verified cap; local Monday is the dedupe period.
+        """Notify once per task run after verifying the weekly 600/600 cap.
 
-        The calendar key follows this task's existing local Monday schedule,
-        not a claim about the game's exact reset hour. Accepted means the
-        provider accepted the request; final phone delivery is unconfirmed.
+        Each run has its own receipt so switching game accounts under the same
+        script does not suppress later notices. The week only groups receipts.
+        Accepted means provider acceptance; phone delivery remains unconfirmed.
         """
         if confirmed is not True:
             return False
@@ -65,12 +66,17 @@ class ChessLegacyScriptTask(
             if (not isinstance(account, str) or len(account) > 80
                     or not re.fullmatch(r'[A-Za-z0-9_\-\u3400-\u9fff]+(?:\.[A-Za-z0-9_\-\u3400-\u9fff]+)*', account)):
                 return False
+            run_id = getattr(self, '_coin_notice_run_id', None)
+            if run_id is None:
+                run_id = self._coin_notice_run_id = uuid4().hex
+            if not isinstance(run_id, str) or not re.fullmatch(r'[0-9a-f]{32}', run_id):
+                return False
             week = (now.date() - timedelta(days=now.weekday())).isoformat()
             root = Path(__file__).resolve().parents[2]
             state_root = root / 'config' / 'chess_weekly_notify'
             directory = state_root / week
             key = hashlib.sha256(account.encode('utf-8')).hexdigest()
-            path = directory / (key + '.json')
+            path = directory / (key + '-' + run_id + '.json')
             lock_path = path.with_suffix('.json.lock')
             for item in (root / 'config', state_root, directory, path, lock_path):
                 if item.is_symlink() or (item.exists() and item.resolve() != item.absolute()):
@@ -84,8 +90,9 @@ class ChessLegacyScriptTask(
                         raise ValueError('Chess notice state too large')
                     state = json.loads(path.read_text(encoding='utf-8'))
                     notice = state.get('notification', {}) if isinstance(state, dict) else {}
-                    if (not isinstance(state, dict) or state.get('version') != 1
+                    if (not isinstance(state, dict) or state.get('version') != 2
                             or state.get('account') != account or state.get('week') != week
+                            or state.get('run_id') != run_id
                             or state.get('current') != 600 or state.get('total') != 600
                             or not isinstance(notice, dict)
                             or notice.get('status') not in ('pending', 'sending', 'accepted', 'failed', 'disabled')
@@ -94,7 +101,8 @@ class ChessLegacyScriptTask(
                         raise ValueError('Invalid Chess notice state')
                     datetime.fromisoformat(state['confirmed_at'])
                 else:
-                    state = {'version': 1, 'account': account, 'week': week,
+                    state = {'version': 2, 'account': account, 'week': week,
+                             'run_id': run_id, 'dedupe_scope': 'task_run',
                              'period_basis': 'local_monday_calendar',
                              'current': 600, 'total': 600,
                              'confirmed_at': now.isoformat(timespec='seconds'),
@@ -130,7 +138,7 @@ class ChessLegacyScriptTask(
                         notifier.notifier.request = bounded_request
                         accepted = notifier.push(
                             title='百鬼棋局鼬乐币已核验600/600',
-                            content=f'游戏大厅当前读数600/600\n账号：{account}\n核验时间：{state["confirmed_at"]}',
+                            content=f'本次任务已核验当周鼬乐币600/600\n脚本：{account}\n核验时间：{state["confirmed_at"]}',
                             group='OAS百鬼棋局', isarchive=1,
                         ) is True
                     except Exception:
@@ -144,7 +152,7 @@ class ChessLegacyScriptTask(
                 return False
         except Exception:
             try:
-                logger.warning('Chess weekly notice unavailable; task scheduling is unchanged')
+                logger.warning('Chess run notice unavailable; task scheduling is unchanged')
             except Exception:
                 pass
             return False
@@ -188,6 +196,7 @@ class ChessLegacyScriptTask(
 
     def run(self):
         """按执行次数循环百鬼棋局，并可在鼬乐币刷满时提前结束。"""
+        self._coin_notice_run_id = uuid4().hex
         chess_task_config = getattr(self.config, 'chess', None)
         chess_config = getattr(chess_task_config, 'chess_config', None)
         selected_lineup = getattr(
@@ -255,7 +264,10 @@ class ChessLegacyScriptTask(
                     )
                     break
                 self.screenshot()
-                if coin_full_exit and self._coin_is_full():
+                coin_full = self._coin_is_full()
+                if coin_full:
+                    self._notify_weekly_coin_full(confirmed=True)
+                if coin_full_exit and coin_full:
                     logger.info(
                         'Stop Chess task before next game: '
                         'coin reached 600/600'
@@ -338,14 +350,16 @@ class ChessLegacyScriptTask(
 
             # 鼬乐币总数只在大厅可读；普通对局回到大厅后先核对，再
             # 决定是否继续下一场。保段位两局一旦开始则连续执行完毕。
-            if coin_full_exit:
-                self.screenshot()
-                if self._coin_is_full():
-                    logger.info(
-                        'Stop Chess task after game: coin reached 600/600'
-                    )
-                    coin_limit_reached = True
-                    break
+            self.screenshot()
+            coin_full = self._coin_is_full()
+            if coin_full:
+                self._notify_weekly_coin_full(confirmed=True)
+            if coin_full_exit and coin_full:
+                logger.info(
+                    'Stop Chess task after game: coin reached 600/600'
+                )
+                coin_limit_reached = True
+                break
 
         logger.info(
             f'Chess task loop finished: completed={completed}, '
@@ -356,7 +370,6 @@ class ChessLegacyScriptTask(
             self.set_next_run_next_monday(
                 task='Chess', scheduler=self.config.chess.scheduler,
             )
-            self._notify_weekly_coin_full(confirmed=True)
         else:
             self.set_next_run(task='Chess', success=True, finish=True)
         raise TaskEnd('Chess')
