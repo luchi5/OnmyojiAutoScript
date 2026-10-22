@@ -1736,7 +1736,7 @@ class ChessHandOperationsMixin:
         self,
         sell_lineup: bool = False,
     ) -> dict | None:
-        """购买受阻时清理；未腾出位置则直接出售一张阵容卡。"""
+        """购买受阻时统一清理；清理后重试仍手满才出售阵容卡。"""
         if sell_lineup:
             if not self._ensure_shop_closed(allowed_modes=('备', '战')):
                 return None
@@ -1748,17 +1748,6 @@ class ChessHandOperationsMixin:
             result = self.emergency_cleanup_hand()
             if result is None:
                 return None
-            if not result.get('equipped') and not result.get('sold_non_lineup'):
-                logger.info(
-                    'Emergency Chess cleanup freed no hand space; '
-                    'sell one lineup card before retrying purchase'
-                )
-                if not self._is_hand_cleanup_allowed(('备', '战')):
-                    return None
-                self.screenshot()
-                result = self.sell_one_lineup_hand_card()
-                if result is None:
-                    return None
 
         # 本方法只会在购买失败的恢复路径调用；清理后必须恢复“商店开”
         # 这一购买前置状态，至于卖卡过程本身不主动切换商店。

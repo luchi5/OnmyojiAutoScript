@@ -26,10 +26,11 @@ class ChessXyOctoberUpdateTests(unittest.TestCase):
         task.screenshot = Mock()
         return task
 
-    def test_no_progress_cleanup_immediately_sells_one_lineup_card_and_reopens_shop(self):
-        task = self.recovery_task({'equipped': [], 'sold_non_lineup': []})
-        self.assertEqual(task._free_one_hand_slot_for_purchase(), {'type': 'lineup'})
-        task.sell_one_lineup_hand_card.assert_called_once_with()
+    def test_no_progress_cleanup_returns_for_capacity_recheck_before_lineup_sale(self):
+        result = {'equipped': [], 'sold_non_lineup': []}
+        task = self.recovery_task(result)
+        self.assertEqual(task._free_one_hand_slot_for_purchase(), result)
+        task.sell_one_lineup_hand_card.assert_not_called()
         task._ensure_shop_open.assert_called_once_with()
 
     def test_progress_cleanup_does_not_also_sell_lineup(self):
@@ -39,15 +40,18 @@ class ChessXyOctoberUpdateTests(unittest.TestCase):
             self.assertEqual(task._free_one_hand_slot_for_purchase(), result)
             task.sell_one_lineup_hand_card.assert_not_called()
 
-    def test_changed_stage_or_failed_cleanup_never_sells_lineup(self):
-        task = self.recovery_task({'equipped': [], 'sold_non_lineup': []})
-        task._is_hand_cleanup_allowed.return_value = False
-        self.assertIsNone(task._free_one_hand_slot_for_purchase())
-        task.sell_one_lineup_hand_card.assert_not_called()
-        task._ensure_shop_open.assert_not_called()
+    def test_failed_cleanup_never_sells_lineup_or_reopens_shop(self):
         task = self.recovery_task(None)
         self.assertIsNone(task._free_one_hand_slot_for_purchase())
         task.sell_one_lineup_hand_card.assert_not_called()
+        task._ensure_shop_open.assert_not_called()
+
+    def test_lineup_recovery_stops_when_shop_cannot_be_closed(self):
+        task = self.recovery_task({})
+        task._ensure_shop_closed = Mock(return_value=False)
+        self.assertIsNone(task._free_one_hand_slot_for_purchase(sell_lineup=True))
+        task.sell_one_lineup_hand_card.assert_not_called()
+        task._ensure_shop_open.assert_not_called()
 
     def test_new_lineup_and_qijiaoshan_position_three(self):
         self.assertIn('pinganjing', LINEUP_REGISTRY)

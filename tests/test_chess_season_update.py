@@ -183,41 +183,40 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(task.click.call_count, 2)
 
-    def blocked_purchase_task(self):
-        task = self.purchase_task([])
-        task._recognize_shop_slot = Mock(return_value={'source': 'frame', 'score': .98})
-        task._hand_card_detections.return_value = [{}] * 10
-        task._chess_click_until_disappear = Mock(return_value=False)
-        return task
-
-    def test_xy_immediate_lineup_sale_is_not_repeated_when_purchase_still_fails(self):
-        task = self.blocked_purchase_task()
-        task._free_one_hand_slot_for_purchase = Mock(return_value={'type': 'lineup'})
-        self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
-        task._free_one_hand_slot_for_purchase.assert_called_once_with(sell_lineup=False)
-        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
-
-    def test_xy_cleanup_then_single_lineup_sale_are_bounded(self):
-        task = self.blocked_purchase_task()
+    def test_full_hand_with_no_cleanup_progress_uses_existing_lineup_sale_before_buying(self):
+        card = {'source': 'frame', 'score': .98}
+        task = self.purchase_task([card, card, card, card, None, None])
+        task._hand_card_detections.side_effect = [[{}] * 10, [{}] * 10, [{}] * 9]
         task._free_one_hand_slot_for_purchase = Mock(side_effect=[
-            {'equipped': ['soul'], 'sold_non_lineup': []}, {'type': 'lineup'}])
-        self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
+            {'equipped': [], 'sold_non_lineup': []}, {'type': 'lineup'}])
+        self.assertTrue(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
         self.assertEqual([call.kwargs for call in task._free_one_hand_slot_for_purchase.call_args_list],
                          [{'sell_lineup': False}, {'sell_lineup': True}])
-        self.assertEqual(task._chess_click_until_disappear.call_count, 3)
+        task.click.assert_called_once_with(ChessAssets.C_SHIKIGAMI_4, interval=.3)
 
-    def test_failed_hand_recovery_does_not_retry_purchase(self):
-        task = self.blocked_purchase_task()
+    def test_still_full_after_both_recovery_steps_never_clicks_purchase(self):
+        card = {'source': 'frame', 'score': .98}
+        task = self.purchase_task([card, card, card])
+        task._hand_card_detections.return_value = [{}] * 10
+        task._free_one_hand_slot_for_purchase = Mock(return_value={})
+        self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
+        self.assertEqual(task._free_one_hand_slot_for_purchase.call_count, 2)
+        task.click.assert_not_called()
+
+    def test_full_hand_recovery_failure_does_not_retry_purchase(self):
+        card = {'source': 'frame', 'score': .98}
+        task = self.purchase_task([card])
+        task._hand_card_detections.return_value = [{}] * 10
         task._free_one_hand_slot_for_purchase = Mock(return_value=None)
         self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
-        self.assertEqual(task._chess_click_until_disappear.call_count, 1)
+        task.click.assert_not_called()
 
     def test_target_disappearing_during_hand_cleanup_is_not_a_purchase(self):
-        task = self.blocked_purchase_task()
-        task._free_one_hand_slot_for_purchase = Mock(return_value={'type': 'lineup'})
-        task._recognize_shop_slot.side_effect = [
-            {'source': 'frame', 'score': .98}, {'source': 'frame', 'score': .98}, None]
+        task = self.purchase_task([{'source': 'frame', 'score': .98}, None])
+        task._hand_card_detections.return_value = [{}] * 10
+        task._free_one_hand_slot_for_purchase = Mock(return_value={})
         self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
+        task.click.assert_not_called()
 
     def test_blocked_purchase_polling_stops_sending_input_after_two_clicks(self):
         task = self.purchase_task([])
@@ -230,7 +229,7 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         self.assertEqual(task.click.call_count, 2)
         self.assertEqual(task.screenshot.call_count, 4)
 
-    def test_saved_incident_detects_full_hand_and_uses_failed_purchase_recovery(self):
+    def test_saved_incident_detects_full_hand_and_blocks_purchase(self):
         import cv2
         incident = Path('log/error/1792554535855/2026-10-21_11-48-55-851197.png')
         if not incident.exists():
@@ -240,12 +239,12 @@ class ChessSeasonUpdateTests(unittest.TestCase):
             cv2.imdecode(np.fromfile(incident, dtype=np.uint8), cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
         self.assertEqual(len(task._hand_card_detections()), task.HAND_CAPACITY)
         task.screenshot = Mock()
-        task._chess_click_until_disappear = Mock(return_value=False)
+        task.click = Mock(side_effect=AssertionError('Must not buy into full hand'))
         task._is_purchase_allowed = Mock(return_value=True)
         task._can_afford_shop_shikigami = Mock(return_value=True)
         task._free_one_hand_slot_for_purchase = Mock(return_value=None)
         self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
-        task._free_one_hand_slot_for_purchase.assert_called_once_with(sell_lineup=False)
+        task.click.assert_not_called()
 
     def test_saved_mixed_hand_counts_seven_shikigami_and_three_souls(self):
         import cv2
@@ -259,12 +258,12 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         self.assertEqual(len(task._soul_hand_cards()), 3)
         self.assertEqual(len(task._hand_card_detections()), 10)
         task.screenshot = Mock()
-        task._chess_click_until_disappear = Mock(return_value=False)
+        task.click = Mock(side_effect=AssertionError('Must not buy into mixed full hand'))
         task._is_purchase_allowed = Mock(return_value=True)
         task._can_afford_shop_shikigami = Mock(return_value=True)
         task._free_one_hand_slot_for_purchase = Mock(return_value=None)
         self.assertFalse(task._buy_shop_slot(5, ChessAssets.C_SHIKIGAMI_5, 'hakurou'))
-        task._free_one_hand_slot_for_purchase.assert_called_once_with(sell_lineup=False)
+        task.click.assert_not_called()
 
     def test_confirmed_purchase_only_removes_its_own_click_history(self):
         card = {'source': 'frame', 'score': .99}
@@ -274,8 +273,9 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         task.device.click_record_remove.assert_called_once_with(ChessAssets.C_SHIKIGAMI_3)
 
     def test_blocked_purchase_does_not_clear_click_history(self):
-        task = self.blocked_purchase_task()
+        task = self.purchase_task([{'source': 'frame', 'score': .99}])
         task.device.click_record_remove = Mock()
+        task._hand_card_detections.return_value = [{}] * 10
         task._free_one_hand_slot_for_purchase = Mock(return_value=None)
         self.assertFalse(task._buy_shop_slot(3, ChessAssets.C_SHIKIGAMI_3, 'hakurou'))
         task.device.click_record_remove.assert_not_called()
