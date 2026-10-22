@@ -17,6 +17,7 @@ class ChessHandCapacityTests(unittest.TestCase):
         task = season.ChessSeasonUpdateTests().purchase_task([])
         task._recognize_shop_slot = Mock(return_value={'source': 'frame', 'score': .982})
         task._chess_click_until_disappear = Mock(return_value=False)
+        task._read_chess_mode = Mock(return_value='备')
         task._free_one_hand_slot_for_purchase = Mock(side_effect=[
             {'equipped': ['shanghunniao'], 'sold_non_lineup': []}, {'type': 'lineup'}])
         return task

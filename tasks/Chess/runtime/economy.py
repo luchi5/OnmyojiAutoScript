@@ -426,13 +426,13 @@ class ChessEconomyMixin:
         self._hand_resume_purchase_pending = False
 
     def _resume_shop_after_hand_processing(self) -> bool:
-        """仅在正常手牌处理结束后检查；两张有效画面有空位才解除暂停。"""
+        """仅在备阶段手牌处理后复核；战斗特效会让满手漏检为少量卡。"""
         if not self._hand_purchase_blocked:
             return False
         counts = []
         for _ in range(2):
             self.screenshot()
-            if self._read_chess_mode() not in ('备', '战') or self.appear(self.I_SELECT_GRIGRI):
+            if self._read_chess_mode() != '备' or self.appear(self.I_SELECT_GRIGRI):
                 return False
             count = len(self._hand_card_detections())
             # Zero detections cannot distinguish an empty hand from obscured
@@ -543,8 +543,12 @@ class ChessEconomyMixin:
                 # capacity after a bounded purchase attempt failed.
                 hand_count = len(self._hand_card_detections())
                 if hand_count < self.HAND_CAPACITY:
-                    if attempts >= 2:
-                        logger.warning('Chess purchase still unconfirmed with hand space; stop buying')
+                    # Detection counts are only a lower bound: battle effects
+                    # can hide a full hand. Do not retry there, or let the next
+                    # economy entry immediately restart a failed attempt.
+                    if hand_count == 0 or self._read_chess_mode() != '备' or attempts >= 2:
+                        logger.warning('Chess purchase unconfirmed; pause until preparation confirms hand space')
+                        self._pause_shop_for_full_hand()
                         return False
                     logger.debug('Chess purchase unconfirmed with hand space; retry once without cleanup')
                     continue
@@ -592,6 +596,7 @@ class ChessEconomyMixin:
             f'Chess shop purchase timed out: slot={slot_index}, '
             f'name={matched_name}, identity remains in slot'
         )
+        self._pause_shop_for_full_hand()
         return False
 
     def buy_lineup_shikigami_from_shop(self) -> list[str] | None:

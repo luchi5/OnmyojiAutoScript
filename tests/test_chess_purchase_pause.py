@@ -94,7 +94,7 @@ class ChessPurchasePauseTests(unittest.TestCase):
         task.click.assert_not_called()
 
     def test_phase_transition_or_grigri_never_releases_pause(self):
-        for mode, grigri in (('鬼', False), (None, False), ('备', True)):
+        for mode, grigri in (('战', False), ('鬼', False), (None, False), ('备', True)):
             with self.subTest(mode=mode, grigri=grigri):
                 task = self.task()
                 task._hand_purchase_blocked = True
@@ -117,8 +117,8 @@ class ChessPurchasePauseTests(unittest.TestCase):
         self.assertEqual(events, ['deploy', 'equip', 'count', 'count'])
         self.assertFalse(task._hand_purchase_blocked)
 
-    def test_battle_cleanup_can_release_pause_only_after_confirming_space(self):
-        for count, blocked in ((10, True), (9, False)):
+    def test_battle_cleanup_cannot_release_pause_even_with_stable_low_count(self):
+        for count in (10, 9, 2):
             with self.subTest(count=count):
                 task = self.task()
                 task._hand_purchase_blocked = True
@@ -127,8 +127,58 @@ class ChessPurchasePauseTests(unittest.TestCase):
                 task._hand_card_detections.return_value = [{}] * count
                 with patch('tasks.Chess.runtime.economy.time.sleep'):
                     self.assertTrue(task._handle_battle_sell_stage())
-                self.assertEqual(task._hand_purchase_blocked, blocked)
+                self.assertTrue(task._hand_purchase_blocked)
+                task._hand_card_detections.assert_not_called()
                 task._chess_click_until_disappear.assert_not_called()
+
+    def test_obscured_failed_purchase_stays_paused_across_economy_entries(self):
+        for mode, count, attempts in (('战', 2, 1), ('备', 2, 2), ('备', 0, 1)):
+            with self.subTest(mode=mode, count=count):
+                task = self.task()
+                task._read_chess_mode.return_value = mode
+                task._hand_card_detections.return_value = [{}] * count
+                task.device.click_record = deque(maxlen=15)
+                task.device.click_record_remove = Mock()
+
+                def failed_attempt(rule, **kwargs):
+                    for _ in range(kwargs['max_clicks']):
+                        Device.click_record_add(task.device, rule)
+                        Device.click_record_check(task.device)
+                    return False
+
+                task._chess_click_until_disappear.side_effect = failed_attempt
+                self.assertFalse(task._buy_shop_slot(3, ChessAssets.C_SHIKIGAMI_3, 'ichimoku_ren'))
+                self.assertTrue(task._hand_purchase_blocked)
+                for round_no in range(19, 29):
+                    task.chess_state.begin_round(round_no)
+                    task._schedule_economy_cycle()
+                    self.assertIsNone(task.purchase_lineup_cards_once())
+                self.assertEqual(task._chess_click_until_disappear.call_count, attempts)
+                self.assertEqual(len(task.device.click_record), 2 * attempts)
+                task.device.click_record_remove.assert_not_called()
+                task._free_one_hand_slot_for_purchase.assert_not_called()
+
+    def test_account24_full_hand_under_battle_effects_never_resumes(self):
+        files = list(Path('log/error/1792687336857').glob('*.png'))
+        if not files:
+            self.skipTest('Private incident screenshot is not distributed')
+        import cv2
+        import numpy as np
+        from tests.test_chess_port import ChessPortTests
+
+        task = ChessPortTests().make_task()
+        task.device.image = cv2.cvtColor(cv2.imdecode(np.frombuffer(files[0].read_bytes(), np.uint8),
+                                                     cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+        # The screenshot says 12/10, but effects hide most card anchors.
+        self.assertLess(len(task._hand_card_detections()), task.HAND_CAPACITY)
+        task.screenshot = Mock()
+        task.appear = Mock(return_value=False)
+        task._read_chess_mode = Mock(return_value='战')
+        task.click = Mock()
+        task._hand_purchase_blocked = True
+        self.assertFalse(task._resume_shop_after_hand_processing())
+        self.assertTrue(task._hand_purchase_blocked)
+        task.click.assert_not_called()
 
     def test_paused_shop_cannot_refresh_through_low_level_entry(self):
         task = self.task()
