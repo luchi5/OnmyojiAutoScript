@@ -67,16 +67,27 @@ class Script:
         self.instance_guard: InstanceGuard = None
         self.anti_ban_guard: AntiBanGuard = AntiBanGuard()
 
+    def _notify_error_email(self, task: str, error: Exception) -> None:
+        # Independent, opt-in reporting; never controls recovery or Bark.
+        try:
+            from module.notify.error_mail import notify_error_mail
+            if notify_error_mail(self.config_name, task, error) == 'failed':
+                logger.warning('Error email unavailable; existing handling continues')
+        except Exception:
+            logger.warning('Error email unavailable; existing handling continues')
+
     @cached_property
     def config(self) -> "Config":
         try:
             from module.config.config import Config
             config = Config(config_name=self.config_name)
             return config
-        except RequestHumanTakeover:
+        except RequestHumanTakeover as error:
+            self._notify_error_email('Initialize', error)
             logger.critical('Request human takeover')
             exit(1)
         except Exception as e:
+            self._notify_error_email('Initialize', e)
             logger.exception(e)
             exit(1)
 
@@ -85,6 +96,7 @@ class Script:
         try:
             return self._create_device()
         except Exception as e:
+            self._notify_error_email('Initialize', e)
             logger.exception(e)
             exit(1)
 
@@ -93,6 +105,7 @@ class Script:
         try:
             return Device(config=self.config)
         except RequestHumanTakeover as error:
+            self._notify_error_email('Initialize', error)
             logger.critical(error)
             logger.critical('设备初始化或自动恢复失败，停止本账号脚本')
             # Do not inspect self.device here: construction failed, so accessing
@@ -862,10 +875,12 @@ class Script:
             task_module = load_module(module_name, module_path)
             task_module.ScriptTask(config=self.config, device=self.device).run()
         except AccountLoggedInElsewhere as error:
+            self._notify_error_email(command, error)
             return self._recover_account_session(command, error)
         except TaskEnd:
             return True
         except GameNotRunningError as e:
+            self._notify_error_email(command, e)
             if self._check_account_session_before_recovery(command):
                 return False
             self._stop_when_restart_disabled(command, e)
@@ -874,6 +889,7 @@ class Script:
             self.config.task_call('Restart')
             return True
         except (GameStuckError, GameTooManyClickError) as e:
+            self._notify_error_email(command, e)
             if self._check_account_session_before_recovery(command):
                 return False
             self._stop_when_restart_disabled(command, e)
@@ -887,6 +903,7 @@ class Script:
             self.device.sleep(10)
             return False
         except GameBugError as e:
+            self._notify_error_email(command, e)
             if self._check_account_session_before_recovery(command):
                 return False
             self._stop_when_restart_disabled(command, e)
@@ -899,6 +916,7 @@ class Script:
             self.device.sleep(10)
             return False
         except GamePageUnknownError as e:
+            self._notify_error_email(command, e)
             if self._check_account_session_before_recovery(command):
                 return False
             self._stop_when_restart_disabled(command, e)
@@ -912,12 +930,14 @@ class Script:
             self.device.sleep(10)
             return False
         except ScriptError as e:
+            self._notify_error_email(command, e)
             logger.critical(e)
             self.exception_handler(e=e, command=command)
             logger.critical('This is likely to be a mistake of developers, but sometimes just random issues')
             self.config.notifier.push(title=f'{I18n.trans_zh_cn(command)}{command}', content=f"<{self.config_name}> ScriptError")
             exit(1)
         except RequestHumanTakeover as e:
+            self._notify_error_email(command, e)
             logger.critical(e)
             self.exception_handler(e=e, command=command)
             logger.critical('Request human takeover')
@@ -927,6 +947,7 @@ class Script:
                 logger.warning(f'设备或任务停止通知异常：{type(notify_error).__name__}')
             raise SystemExit(1) from e
         except Exception as e:
+            self._notify_error_email(command, e)
             logger.exception(e)
             self.exception_handler(e=e, command=command)
             self.save_error_log()

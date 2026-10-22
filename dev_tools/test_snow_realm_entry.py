@@ -20,7 +20,8 @@ class SnowEntryTests(unittest.TestCase):
         h = SimpleNamespace(I_A_CHECK_CARD='page', I_A_AUTO_INVITE='invite',
                             I_SHI_CARD='normal', clicks=[])
         h.screenshot = clock.advance
-        h.appear = lambda marker: bool(h.clicks)
+        h.appear = lambda marker: bool(h.clicks) if isinstance(marker, str) else marker.match(frame)
+        h.appear_multi_scale = lambda marker: False if isinstance(marker, str) else marker.match_multi_scale(frame)
         def click(rule, multi_scale=False, **kw):
             if isinstance(rule, str):
                 return False
@@ -30,9 +31,11 @@ class SnowEntryTests(unittest.TestCase):
                 return True
             return False
         h.appear_then_click = click
+        h.click = lambda rule, **kw: h.clicks.append(tuple(rule.roi_front))
         h.appear_then_click_multi_scale = lambda rule, **kw: click(rule, multi_scale=True, **kw)
         fn = extract_methods(ROOT/'tasks/KekkaiActivation/script_task.py', 'ScriptTask',
             ('goto_cards',), {'RuleImage':RuleImage, 'Timer':lambda t:FakeTimer(clock,t),
+                             'time':SimpleNamespace(monotonic=lambda:clock.now, sleep=lambda s:setattr(clock,'now',clock.now+s)),
                              'GameStuckError':RuntimeError, 'logger':FakeLogger()})['goto_cards']
         return h, lambda: fn(h)
 

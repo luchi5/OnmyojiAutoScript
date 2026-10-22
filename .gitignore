@@ -285,3 +285,6 @@ oas.bat
 
 # Per-instance FrogBoss prediction and result history
 data/frog_oas/
+
+# Private local error-mail settings and delivery status
+/config/error_mail/

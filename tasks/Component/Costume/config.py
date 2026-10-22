@@ -31,6 +31,10 @@ class RealmType(str, Enum):
     COSTUME_REALM_SHEN_AN = 'costume_realm_shen_an'  # 神安眠处
     COSTUME_REALM_DEFAULT = 'costume_realm_default'  # 妖扇结界
 
+class RealmEntrySkin(str, Enum):
+    # Only skins with a verified scene signature and layout belong here.
+    COSTUME_REALM_SHEN_AN = 'costume_realm_shen_an'
+
 # 鲤鱼旗皮肤
 class CarpBannerType(str, Enum):
     COSTUME_CARPBANNER_DEFAULT = 'costume_carpbanner_default'  # 吉鲤游风
@@ -92,6 +96,8 @@ class CostumeConfig(BaseModel):
     # 皮肤配置
     costume_main_type: list[MainType] = Field(default=[MainType.COSTUME_MAIN], min_length=1, description='costume_main_type_help')
     costume_realm_type: RealmType = Field(default=RealmType.COSTUME_REALM_DEFAULT, description='costume_realm_type_help')
+    realm_entry_auto_detect: bool = Field(default=True, description='realm_entry_auto_detect_help')
+    realm_entry_candidates: list[RealmEntrySkin] = Field(default=[RealmEntrySkin.COSTUME_REALM_SHEN_AN], min_length=1, description='realm_entry_candidates_help')
     costume_carpbanner_type: CarpBannerType = Field(default=CarpBannerType.COSTUME_CARPBANNER_DEFAULT,description='costume_carpbanner_type_help')
     costume_theme_type: ThemeType = Field(default=ThemeType.COSTUME_THEME_DEFAULT, description='costume_theme_type_help')
     costume_shikigami_type: ShikigamiType = Field(default=ShikigamiType.COSTUME_SHIKIGAMI_DEFAULT, description='costume_shikigami_type_help')
@@ -117,6 +123,17 @@ class CostumeConfig(BaseModel):
         if v and v not in RealmType._value2member_map_:
             return RealmType.COSTUME_REALM_DEFAULT
         return v
+
+    @field_validator('realm_entry_candidates', mode='before')
+    @classmethod
+    def validate_realm_entry_candidates(cls, value):
+        if isinstance(value, str) and value.strip().startswith('['):
+            value = json.loads(value)
+        if isinstance(value, (str, RealmEntrySkin)):
+            value = [value]
+        if not isinstance(value, (list, tuple)):
+            raise ValueError('请选择至少一个已适配的结界入口皮肤')
+        return list(dict.fromkeys(RealmEntrySkin(item) for item in value))
 
 
 

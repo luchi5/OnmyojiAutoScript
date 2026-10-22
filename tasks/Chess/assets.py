@@ -113,7 +113,7 @@ class ChessAssets:
 	#  
 	O_CHESS_MODE_2 = RuleOcr(roi=(706,2,32,28), area=(706,2,32,28), mode="Single", method="Default", keyword="", name="chess_mode_2")
 	#  
-	O_COIN = RuleOcr(roi=(406,660,87,25), area=(406,660,87,25), mode="DigitCounter", method="Default", keyword="", name="coin")
+	O_COIN = RuleOcr(roi=(395,660,87,25), area=(395,660,87,25), mode="DigitCounter", method="Default", keyword="", name="coin")
 	#  
 	O_NOW_TIME = RuleOcr(roi=(768,0,32,28), area=(768,0,32,28), mode="Single", method="Default", keyword="", name="now_time")
 	#  

@@ -1,4 +1,8 @@
 {
+  "realm_entry_auto_detect": "Detect realm entry layout",
+  "realm_entry_auto_detect_help": "After legacy entry matching fails, confirm a known scene and growth anchor before clicking its card entry. Existing skin recognition remains available.",
+  "realm_entry_candidates": "Realm entry candidate skins",
+  "realm_entry_candidates_help": "Choose supported layouts. Only matches above both recognition thresholds qualify; the highest score wins. Currently supports Shen An.",
   "boss_count_mode": "Boss battle counting mode",
   "Boss Count Mode": "Boss battle counting mode",
   "boss_count_mode_help": "Automatic: confirmed reward progress plus subsequent wins up to 100. Fixed: skip reward OCR and stop after the configured number of wins. Restart this account task after changing modes.",

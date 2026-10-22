@@ -221,6 +221,25 @@ class ScriptTask(KU, KekkaiActivationAssets):
                 logger.info('Card is not selected also not using')
                 self.screening_card(_config.card_type)
 
+    def _realm_entry_fallback_target(self):
+        costume = self.config.global_game.costume_config
+        if not getattr(costume, 'realm_entry_auto_detect', True):
+            return None
+        # Growth overlays can leave the scene and label visible behind them.
+        if self.appear(self.I_UI_BACK_BLUE):
+            return None
+        from tasks.Component.CostumeRealm.entry import detect_realm_entry
+        match = detect_realm_entry(
+            self.device.image,
+            getattr(costume, 'realm_entry_candidates', ['costume_realm_shen_an']),
+        )
+        if match is None:
+            return None
+        logger.info(f'Realm entry layout confirmed: skin={match.skin}, '
+                    f'score={match.score:.4f}, scene={match.scene_score:.4f}, '
+                    f'anchor={match.anchor_score:.4f}')
+        return RuleClick(match.rect, match.rect, name=f'realm_card_entry_{match.skin}')
+
     def goto_cards(self):
         """
         寮结界,前往挂卡界面
@@ -260,6 +279,7 @@ class ScriptTask(KU, KekkaiActivationAssets):
         entry_timer = Timer(45).start()
         next_click = 0
         clicks = 0
+        fallback_clicks = 0
         while not entry_timer.reached():
             self.screenshot()
 
@@ -290,6 +310,17 @@ class ScriptTask(KU, KekkaiActivationAssets):
                     clicks += 1
                     next_click = time.monotonic() + 10
                     break
+            else:
+                # Unknown skins keep all original entry matchers above. The
+                # optional layout is only used on a positively identified skin.
+                fallback = getattr(self, '_realm_entry_fallback_target', lambda: None)()
+                if fallback is not None:
+                    if fallback_clicks >= 2:
+                        raise GameStuckError('Recognized realm layout but card panel did not open after two clicks')
+                    self.click(fallback)
+                    clicks += 1
+                    fallback_clicks += 1
+                    next_click = time.monotonic() + 10
             time.sleep(0.3)
         else:
             raise GameStuckError('Realm card page was not confirmed within 45 seconds')

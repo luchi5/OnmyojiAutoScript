@@ -71,6 +71,8 @@
     "costume_config": {
       "costume_main_type": "costume_main",
       "costume_realm_type": "costume_realm_default",
+      "realm_entry_auto_detect": true,
+      "realm_entry_candidates": ["costume_realm_shen_an"],
       "costume_theme_type": "costume_theme_default",
       "costume_shikigami_type": "costume_shikigami_default",
       "costume_sign_type": "costume_sign_default",
