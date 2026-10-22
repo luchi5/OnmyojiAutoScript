@@ -555,6 +555,7 @@ class ChessLegacyScriptTask(
             if name in self.shikigami_deploy_positions
         }
         self.equip_souls_from_hand(verified_board_names)
+        self._resume_shop_after_hand_processing()
         return self._is_preparation_mode()
 
     def _run_preparation_economy_until_time_limit(self) -> None:
@@ -620,6 +621,7 @@ class ChessLegacyScriptTask(
         logger.debug('Chess battle hand-card cleanup')
         sold = self.cleanup_non_lineup_hand_cards(allowed_modes=('战',))
         logger.debug(f'Chess battle hand-card cleanup complete: sold={sold}')
+        self._resume_shop_after_hand_processing()
         return self._read_chess_mode() == '战'
 
     def _handle_passive_stage(self, mode: str) -> bool:

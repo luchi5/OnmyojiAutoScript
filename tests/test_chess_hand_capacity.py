@@ -1,4 +1,4 @@
-"""Capacity-first purchasing regressions, including account 17's actual overflow frame."""
+"""Buy first; scan and recover capacity only after a failed purchase."""
 from collections import deque
 from pathlib import Path
 import unittest
@@ -16,29 +16,68 @@ class ChessHandCapacityTests(unittest.TestCase):
     def task(self):
         task = season.ChessSeasonUpdateTests().purchase_task([])
         task._recognize_shop_slot = Mock(return_value={'source': 'frame', 'score': .982})
-        task._chess_click_until_disappear = Mock(return_value=True)
+        task._chess_click_until_disappear = Mock(return_value=False)
         task._free_one_hand_slot_for_purchase = Mock(side_effect=[
             {'equipped': ['shanghunniao'], 'sold_non_lineup': []}, {'type': 'lineup'}])
         return task
 
-    def test_two_cards_over_limit_still_full_after_both_recoveries_never_clicks(self):
+    def test_successful_purchase_never_scans_hand_or_cleans_up(self):
+        task = self.task()
+        task._chess_click_until_disappear.return_value = True
+        self.assertTrue(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+        task._hand_card_detections.assert_not_called()
+        task._free_one_hand_slot_for_purchase.assert_not_called()
+
+    def test_two_cards_over_limit_only_attempts_initial_purchase(self):
         task = self.task()
         task._hand_card_detections.side_effect = [[{}] * 12, [{}] * 11, [{}] * 10]
         self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        task._chess_click_until_disappear.assert_not_called()
+        task._chess_click_until_disappear.assert_called_once()
         task.click.assert_not_called()
         self.assertEqual([call.kwargs for call in task._free_one_hand_slot_for_purchase.call_args_list],
                          [{'sell_lineup': False}, {'sell_lineup': True}])
 
     def test_overflow_recovery_only_buys_after_hand_drops_below_capacity(self):
         task = self.task()
-        task._hand_card_detections.side_effect = [[{}] * 11, [{}] * 10, [{}] * 9]
+        events = []
+        def buy(*args, **kwargs):
+            events.append('buy')
+            return events.count('buy') == 2
+        def count():
+            value = (11, 10, 9)[events.count('count')]
+            events.append('count')
+            return [{}] * value
+        task._chess_click_until_disappear.side_effect = buy
+        task._hand_card_detections.side_effect = count
         self.assertTrue(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
         self.assertEqual(task._free_one_hand_slot_for_purchase.call_count, 2)
-        task._chess_click_until_disappear.assert_called_once()
+        self.assertEqual(events, ['buy', 'count', 'count', 'count', 'buy'])
+        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
         self.assertEqual(task._chess_click_until_disappear.call_args.kwargs['max_clicks'], 2)
 
-    def test_account17_real_11_card_frame_never_adds_to_failed_purchase_click_history(self):
+    def test_failed_purchase_with_space_retries_once_without_cleanup(self):
+        task = self.task()
+        task._hand_card_detections.return_value = [{}] * 9
+        task._chess_click_until_disappear.side_effect = [False, True]
+        self.assertTrue(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+        task._hand_card_detections.assert_called_once()
+        task._free_one_hand_slot_for_purchase.assert_not_called()
+
+    def test_repeated_failure_with_space_stops_without_selling(self):
+        task = self.task()
+        task._hand_card_detections.return_value = [{}] * 9
+        self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
+        task._free_one_hand_slot_for_purchase.assert_not_called()
+
+    def test_insufficient_gold_does_not_attempt_purchase_or_scan_hand(self):
+        task = self.task()
+        task._can_afford_shop_shikigami.return_value = False
+        self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+        task._chess_click_until_disappear.assert_not_called()
+        task._hand_card_detections.assert_not_called()
+
+    def test_account17_real_11_card_frame_stops_retrying_after_initial_attempt(self):
         image_path = Path('log/error/1792649926326/2026-10-22_14-18-46-316468.png')
         if not image_path.exists():
             self.skipTest('Private account 17 incident screenshot is not distributed')
@@ -55,7 +94,7 @@ class ChessHandCapacityTests(unittest.TestCase):
         self.assertEqual(len(task._hand_card_detections()), 11)
         task._free_one_hand_slot_for_purchase = Mock(return_value={
             'equipped': ['shanghunniao'], 'sold_non_lineup': []})
-        task.device.click_record = deque(['shikigami_2'] * 9, maxlen=15)
+        task.device.click_record = deque(['shikigami_2'] * 4, maxlen=15)
         task.device.click_record_remove = Mock()
 
         def real_guard_click(rule, **kwargs):
@@ -64,11 +103,15 @@ class ChessHandCapacityTests(unittest.TestCase):
             return True
 
         task.click = Mock(side_effect=real_guard_click)
-        # The real adapter would trigger the global guard on the first extra click.
-        for _ in range(5):
-            self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        task.click.assert_not_called()
-        self.assertEqual(len(task.device.click_record), 9)
+        def failed_attempt(rule, **kwargs):
+            for _ in range(kwargs['max_clicks']):
+                task.click(rule)
+            return False
+        task._chess_click_until_disappear = Mock(side_effect=failed_attempt)
+        self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+        task._chess_click_until_disappear.assert_called_once()
+        self.assertEqual(task.click.call_count, 2)
+        self.assertEqual(len(task.device.click_record), 6)
         task.device.click_record_remove.assert_not_called()
 
 

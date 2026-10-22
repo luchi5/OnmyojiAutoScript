@@ -275,6 +275,8 @@ _GAME_STATE_FIELDS = {
     '_economy_sequence_index': 'economy_sequence_index',
     '_economy_battle_mode': 'economy_battle_mode',
     '_shop_assumed_open': 'shop_assumed_open',
+    '_hand_purchase_blocked': 'hand_purchase_blocked',
+    '_hand_resume_purchase_pending': 'hand_resume_purchase_pending',
     '_board_lineup_names': 'board_lineup_names',
     '_board_actual_positions': 'board_actual_positions',
     '_player_deployed_positions': 'player_deployed_positions',

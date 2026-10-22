@@ -418,13 +418,46 @@ class ChessEconomyMixin:
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 
+    def _pause_shop_for_full_hand(self) -> None:
+        """手满恢复失败后跨阶段保留暂停，不再用购买点击试探容量。"""
+        if not self._hand_purchase_blocked:
+            logger.info('Pause Chess purchases and shop refresh until hand space is confirmed')
+        self._hand_purchase_blocked = True
+        self._hand_resume_purchase_pending = False
+
+    def _resume_shop_after_hand_processing(self) -> bool:
+        """仅在正常手牌处理结束后检查；两张有效画面有空位才解除暂停。"""
+        if not self._hand_purchase_blocked:
+            return False
+        counts = []
+        for _ in range(2):
+            self.screenshot()
+            if self._read_chess_mode() not in ('备', '战') or self.appear(self.I_SELECT_GRIGRI):
+                return False
+            count = len(self._hand_card_detections())
+            # Zero detections cannot distinguish an empty hand from obscured
+            # cards or a failed scan; keep the pause instead of guessing.
+            if not 0 < count < self.HAND_CAPACITY:
+                return False
+            counts.append(count)
+            if len(counts) == 1:
+                time.sleep(self.ACTION_SETTLE_INTERVAL)
+        if counts[0] != counts[1]:
+            return False
+        self._hand_purchase_blocked = False
+        self._hand_resume_purchase_pending = True
+        logger.info(f'Resume Chess purchases: hand space confirmed in two frames, count={counts[-1]}')
+        return True
+
     def _buy_shop_slot(
         self,
         slot_index: int,
         click_rule: RuleClick,
         matched_name: str,
     ) -> bool:
-        """持续点击目标商店格，直到原头像不再出现在该格。"""
+        """先有界尝试购买；失败且手满时清理，复核容量后再重试。"""
+        if self._hand_purchase_blocked:
+            return False
         known_price = SHIKIGAMI_BY_ROMAJI[matched_name].cost
         deadline = time.monotonic() + self.SHOP_BUY_TIMEOUT
         current_match = self._recognize_shop_slot(
@@ -454,28 +487,6 @@ class ChessEconomyMixin:
                     f'shop slot {slot_index}'
                 )
                 return False
-            # A successful cleanup call need not actually free a slot: all ten
-            # cards may belong to the lineup. Verify capacity before retrying.
-            if len(self._hand_card_detections()) >= self.HAND_CAPACITY:
-                if emergency_cleanup_done and lineup_sale_done:
-                    logger.warning('Chess hand remains full after bounded recovery; stop buying')
-                    return False
-                sell_lineup = emergency_cleanup_done
-                logger.info('Chess hand reached 10 cards; free a verified slot before buying')
-                recovery = self._free_one_hand_slot_for_purchase(sell_lineup=sell_lineup)
-                if sell_lineup:
-                    lineup_sale_done = True
-                else:
-                    emergency_cleanup_done = True
-                if recovery is None:
-                    return False
-                current_match = self._recognize_shop_slot(
-                    slot_index, click_rule, expected_name=matched_name,
-                )
-                if current_match is None:
-                    # Cleanup itself is not a purchase confirmation.
-                    return False
-                continue
             attempts += 1
             logger.info(
                 f'Buy Chess card: '
@@ -528,38 +539,47 @@ class ChessEconomyMixin:
                         f'for shop slot {slot_index}'
                     )
                     return False
-                logger.debug(
-                    f'Chess shop slot {slot_index} still matches '
-                    f'{matched_name} after click, free hand space and retry'
-                )
-                if emergency_cleanup_done and lineup_sale_done:
-                    logger.warning(
-                        f'Chess buy {matched_name} remains blocked after '
-                        'emergency cleanup and one lineup-card sale'
+                # Successful purchases never scan the hand. Only diagnose
+                # capacity after a bounded purchase attempt failed.
+                hand_count = len(self._hand_card_detections())
+                if hand_count < self.HAND_CAPACITY:
+                    if attempts >= 2:
+                        logger.warning('Chess purchase still unconfirmed with hand space; stop buying')
+                        return False
+                    logger.debug('Chess purchase unconfirmed with hand space; retry once without cleanup')
+                    continue
+
+                while hand_count >= self.HAND_CAPACITY:
+                    if emergency_cleanup_done and lineup_sale_done:
+                        logger.warning('Chess hand remains full after bounded recovery; stop buying')
+                        self._pause_shop_for_full_hand()
+                        return False
+                    sell_lineup = emergency_cleanup_done
+                    logger.info('Chess purchase blocked with full hand; clean up and recheck capacity')
+                    recovery = self._free_one_hand_slot_for_purchase(sell_lineup=sell_lineup)
+                    if recovery is None:
+                        self._pause_shop_for_full_hand()
+                        return False
+                    if sell_lineup:
+                        lineup_sale_done = True
+                    else:
+                        emergency_cleanup_done = True
+                    if not self._is_purchase_allowed() or self.appear(self.I_SELECT_GRIGRI):
+                        self._pause_shop_for_full_hand()
+                        return False
+                    current_match = self._recognize_shop_slot(
+                        slot_index, click_rule, expected_name=matched_name,
                     )
-                    return False
-                sell_lineup = emergency_cleanup_done
-                recovery = self._free_one_hand_slot_for_purchase(
-                    sell_lineup=sell_lineup,
-                )
-                if recovery is None:
-                    logger.warning(
-                        f'Chess buy {matched_name} is still unconfirmed and '
-                        'no safe hand card can be cleared; block shop refresh'
-                    )
-                    return False
-                if sell_lineup:
-                    lineup_sale_done = True
-                    logger.debug(
-                        f'Retry Chess buy {matched_name} after selling one '
-                        'lineup card'
-                    )
-                else:
-                    emergency_cleanup_done = True
-                    logger.debug(
-                        f'Retry Chess buy {matched_name} after emergency '
-                        'hand cleanup'
-                    )
+                    if current_match is None:
+                        # Cleanup or a shop transition is not a purchase.
+                        self._pause_shop_for_full_hand()
+                        return False
+                    # Cleaning is not proof of space: do not click again until
+                    # a fresh post-cleanup frame really has fewer than 10 cards.
+                    hand_count = len(self._hand_card_detections())
+                    if hand_count == 0:
+                        self._pause_shop_for_full_hand()
+                        return False
 
         if current_match is None:
             logger.debug(
@@ -576,6 +596,8 @@ class ChessEconomyMixin:
 
     def buy_lineup_shikigami_from_shop(self) -> list[str] | None:
         """整页识别一次记录目标，再逐格复核头像并购买。"""
+        if self._hand_purchase_blocked:
+            return None
         if not self._is_purchase_allowed():
             logger.debug('Stop Chess shop purchase: Hyakki mode detected')
             return None
@@ -681,6 +703,7 @@ class ChessEconomyMixin:
                 return None
 
         logger.debug(f'Chess shop check complete, purchased={purchased}')
+        self._hand_resume_purchase_pending = False
         return purchased
 
     def purchase_lineup_cards_once(self) -> list[str] | None:
@@ -695,6 +718,8 @@ class ChessEconomyMixin:
         self._economy_sequence_index = 0
         self._economy_battle_mode = False
         self._shop_assumed_open = False
+        self._hand_purchase_blocked = False
+        self._hand_resume_purchase_pending = False
 
     def _schedule_economy_cycle(self) -> None:
         """登记一次经济任务；已有未完成原子动作时保持其精确进度。"""
@@ -827,6 +852,8 @@ class ChessEconomyMixin:
         allow_hidden: bool,
     ) -> str:
         """点击刷新，以至少三个对应商店槽位变化确认成功。"""
+        if self._hand_purchase_blocked or self._hand_resume_purchase_pending:
+            return 'no_progress'
         if not allow_hidden and not self.appear(self.I_REFRESH):
             logger.warning('Cannot refresh Chess shop: button is missing')
             return 'no_progress'
@@ -922,6 +949,8 @@ class ChessEconomyMixin:
         gold: int,
         operation: str,
     ) -> bool:
+        if operation == 'refresh' and self._hand_purchase_blocked:
+            return False
         reserve = self._economy_reserve_for_level(level)
         cost = (
             self.EXPERIENCE_COST
@@ -943,6 +972,11 @@ class ChessEconomyMixin:
         previous_battle_mode = getattr(self, '_economy_battle_mode', False)
         self._economy_battle_mode = battle_mode
         try:
+            # Space was positively confirmed after processing the hand. Scan
+            # the existing shop before allowing any subsequent paid refresh.
+            if self._hand_resume_purchase_pending:
+                if self.purchase_lineup_cards_once() is None:
+                    return 'blocked'
             level = self._read_level()
             gold = self._read_shop_gold()
             if level is None or gold is None:
@@ -952,6 +986,12 @@ class ChessEconomyMixin:
                 return 'blocked'
 
             operation = self._next_economy_operation(level)
+            if self._hand_purchase_blocked:
+                if level >= self._lineup_final_level():
+                    return 'blocked'
+                # Skip refresh while full, retaining the normal experience
+                # price, reserve, final-level and caller's time limits.
+                operation = 'experience'
             if not self._can_execute_economy_operation(level, gold, operation):
                 self._finish_economy_cycle(
                     f'budget limit reached, level={level}, gold={gold}, '
@@ -1007,6 +1047,10 @@ class ChessEconomyMixin:
             if level is None or gold is None:
                 return 'pending'
             next_operation = self._next_economy_operation(level)
+            if self._hand_purchase_blocked:
+                if level >= self._lineup_final_level():
+                    return 'blocked'
+                next_operation = 'experience'
             if self._can_execute_economy_operation(
                 level,
                 gold,

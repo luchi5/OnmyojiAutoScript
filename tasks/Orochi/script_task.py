@@ -281,6 +281,12 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
             if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
                 continue
 
+            # Recover a leftover result page even if the battle handler already
+            # returned during an animation or announcement transition.
+            if self.appear(self.I_REWARD) or self.appear(self.I_REWARD_GOLD):
+                self._finish_solo_settlement()
+                continue
+
             if not is_in_orochi():
                 continue
 
@@ -299,6 +305,7 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
 
                 if not self.appear(self.I_OROCHI_FIRE):
                     self.run_general_battle(config=self.config.orochi.general_battle_config)
+                    self._finish_solo_settlement()
                     break
 
         # 回去
@@ -310,6 +317,38 @@ class ScriptTask(GeneralBattle, GeneralInvite, GeneralBuff, GeneralRoom, GameUi,
                 continue
 
         self.goto_page(page_main)
+
+    def _finish_solo_settlement(self) -> bool:
+        """单人御魂仅在连续确认回到挑战页后完成结算。"""
+        timeout = Timer(30).start()
+        challenge_frames = 0
+        while not timeout.reached():
+            # screenshot() also dismisses verified announcement overlays.
+            self.screenshot()
+            if self.appear(self.I_OROCHI_FIRE):
+                challenge_frames += 1
+                if challenge_frames >= 2:
+                    logger.info('Orochi settlement complete: challenge page confirmed')
+                    return True
+                sleep(0.3)
+                continue
+            challenge_frames = 0
+
+            if self.appear_then_click(self.I_PET_PRESENT, action=self.C_WIN_3, interval=1):
+                continue
+            if self.appear_then_click(self.I_WIN, action=self.C_WIN_3, interval=0.8):
+                continue
+            if self.appear_then_click(self.I_FALSE, interval=0.8):
+                continue
+            if (self.appear(self.I_REWARD) or self.appear(self.I_REWARD_GOLD)
+                    or self.appear(self.I_GREED_GHOST)):
+                action = random.choice([self.C_REWARD_1, self.C_REWARD_2, self.C_REWARD_3])
+                self.click(action, interval=1.5)
+            # Missing reward markers may only mean a transition. Never treat
+            # that absence as completion, and never click an unknown page.
+            sleep(0.3)
+
+        raise GameStuckError('Orochi settlement timed out: challenge page not confirmed')
 
     def run_wild(self):
         logger.info('Start run wild')

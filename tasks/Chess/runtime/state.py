@@ -49,6 +49,8 @@ class ChessGameState:
     economy_sequence_index: int = 0
     economy_battle_mode: bool = False
     shop_assumed_open: bool = False
+    hand_purchase_blocked: bool = False
+    hand_resume_purchase_pending: bool = False
     board_lineup_names: set[str] = field(default_factory=set)
     board_actual_positions: dict[str, int] = field(default_factory=dict)
     player_deployed_positions: set[int] = field(default_factory=set)
