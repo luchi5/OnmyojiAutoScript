@@ -9,6 +9,7 @@ from functools import cached_property
 from pathlib import Path
 
 import cv2
+import numpy as np
 from module.logger import logger
 from tasks.Chess.strategy.grigri import (
     grigri_category,
@@ -256,6 +257,25 @@ class ChessRoundStateMixin:
             if item['score'] == lowest_score
         ])
 
+    def _recognize_grigri_options_with_retry(self) -> list[dict]:
+        """三个选项全未知时，用下一张截图复核一次。"""
+        options = self._recognize_grigri_options()
+        if len(options) == 3 and all(not item['name'] for item in options):
+            logger.info(
+                'All Chess grigri options unknown; wait for next screenshot '
+                'and recognize once more'
+            )
+            time.sleep(self.ACTION_SETTLE_INTERVAL)
+            self.screenshot()
+            self._grigri_quality_cache = None
+            options = self._recognize_grigri_options()
+            if len(options) == 3 and all(not item['name'] for item in options):
+                logger.warning(
+                    'All Chess grigri options still unknown after recheck; '
+                    'allow random selection'
+                )
+        return options
+
     def select_grigri(self) -> bool:
         """识别、评分并选择符咒；低分时对目标选项刷新一次。"""
         if not self.appear(self.I_SELECT_GRIGRI):
@@ -264,7 +284,7 @@ class ChessRoundStateMixin:
         # 每次进入新的选符咒界面，三个位置各允许刷新一次。
         self._grigri_quality_cache = None
         self._grigri_refresh_remaining = [1, 1, 1]
-        options = self._recognize_grigri_options()
+        options = self._recognize_grigri_options_with_retry()
         for _ in range(self.GRIGRI_REFRESH_MAXIMUM):
             refresh_target = self._next_refreshable_grigri_option(
                 options
@@ -278,7 +298,7 @@ class ChessRoundStateMixin:
                 break
             if not self._refresh_grigri_option(refresh_target):
                 break
-            options = self._recognize_grigri_options()
+            options = self._recognize_grigri_options_with_retry()
 
         selected = self._best_grigri_option(options)
         selected_rule = selected['rule']
@@ -402,8 +422,39 @@ class ChessRoundStateMixin:
             )
         return value
 
+    # 特殊回合标志优先于文字 OCR；后续回合标志在此登记阶段。
+    SPECIAL_STAGE_RULES = (('I_STAGE_HYAKKI', '鬼'),)
+    BOARD_MARKER_DISABLED_RULES = ('I_STAGE_ORCHI', 'I_STAGE_DEMON')
+
+    def _stage_marker_visible(self, rule) -> bool:
+        """回合预告中的灰色图案也会模板命中，只接受金色激活图案。"""
+        x, y, w, h = rule.roi_back
+        region = self.device.image[y:y+h, x:x+w]
+        template = rule.image
+        th, tw = template.shape[:2]
+        if region.shape[0] < th or region.shape[1] < tw:
+            return False
+        scores = cv2.matchTemplate(region, template, cv2.TM_CCOEFF_NORMED)
+        ys, xs = np.where(scores >= rule.threshold)
+        for px, py in zip(xs, ys):
+            hsv = cv2.cvtColor(region[py:py+th, px:px+tw], cv2.COLOR_RGB2HSV)
+            gold = ((hsv[:, :, 0] >= 10) & (hsv[:, :, 0] <= 45)
+                    & (hsv[:, :, 1] >= 100) & (hsv[:, :, 2] >= 150))
+            if float(np.mean(gold)) >= .10:
+                return True
+        return False
+
+    def _special_chess_mode(self) -> str | None:
+        for rule_name, mode in self.SPECIAL_STAGE_RULES:
+            if self._stage_marker_visible(getattr(self, rule_name)):
+                return mode
+        return None
+
     def _read_chess_mode(self) -> str | None:
-        """返回模式文字；只有 OCR 真正无文本时才返回 None。"""
+        """优先识别特殊回合标志，其余阶段读取文字。"""
+        special_mode = self._special_chess_mode()
+        if special_mode is not None:
+            return special_mode
         primary_raw, use_alternate_layout = self._read_primary_round_layout()
         raw = (
             self._normalize_ocr_text(
@@ -412,18 +463,21 @@ class ChessRoundStateMixin:
             if use_alternate_layout
             else primary_raw
         )
-        for mode in ('备', '战', '鬼'):
-            if mode in raw:
-                return mode
+        if raw in ('备', '战'):
+            return raw
         # “待”等过渡文字虽然不触发阶段动作，但必须保留为有文本状态，
         # 不能和真正的 OCR 空结果混为一谈，否则会误累计结算空帧。
-        return raw or None
+        return '待' if raw else None
 
-    def _is_boss_challenge_round(self) -> bool:
-        """当前是否为固定勾玉框会整体失效的首领挑战回合。"""
-        return getattr(self, '_current_round_no', None) in (
-            self.BOSS_CHALLENGE_ROUNDS
-        )
+    def _is_boss_challenge_round(self, round_no=None) -> bool:
+        """大蛇、逢魔标志出现过的本回合不使用勾玉上阵检测。"""
+        key = (self.chess_state.game_number,
+               self._current_round_no if round_no is None else round_no)
+        if any(self._stage_marker_visible(getattr(self, name))
+               for name in self.BOARD_MARKER_DISABLED_RULES):
+            self._board_marker_disabled_round = key
+            return True
+        return getattr(self, '_board_marker_disabled_round', None) == key
 
     def _tracked_board_positions(self) -> set[int]:
         """汇总无需依赖勾玉模板即可确认的本局站位。"""
@@ -465,6 +519,9 @@ class ChessRoundStateMixin:
     def _board_set_has_shikigami_visual(self, set_index: int) -> bool:
         """仅按当前截图中的勾玉标志判断指定站位是否有人。"""
 
+        if self._is_boss_challenge_round():
+            return int(set_index) in self._tracked_board_positions()
+
         x, y, width, height = self._set_jade_area(set_index)
         image_height, image_width = self.device.image.shape[:2]
         if (
@@ -503,7 +560,7 @@ class ChessRoundStateMixin:
         next_round_no: int | None = None,
     ) -> list[str]:
         """百鬼夜行结束后移除已不在原站位上的式神上阵记录。"""
-        if next_round_no in self.BOSS_CHALLENGE_ROUNDS:
+        if self._is_boss_challenge_round(round_no=next_round_no):
             logger.info(
                 'Skip post-Hyakki lineup check during boss round: '
                 f'round={next_round_no}'

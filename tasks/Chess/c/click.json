@@ -103,5 +103,12 @@
     "roiBack": "871,413,167,140",
     "profile": "Default",
     "description": ""
+  },
+  {
+    "itemName": "hyakki_soul_shiki",
+    "roiFront": "0,138,1024,462",
+    "roiBack": "0,138,1024,462",
+    "profile": "Default",
+    "description": "百鬼式神御魂选取框"
   }
 ]

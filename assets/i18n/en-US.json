@@ -20,5 +20,6 @@
   "draft_duel_role_help": "Choose one leader and one member. The leader invites the configured nickname; the member waits on the current screen. Team only; no challenge starts.",
   "draft_duel_teammate_name_help": "Leader: exact member nickname. Member: exact allowed leader nickname.",
   "draft_duel_friend_tab_help": "Leader only: choose the friend list to scan.",
-  "draft_duel_partner_config_help": "Both accounts must name each other and choose opposite team roles. Do not copy these fields through the linker."
+  "draft_duel_partner_config_help": "Both accounts must name each other and choose opposite team roles. Do not copy these fields through the linker.",
+  "hyakki_draft_enabled": "Automatic Hyakki throws"
 }

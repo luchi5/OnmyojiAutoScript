@@ -20,6 +20,7 @@ from tasks.Chess.strategy.grigri import (
 )
 from tasks.Chess.strategy.shikigami_catalog import (
     SHIKIGAMI_BONDS_BY_ROMAJI,
+    resolve_shikigami,
 )
 
 
@@ -1063,6 +1064,7 @@ class ChessHandOperationsMixin:
         # soul 文件夹中的御魂卡。
         self.discover_souls_from_hand()
         verified_names = set(verified_names or set())
+        self.use_golden_copies_from_hand(verified_names)
         if not verified_names:
             logger.debug(
                 'Keep Chess souls in hand: no shikigami position was '
@@ -1593,7 +1595,7 @@ class ChessHandOperationsMixin:
                 result = self.classify_hand_card(card_roi)
                 keep = (
                     (result.get('source') == 'frame' and result['type'] == 'unknown')
-                    or result['type'] in ('soul', 'discovery')
+                    or result['type'] in ('soul', 'discovery', 'duplicator')
                     or (
                         result['type'] == 'shikigami'
                         and result['name'] in self.shikigami_deploy_positions
@@ -1734,7 +1736,7 @@ class ChessHandOperationsMixin:
         self,
         sell_lineup: bool = False,
     ) -> dict | None:
-        """购买受阻时统一清理；清理后重试仍手满才出售阵容卡。"""
+        """购买受阻时清理；未腾出位置则直接出售一张阵容卡。"""
         if sell_lineup:
             if not self._ensure_shop_closed(allowed_modes=('备', '战')):
                 return None
@@ -1746,6 +1748,17 @@ class ChessHandOperationsMixin:
             result = self.emergency_cleanup_hand()
             if result is None:
                 return None
+            if not result.get('equipped') and not result.get('sold_non_lineup'):
+                logger.info(
+                    'Emergency Chess cleanup freed no hand space; '
+                    'sell one lineup card before retrying purchase'
+                )
+                if not self._is_hand_cleanup_allowed(('备', '战')):
+                    return None
+                self.screenshot()
+                result = self.sell_one_lineup_hand_card()
+                if result is None:
+                    return None
 
         # 本方法只会在购买失败的恢复路径调用；清理后必须恢复“商店开”
         # 这一购买前置状态，至于卖卡过程本身不主动切换商店。
@@ -1757,6 +1770,52 @@ class ChessHandOperationsMixin:
             return None
         self.screenshot()
         return result
+
+    def _golden_copy_targets(self, verified_names: set[str]) -> list[tuple[str, int]]:
+        """仅选择已确认在棋盘上的一费式神，使用本局实际站位。"""
+        actual = getattr(self, '_board_actual_positions', {})
+        targets = []
+        for name in verified_names:
+            entry = resolve_shikigami(name)
+            position = actual.get(name, self.shikigami_deploy_positions.get(name))
+            if entry is not None and entry.cost == 1 and position in SET_POSITIONS:
+                targets.append((name, int(position)))
+        return sorted(targets, key=lambda item: (item[1], item[0]))
+
+    def _golden_copy_hand_cards(self) -> list[dict]:
+        return [card for card in self._frame_card_scan('emblem')
+                if card['type'] == 'duplicator']
+
+    def use_golden_copies_from_hand(self, verified_names: set[str]) -> int:
+        """黄金复制术拖至已部署的一费式神；没有目标或未消耗则保留。"""
+        used = 0
+        for _ in range(self.SOUL_EQUIP_SAFETY_LIMIT):
+            if not self._is_preparation_mode():
+                break
+            cards = self._golden_copy_hand_cards()
+            if not cards:
+                break
+            targets = self._golden_copy_targets(verified_names)
+            if not targets:
+                logger.info('Keep 黄金复制术: no verified deployed one-cost shikigami')
+                break
+            if not self._ensure_shop_closed() or not self._is_preparation_mode():
+                break
+            # 关闭商店后重新读取卡牌位置，避免使用旧画面的坐标。
+            cards = self._golden_copy_hand_cards()
+            if not cards:
+                break
+            card = min(cards, key=lambda item: item['position'][0])
+            name, position = targets[0]
+            before = len(cards)
+            if not self._equip_soul_card(card['position'], position, 'GOLDEN_COPY'):
+                break
+            if not self._wait_hand_card_removed(before, lambda: len(self._golden_copy_hand_cards())):
+                logger.warning(f'黄金复制术 use not confirmed: target={name}, set={position}')
+                break
+            used += 1
+            logger.info(f'黄金复制术 used: target={name}, set={position}')
+        return used
 
     def _recognized_emblem_hand_cards(self) -> list[dict]:
         """纹章 Frame 定位卡牌，中心图案确认种类；Click 范围用于拖拽。"""

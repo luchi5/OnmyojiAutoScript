@@ -454,28 +454,6 @@ class ChessEconomyMixin:
                     f'shop slot {slot_index}'
                 )
                 return False
-            # A successful cleanup call need not actually free a slot: all ten
-            # cards may belong to the lineup. Verify capacity before retrying.
-            if len(self._hand_card_detections()) >= self.HAND_CAPACITY:
-                if emergency_cleanup_done and lineup_sale_done:
-                    logger.warning('Chess hand remains full after bounded recovery; stop buying')
-                    return False
-                sell_lineup = emergency_cleanup_done
-                logger.info('Chess hand reached 10 cards; free a verified slot before buying')
-                recovery = self._free_one_hand_slot_for_purchase(sell_lineup=sell_lineup)
-                if sell_lineup:
-                    lineup_sale_done = True
-                else:
-                    emergency_cleanup_done = True
-                if recovery is None:
-                    return False
-                current_match = self._recognize_shop_slot(
-                    slot_index, click_rule, expected_name=matched_name,
-                )
-                if current_match is None:
-                    # Cleanup itself is not a purchase confirmation.
-                    return False
-                continue
             attempts += 1
             logger.info(
                 f'Buy Chess card: '
@@ -548,7 +526,8 @@ class ChessEconomyMixin:
                         'no safe hand card can be cleared; block shop refresh'
                     )
                     return False
-                if sell_lineup:
+                if sell_lineup or recovery.get('type') == 'lineup':
+                    emergency_cleanup_done = True
                     lineup_sale_done = True
                     logger.debug(
                         f'Retry Chess buy {matched_name} after selling one '

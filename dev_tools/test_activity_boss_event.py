@@ -1,6 +1,8 @@
 """Real UI/OCR samples plus boss entry, settlement and completed-counter guards."""
 import ast
+from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum, auto
 from pathlib import Path
 from types import SimpleNamespace as NS
 from unittest.mock import Mock
@@ -20,6 +22,7 @@ class BossEventTests(unittest.TestCase):
     def setUp(self):
         self.clock = FakeClock(step=0.5)
         self.ns = load_event(self.clock)
+        self.ns['HookSignal'] = NS(CONTINUE='continue', DONE='done')
         tree = ast.parse((ROOT/'tasks/ActivityShikigami/current_boss.py').read_text(encoding='utf-8'))
         tree.body = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
         exec(compile(tree, '<boss_event>', 'exec'), self.ns)
@@ -30,6 +33,9 @@ class BossEventTests(unittest.TestCase):
         self.task.click = Mock()
         self.task.put_status = Mock()
         self.task.count_map = {'boss': 0}
+        self.task.get_current_page = Mock(return_value=None)
+        self.task.goto_page = Mock()
+        self.task.navigator = NS(pages={'page_climb_boss': NS(key='page_climb_boss')})
 
     def image(self, name):
         return cv2.cvtColor(cv2.imread(str(FIXTURES/(name+'.png'))), cv2.COLOR_BGR2RGB)
@@ -95,8 +101,9 @@ class BossEventTests(unittest.TestCase):
         self.task.I_PREPARE_HIGHLIGHT='prepare'
         self.task.I_REWARD='reward'
         self.task.I_WIN='win'
-        self.options={'success':NS(),'completion':NS()}
-        self.task.loadout_from_config=lambda _: ({},self.options)
+        self.options={'prepare':NS(lock_team=True),'success':NS(),'completion':NS()}
+        self.strategies={}
+        self.task.loadout_from_config=lambda _: (self.strategies,self.options)
         self.task.get_general_battle_conf=lambda: None
         self.task.battle_wait=Mock(return_value=win)
         self.task.boss_wait_return=Mock()
@@ -107,6 +114,47 @@ class BossEventTests(unittest.TestCase):
         self.task.click.assert_not_called()
         self.task.battle_wait.assert_not_called()
 
+    def check_manual_prepare(self, *, already_in_battle=False):
+        self.prepare_battle()
+        path = ROOT / 'tasks/Component/GeneralBattle/battle_wait.py'
+        tree = ast.parse(path.read_text(encoding='utf-8'))
+        names = {'OptionPrepareDefault', 'OptionPresetDefault', 'PerBattlePrepare',
+                 'PerTaskPreset', 'HookSignal'}
+        tree.body = [node for node in tree.body if isinstance(node, ast.ClassDef) and node.name in names]
+        shared = dict(dataclass=dataclass, Enum=Enum, auto=auto, Timer=object,
+                      PublicContext=object, PrivateContext=object, logger=FakeLogger(),
+                      runtime=NS(pri_ctx={}, hook_enabled_update=Mock(return_value='battle')))
+        exec(compile(tree, str(path), 'exec'), shared)
+        hook = extract_methods(path, 'BattleWait', ['_bw_prepare_default'], shared)['_bw_prepare_default']
+        self.options['prepare'] = shared['OptionPrepareDefault'](lock_team=True)
+        state = shared['PerBattlePrepare']()
+        self.task.is_in_real_battle = lambda _: already_in_battle
+        self.task.appear_then_click = Mock(return_value=True)
+
+        def wait():
+            hook(self.task, NS(options={}), NS(options=self.options['prepare'], per_battle=state))
+            if already_in_battle:
+                self.task.appear_then_click.assert_not_called()
+                self.assertTrue(state.done)
+            else:
+                self.task.appear_then_click.assert_called_once_with(self.task.I_PREPARE_HIGHLIGHT, interval=1)
+                self.assertFalse(state.done)
+                # Preparation ends only after a fresh frame confirms combat.
+                self.task.is_in_real_battle = lambda _: True
+                hook(self.task, NS(options={}), NS(options=self.options['prepare'], per_battle=state))
+                self.assertTrue(state.done)
+                self.assertEqual(self.task.appear_then_click.call_count, 1)
+            return True
+
+        self.task.battle_wait = wait
+        self.assertTrue(self.task.boss_battle_once())
+
+    def test_disabled_preset_still_clicks_prepare_before_combat(self):
+        self.check_manual_prepare()
+
+    def test_already_running_boss_does_not_click_prepare(self):
+        self.check_manual_prepare(already_in_battle=True)
+
     def test_65_resumes_only_remaining_and_confirms_increase(self):
         self.prepare_battle()
         self.assertTrue(self.task.boss_battle_once())
@@ -116,6 +164,85 @@ class BossEventTests(unittest.TestCase):
         self.assertEqual(self.task._boss_completed,66)
         self.assertEqual(self.task.count_map['boss'],1)
         self.assertEqual(self.options['completion'].check_imgs,[self.task.I_EVENT_BOSS_PAGE])
+        self.assertEqual(self.strategies['interrupt'], 'boss')
+
+    def share_frame(self):
+        self.task.device.image = self.image('boss_share_record')
+        self.task.appear = lambda rule: rule.match(self.task.device.image)
+
+    def test_damage_share_requires_all_three_page_markers(self):
+        self.share_frame()
+        self.assertTrue(self.task.boss_share_page_visible())
+        self.assertFalse(self.task.boss_page_visible())
+        for marker in (self.task.I_EVENT_BOSS_SHARE_DAMAGE, self.task.I_EVENT_BOSS_SHARE_LINEUP,
+                       self.task.I_EVENT_BOSS_SHARE_CLOSE):
+            with self.subTest(missing=marker.name):
+                frame = self.image('boss_share_record')
+                x, y, w, h = marker.roi_back
+                frame[y:y+h, x:x+w] = 0
+                self.task.device.image = frame
+                self.assertFalse(self.task.boss_close_share())
+        self.task.click.assert_not_called()
+
+    def test_regular_event_pages_never_trigger_share_close(self):
+        self.share_frame()
+        for name in ('boss_page', 'boss_main', 'ticket_before', 'simple', 'stamina', 'reward'):
+            self.task.device.image = self.image(name)
+            self.assertFalse(self.task.boss_close_share(), name)
+        self.task.click.assert_not_called()
+
+    def test_share_interrupt_closes_only_cross_and_resumes_completion(self):
+        from dev_tools.test_activity_ticket_event import load_settlement
+        self.share_frame()
+        shared = load_settlement(self.clock, self.ns['RuleClickExclude'])
+        pub = NS(per_task=NS(count=0))
+        pri = NS(per_battle=shared['PerBattleCompletion'](),
+                 options=shared['OptionCompletionDefault'](check_imgs=[self.task.I_EVENT_BOSS_PAGE]))
+        complete = shared['_bw_completion_default']
+        self.assertEqual(complete(self.task, pub, pri), shared['HookSignal'].CONTINUE)
+        self.task.click.assert_not_called()
+        self.task.click.side_effect = lambda *args, **kwargs: (
+            setattr(self.task.device, 'image', self.image('boss_page')) or True)
+        self.task._bw_interrupt_boss(pub, NS())
+        self.task.click.assert_called_once_with(self.task.I_EVENT_BOSS_SHARE_CLOSE, interval=1.5)
+        self.assertEqual(complete(self.task, pub, pri), shared['HookSignal'].DONE)
+        self.assertEqual(pub.per_task.count, 1)
+
+    def test_return_from_share_waits_for_challenge_without_navigation(self):
+        self.share_frame()
+        self.task.click.side_effect = lambda *args, **kwargs: (
+            setattr(self.task.device, 'image', self.image('boss_page')) or True)
+        self.task.boss_wait_return()
+        self.task.click.assert_called_once_with(self.task.I_EVENT_BOSS_SHARE_CLOSE, interval=1.5)
+        self.task.get_current_page.assert_not_called()
+        self.task.goto_page.assert_not_called()
+
+    def test_share_close_has_bounded_retries(self):
+        self.share_frame()
+        self.task.click.return_value = True
+        for _ in range(3):
+            self.assertTrue(self.task.boss_close_share())
+        with self.assertRaisesRegex(GameStuckError, '关闭三次'):
+            self.task.boss_close_share()
+        self.assertEqual(self.task.click.call_count, 3)
+
+    def test_share_close_interval_does_not_consume_retry_budget(self):
+        self.share_frame()
+        self.task.click.return_value = False
+        for _ in range(5):
+            self.assertTrue(self.task.boss_close_share())
+        self.assertEqual(getattr(self.task, '_boss_share_close_attempts', 0), 0)
+
+    def test_saved_account11_share_page_is_recognized(self):
+        import numpy as np
+        files = list((ROOT / 'log/error/1792640287917').glob('*.png'))
+        if not files:
+            self.skipTest('Local incident screenshot is not part of the public repository')
+        self.task.device.image = cv2.cvtColor(cv2.imdecode(np.fromfile(files[0], np.uint8),
+                                                         cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+        self.task.appear = lambda rule: rule.match(self.task.device.image)
+        self.assertTrue(self.task.boss_close_share())
+        self.task.click.assert_called_once_with(self.task.I_EVENT_BOSS_SHARE_CLOSE, interval=1.5)
 
     def test_last_bonus_finishes_without_extra_battle(self):
         self.prepare_battle(before=99,after=100)
@@ -181,6 +308,146 @@ class BossEventTests(unittest.TestCase):
     def test_return_page_must_be_confirmed(self):
         with self.assertRaises(GameStuckError):
             self.task.boss_wait_return()
+        self.task.goto_page.assert_not_called()
+        self.task.click.assert_not_called()
+
+    def test_return_checks_two_fresh_boss_frames_without_back_clicks(self):
+        self.task.boss_page_visible = lambda: True
+        self.task.boss_wait_return()
+        self.assertEqual(self.clock.now, 101)
+        self.task.get_current_page.assert_not_called()
+        self.task.goto_page.assert_not_called()
+        self.task.click.assert_not_called()
+
+    def prepare_navigation(self, *, delay=8, advance=True):
+        target = self.task.navigator.pages['page_climb_boss']
+        current = NS(key='page_climb_act')
+        entered_at = []
+        self.task.get_current_page.side_effect = lambda **kwargs: current
+        self.task._build_path = Mock(return_value=[NS(action='boss_entry', destination=target)])
+        self.task._run_hooks = Mock()
+        self.task._execute_action = Mock(side_effect=lambda *args, **kwargs: entered_at.append(self.clock.now) or True)
+        self.task.boss_page_visible = lambda: (advance and bool(entered_at)
+                                             and self.clock.now-entered_at[0] >= delay)
+        return entered_at
+
+    def test_return_waits_full_30_seconds_before_locating_and_navigating(self):
+        clicks = self.prepare_navigation()
+        self.task.boss_wait_return()
+        self.assertGreaterEqual(clicks[0], 130)
+        self.assertGreaterEqual(self.clock.now-clicks[0], 8)
+        self.task._execute_action.assert_called_once_with('boss_entry', interval=1.5, skip_first_screenshot=False)
+        self.task.goto_page.assert_not_called()
+
+    def test_slow_entry_waits_in_place_without_repeated_entry_or_back(self):
+        clicks = self.prepare_navigation(delay=12)
+        self.task.boss_goto_challenge()
+        self.assertGreaterEqual(self.clock.now-clicks[0], 12)
+        self.task._execute_action.assert_called_once()
+        self.task.goto_page.assert_not_called()
+        self.task.click.assert_not_called()
+
+    def test_return_waits_for_unknown_animation_without_blind_navigation(self):
+        self.task.boss_page_visible = lambda: self.clock.now >= 120
+        self.task.boss_wait_return()
+        self.task.get_current_page.assert_not_called()
+        self.task.goto_page.assert_not_called()
+        self.task.click.assert_not_called()
+
+    def test_single_stale_boss_frame_does_not_confirm_return(self):
+        self.prepare_navigation()
+        visible = self.task.boss_page_visible
+        self.task.boss_page_visible = lambda: self.clock.now == 100.5 or visible()
+        self.task.boss_wait_return()
+        self.assertGreaterEqual(self.clock.now, 138)
+        self.task._execute_action.assert_called_once()
+
+    def test_failed_entry_stops_after_30_seconds_without_exit_or_retry(self):
+        clicks = self.prepare_navigation(advance=False)
+        with self.assertRaisesRegex(GameStuckError, '不补点返回'):
+            self.task.boss_goto_challenge()
+        self.assertGreaterEqual(self.clock.now-clicks[0], 30)
+        self.task._execute_action.assert_called_once()
+        self.task.goto_page.assert_not_called()
+        self.task.click.assert_not_called()
+
+    def test_completion_waits_30_seconds_without_scattered_clicks(self):
+        self.task.boss_goto_challenge = Mock()
+        pub = NS(per_task=NS(count=0))
+        pri = NS(per_battle=NS(fallback_timer=None))
+        self.task._bw_completion_boss(pub, pri)
+        self.clock.now += 29
+        self.task._bw_completion_boss(pub, pri)
+        self.task.boss_goto_challenge.assert_not_called()
+        self.task.click.assert_not_called()
+        self.assertEqual(pub.per_task.count, 0)
+        self.clock.now += 2
+        self.task._bw_completion_boss(pub, pri)
+        self.task.boss_goto_challenge.assert_called_once_with(allow_battle=False)
+        self.assertEqual(pub.per_task.count, 1)
+
+    def test_boss_hooks_resolve_to_real_battle_runtime_events(self):
+        path = ROOT / 'tasks/Component/GeneralBattle/battle_wait.py'
+        event = extract_methods(path, 'runtime', ['hook2event'], {})['hook2event']
+        self.prepare_battle()
+        strategies, _ = self.task.boss_battle_loadout()
+        for name in ('interrupt', 'completion'):
+            hook = f'_bw_{name}_{strategies[name]}'
+            self.assertTrue(callable(getattr(self.task, hook)))
+            self.assertEqual(event.__func__(None, hook), name)
+
+    def test_boss_hooks_receive_real_runtime_completion_state(self):
+        from tasks.Component.GeneralBattle.battle_wait import (
+            BattleWait, BattleWaitPlan, HookSignal, PerBattleCompletion, runtime,
+        )
+        self.ns['HookSignal'] = HookSignal
+        class Harness(self.ns['CurrentEventBoss'], BattleWait):
+            pass
+        task = Harness.__new__(Harness)
+        task.boss_close_share = Mock(return_value=False)
+        task.boss_page_visible = Mock(return_value=False)
+        previous = runtime.pub_ctx, runtime.pri_ctx, runtime.task_owner
+        try:
+            runtime.pub_ctx, runtime.pri_ctx, runtime.task_owner = None, {}, None
+            strategies, options = BattleWait.loadout_default()
+            strategies.update(completion='boss', interrupt='boss')
+            plan = BattleWaitPlan(**strategies)
+            runtime.update_options(options, plan=plan)
+            self.assertEqual(task._bw_completion_boss(), HookSignal.CONTINUE)
+            state = runtime.pri_ctx['_bw_completion_boss'].per_battle
+            self.assertIsInstance(state, PerBattleCompletion)
+            self.assertIsNotNone(state.fallback_timer)
+            self.assertEqual(task._bw_interrupt_boss(), HookSignal.CONTINUE)
+        finally:
+            runtime.pub_ctx, runtime.pri_ctx, runtime.task_owner = previous
+
+    def test_saved_account02_and12_overview_is_recovered_before_reading(self):
+        import numpy as np
+        for incident in ('1792639232171', '1792639229113'):
+            files = list((ROOT / 'log/error' / incident).glob('*.png'))
+            if not files:
+                self.skipTest('Local incident screenshot is not part of the public repository')
+            with self.subTest(incident=incident):
+                self.setUp()
+                self.prepare_navigation(delay=9)
+                entered = self.task._execute_action
+                target = self.task.navigator.pages['page_climb_boss']
+                self.task.device.image = cv2.cvtColor(cv2.imdecode(np.fromfile(files[0], np.uint8),
+                                                                 cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+                self.task.appear = lambda rule: rule.match(self.task.device.image)
+                del self.task.boss_page_visible
+                self.assertTrue(self.task.appear(self.task.I_EVENT_MAIN))
+                old_effect = entered.side_effect
+                def enter(*args, **kwargs):
+                    old_effect(*args, **kwargs)
+                    self.task.device.image = self.image('boss_page')
+                    return True
+                entered.side_effect = enter
+                self.task.boss_wait_return()
+                self.assertTrue(self.task.boss_page_visible())
+                entered.assert_called_once()
+                self.task.goto_page.assert_not_called()
+                self.task.click.assert_not_called()
 
     def test_boss_ignores_legacy_count_cap_but_keeps_total_time_cap(self):
         class TimeOut(Exception): pass
@@ -213,14 +480,15 @@ class BossEventTests(unittest.TestCase):
     def test_boss_loop_enters_once_and_stays_in_boss_between_battles(self):
         ns=dict(logger=FakeLogger(),game=NS(page_climb_boss='boss_page'))
         method=extract_methods(SCRIPT,'ScriptTask',['_run_boss'],ns)['_run_boss']
-        task=NS(battle_state_reset=Mock(),goto_page=Mock(),boss_read_bonus=Mock(return_value=65),
+        task=NS(battle_state_reset=Mock(),boss_goto_challenge=Mock(),goto_page=Mock(),boss_wait_return=Mock(),boss_read_bonus=Mock(return_value=65),
                 boss_load_progress=Mock(),
                 boss_fixed_limit=lambda:None, boss_record_progress=Mock(),
                 boss_budget_exhausted=lambda:getattr(task,'_boss_completed',None)==100,
                 switch_soul=Mock(),I_EVENT_BOSS_RECORDS='records',I_EVENT_BOSS_PAGE='boss',
                 boss_battle_once=Mock(side_effect=[True,True,False]))
         method(task)
-        task.goto_page.assert_called_once_with('boss_page')
+        task.boss_goto_challenge.assert_called_once_with()
+        task.boss_wait_return.assert_called_once()
         self.assertEqual(task.boss_battle_once.call_count,3)
         task.boss_read_bonus.return_value=100
         task.boss_battle_once.reset_mock()
@@ -340,7 +608,7 @@ class BossEventTests(unittest.TestCase):
     def test_unknown_initial_counter_does_not_skip_boss_loop(self):
         ns=dict(logger=FakeLogger(),game=NS(page_climb_boss='boss_page'))
         method=extract_methods(SCRIPT,'ScriptTask',['_run_boss'],ns)['_run_boss']
-        task=NS(battle_state_reset=Mock(),goto_page=Mock(),boss_read_bonus=Mock(return_value=None),
+        task=NS(battle_state_reset=Mock(),boss_goto_challenge=Mock(),goto_page=Mock(),boss_wait_return=Mock(),boss_read_bonus=Mock(return_value=None),
                 boss_load_progress=Mock(),switch_soul=Mock(),
                 boss_fixed_limit=lambda:None,boss_budget_exhausted=lambda:False,
                 boss_record_progress=Mock(),
@@ -424,6 +692,8 @@ class BossEventTests(unittest.TestCase):
         self.task.conf=NS(general_climb=NS(boss_count_mode='boss_fixed_count',boss_limit=5))
         self.task.battle_state_reset=Mock()
         self.task.goto_page=Mock()
+        self.task.boss_goto_challenge=Mock()
+        self.task.boss_wait_return=Mock()
         self.task.boss_load_progress=Mock()
         self.task.boss_read_bonus=Mock()
         self.task.switch_soul=Mock()

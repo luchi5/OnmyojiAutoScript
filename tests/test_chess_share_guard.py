@@ -10,6 +10,7 @@ import numpy as np
 
 from module.exception import AccountLoggedInElsewhere, GameTooManyClickError
 from tasks.Chess.assets import ChessAssets
+from tasks.Chess.runtime.state import ChessGameState
 from tasks.Chess.runtime.result_navigation import (
     ChessResultNavigationMixin, _share_panel_rule, chess_game_ui_type,
 )
@@ -30,11 +31,13 @@ RANK = (GameUiAssets.I_CHECK_CHESS_RANK, GameUiAssets.I_CHESS_RANK_GOTO_LOBBY)
 class FrameChess(ScriptTask):
     """Each screenshot provides the next observed frame; clicks only record."""
     def __init__(self, frames):
+        self.chess_state = ChessGameState()
         self.frames = frames
         self.visible = ()
         self.screenshot_count = 0
         self.clicked = []
-        self.device = SimpleNamespace(stuck_record_clear=Mock(), click_record_clear=Mock(),
+        self.device = SimpleNamespace(image=np.zeros((720, 1280, 3), dtype=np.uint8),
+                                      stuck_record_clear=Mock(), click_record_clear=Mock(),
                                       click_record_remove=Mock())
 
     def screenshot(self):

@@ -25,3 +25,9 @@ page_climb_ticket.connect(page_climb_map, G.I_BACK_Y)
 page_climb_boss = Page(all_of(B.I_EVENT_BOSS_PAGE, B.I_EVENT_BOSS_CHALLENGE))
 page_climb_act.connect(page_climb_boss, B.I_EVENT_BOSS_ENTRY)
 page_climb_boss.connect(page_climb_act, G.I_BACK_Y)
+
+# A personal-best damage report is a distinct result page. Its only exit is
+# the top-right close button, including when resuming a stopped account.
+page_climb_boss_share = Page(all_of(B.I_EVENT_BOSS_SHARE_DAMAGE, B.I_EVENT_BOSS_SHARE_LINEUP,
+                                  B.I_EVENT_BOSS_SHARE_CLOSE), priority=40)
+page_climb_boss_share.connect(page_climb_boss, B.I_EVENT_BOSS_SHARE_CLOSE)

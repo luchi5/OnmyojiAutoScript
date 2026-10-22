@@ -106,5 +106,14 @@
     "method": "Default",
     "keyword": "",
     "description": ""
+  },
+  {
+    "itemName": "name_range",
+    "roiFront": "1060,41,166,623",
+    "roiBack": "1060,41,166,623",
+    "mode": "Full",
+    "method": "Default",
+    "keyword": "",
+    "description": "名字出现位置"
   }
 ]

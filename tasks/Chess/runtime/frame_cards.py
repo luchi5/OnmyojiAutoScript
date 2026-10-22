@@ -41,6 +41,19 @@ class ChessFrameCardsMixin:
     # Only portrait identity matching uses grayscale; badge/OCR/Frame outputs stay RGB.
     FRAME_PORTRAIT_GRAYSCALE = True
 
+    @cached_property
+    def golden_copy_portrait(self):
+        return self._frame_matching_portrait(read_image(ROOT / 'fetter/golden_copy.png'))
+
+    def _golden_copy_score(self, portrait):
+        portrait = self._frame_matching_portrait(portrait)
+        front = self.golden_copy_portrait
+        if portrait.shape[0] < front.shape[0] or portrait.shape[1] < front.shape[1]:
+            return 0.0
+        return float(cv2.minMaxLoc(cv2.matchTemplate(
+            portrait, front, cv2.TM_CCOEFF_NORMED,
+        ))[1])
+
     def _frame_matching_portrait(self, image):
         if self.FRAME_PORTRAIT_GRAYSCALE and image.ndim == 3:
             return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -192,21 +205,25 @@ class ChessFrameCardsMixin:
             if kind == 'emblem':
                 raw_text, roi, portrait = result
                 # Image identity first. Only an unknown/ambiguous portrait needs OCR.
-                key, identity_score = self._frame_emblem_identity(portrait, '')
+                copy_score = self._golden_copy_score(portrait)
+                golden_copy = copy_score >= .8
+                key, identity_score = (None, copy_score) if golden_copy else self._frame_emblem_identity(portrait, '')
                 discovery = None
-                if key is None:
+                if key is None and not golden_copy:
                     _, targets = local.range_targets(image.shape, allow_missing_image=True)
                     raw_text = targets[0].ocr(image)
                     text = ''.join(str(raw_text).split()).strip('()（）[]【】')
                     discovery = text if text in ('发现纹章', '发现御魂') else None
-                    if not discovery:
+                    golden_copy = text == '黄金复制术'
+                    if not discovery and not golden_copy:
                         key, identity_score = self._frame_emblem_identity(portrait, raw_text)
                 reference = self.frame_emblem_library['entries'].get(key, {})
                 cx, cy, cw, ch = roi
                 cards.append({
-                    'type': 'discovery' if discovery else ('emblem' if key else 'unknown'),
-                    'name': discovery or reference.get('name'), 'kind': discovery,
-                    'similarity': 1.0 if discovery else identity_score,
+                    'type': 'duplicator' if golden_copy else ('discovery' if discovery else ('emblem' if key else 'unknown')),
+                    'name': '黄金复制术' if golden_copy else (discovery or reference.get('name')),
+                    'kind': '黄金复制术' if golden_copy else discovery,
+                    'similarity': (copy_score if copy_score >= .8 else 1.0) if golden_copy else (1.0 if discovery else identity_score),
                     'score': identity_score, 'badge_score': score,
                     'position': (cx+cw//2, cy+ch//2), 'roi': roi, 'source': 'frame',
                     'text': raw_text, 'raw_text': (raw_text,), 'action': None,

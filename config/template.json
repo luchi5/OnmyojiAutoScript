@@ -1440,7 +1440,8 @@
       "matchmaking_timeout_seconds": 60,
       "limit_time": "00:30:00",
       "coin_full_exit": false,
-      "continue_grigri_refresh_below_nine": true
+      "continue_grigri_refresh_below_nine": true,
+      "hyakki_draft_enabled": true
     }
   },
   "collective_missions": {

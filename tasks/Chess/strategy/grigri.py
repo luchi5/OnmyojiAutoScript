@@ -9,7 +9,10 @@ from tasks.Chess.resource.badge.badge_hand_icons import (
     BADGE_FILE_INDEX,
     BADGE_QUALITY_INDEX,
 )
-from tasks.Chess.strategy.shikigami_catalog import SHIKIGAMI_BONDS_BY_ROMAJI
+from tasks.Chess.strategy.shikigami_catalog import (
+    SHIKIGAMI_BONDS_BY_ROMAJI,
+    resolve_shikigami,
+)
 
 
 # 直接记录各符咒的实际收益；最终选择不再按类别分层。
@@ -50,6 +53,16 @@ DEFAULT_BENEFIT_BY_QUALITY = {
     'copper': 3.0,
 }
 SILVER_SOUL_DEFAULT_BENEFIT = 3.0
+
+# 式神增强只对当前阵容配置中的对应式神计分。
+SHIKIGAMI_ENHANCEMENT_TARGETS = {
+    '弹射炸弹': '觉',
+    '怨恨连斩': '黑童子',
+    '终极吸取': '萤草',
+    '浪涌扇舞': '蝴蝶精',
+    '螺螺螺锤': '蟹姬',
+    '以伞为剑': '姑获鸟',
+}
 
 
 def _names(value: str) -> frozenset[str]:
@@ -97,7 +110,6 @@ GRIGRI_NAMES_BY_CATEGORY: dict[str, frozenset[str]] = {
 狰之御祝 伤魂鸟御祝 破势御祝
 """),
     'functional': _names("""
-弹射炸弹 怨恨连斩 终极吸取 浪涌扇舞 螺螺螺锤 以伞为剑
 首领猎人 御火符咒 不屈灵符·叁 不屈灵符·贰 不屈灵符 气愈灵符·叁
 气愈灵符·贰 气愈灵符 强躯灵符·叁 强躯灵符·贰 强躯灵符 大妖灵符·叁
 大妖灵符·贰 大妖灵符 小鬼灵符·叁 小鬼灵符·贰 小鬼灵符 神赐符咒·叁
@@ -108,6 +120,7 @@ GRIGRI_NAMES_BY_CATEGORY: dict[str, frozenset[str]] = {
     'shikigami': _names("""
 惊喜召唤 升贺之礼 多号机·贰 多号机 中坚之力 天降之鬼 齐心协力
 """),
+    'shikigami_enhancement': frozenset(SHIKIGAMI_ENHANCEMENT_TARGETS),
 }
 
 GRIGRI_CATEGORY_BY_NAME = {
@@ -175,7 +188,7 @@ def lineup_bond_context(strategy: dict) -> dict:
     primary_count = counts.get(primary, 0)
     # 次要羁绊只保留计数第二多的一项。Counter 保留阵容式神与羁绊的
     # 首次出现顺序，因此并列时稳定选择阵容配置中先出现的羁绊。
-    secondary_bond = max(
+    secondary_bond = strategy.get('secondary_bond') or max(
         (
             bond
             for bond, count in counts.items()
@@ -203,6 +216,18 @@ def grigri_score(name: str | None, lineup=None) -> float:
     if not name:
         return 0.0
     category = grigri_category(name)
+    if category == 'shikigami_enhancement':
+        target = SHIKIGAMI_ENHANCEMENT_TARGETS[name]
+        if isinstance(lineup, dict):
+            for identity, config in lineup.get('shikigami', {}).items():
+                entry = resolve_shikigami(identity)
+                if (
+                    identity == target
+                    or (entry is not None and entry.chinese_name == target)
+                    or config.get('display_name') == target
+                ):
+                    return 22.0
+        return 0.0
     quality = BADGE_QUALITY_INDEX.get(name)
     if category in ('bond', 'emblem') and name != '随机纹章':
         bond = grigri_bond_name(name)

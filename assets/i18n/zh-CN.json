@@ -289,5 +289,6 @@
   "friend_tab": "邀请好友列表",
   "draft_duel_friend_tab_help": "仅队长使用：好友、最近、寮友或跨区。跨区会向下滚动重新识别昵称，最多12次；未找到则结束，不邀请其他人。",
   "leader": "队长",
-  "member": "队员"
+  "member": "队员",
+  "hyakki_draft_enabled": "百鬼环节自动投掷"
 }

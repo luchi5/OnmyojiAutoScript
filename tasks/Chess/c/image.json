@@ -277,5 +277,45 @@
     "method": "Template matching",
     "threshold": 0.8,
     "description": "Chess floating window red cross"
+  },
+  {
+    "itemName": "hyakki_wait",
+    "imageName": "c_hyakki_wait.png",
+    "roiFront": "1162,78,21,21",
+    "roiBack": "1136,39,80,665",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "profile": "High",
+    "description": "百鬼等待"
+  },
+  {
+    "itemName": "stage_hyakki",
+    "imageName": "c_stage_hyakki.png",
+    "roiFront": "606,2,31,29",
+    "roiBack": "499,0,268,31",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "profile": "High",
+    "description": "百鬼阶段"
+  },
+  {
+    "itemName": "stage_orchi",
+    "imageName": "c_stage_orchi.png",
+    "roiFront": "708,0,31,29",
+    "roiBack": "499,0,268,31",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "profile": "High",
+    "description": "大蛇阶段"
+  },
+  {
+    "itemName": "stage_demon",
+    "imageName": "c_stage_demon.png",
+    "roiFront": "708,0,31,29",
+    "roiBack": "499,0,268,31",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "profile": "High",
+    "description": "逢魔阶段"
   }
 ]

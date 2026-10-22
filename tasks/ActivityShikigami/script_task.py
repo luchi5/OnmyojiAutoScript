@@ -240,7 +240,8 @@ class ScriptTask(StateMachine, GameUi, Battle, BaseActivity, SwitchSoul, Current
         self.battle_state_reset()
         if self.boss_budget_exhausted():
             return
-        self.goto_page(game.page_climb_boss)
+        self.boss_goto_challenge()
+        self.boss_wait_return()
         if fixed is None:
             self.boss_load_progress()
             completed = self.boss_read_bonus(expected_min=getattr(self, '_boss_completed', None))

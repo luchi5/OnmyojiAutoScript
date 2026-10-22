@@ -9,6 +9,7 @@ from tasks.Chess.assets import ChessAssets
 from tasks.Chess.config import Chess
 from tasks.Chess.runtime.economy import ChessEconomyMixin
 from tasks.Chess.runtime.hand_operations import ChessHandOperationsMixin
+from tasks.Chess.runtime.hyakki_draft import ChessHyakkiDraftMixin
 from tasks.Chess.runtime.recognition import ChessRecognitionMixin
 from tasks.Chess.runtime.round_state import ChessRoundStateMixin
 from tasks.Chess.runtime.settings import ChessRuntimeSettings
@@ -24,6 +25,7 @@ ChessGameUi = chess_game_ui_type(GameUi)
 
 class ChessLegacyScriptTask(
     ChessLobbyRecoveryMixin,
+    ChessHyakkiDraftMixin,
     ChessRecognitionMixin,
     ChessHandOperationsMixin,
     ChessRoundStateMixin,
@@ -608,7 +610,9 @@ class ChessLegacyScriptTask(
         return self._read_chess_mode() == '战'
 
     def _handle_passive_stage(self, mode: str) -> bool:
-        """战、鬼、待阶段只等待，不主动改变商店状态。"""
+        """战和待阶段等待；鬼阶段执行试行投掷。"""
+        if mode == '鬼':
+            self._handle_hyakki_draft()
         return mode in ('战', '鬼', '待')
 
 
@@ -832,10 +836,13 @@ class ChessLegacyScriptTask(
             time.sleep(self.SLOW_POLL_INTERVAL)
 
     def _is_in_chess_game(self) -> bool:
-        """以阵容入口或问号图标确认当前处于百鬼棋局对局内。"""
+        """以阵容入口、问号或特殊回合标志确认当前处于对局内。"""
         return (
             self.appear(self.I_OPEN_LINEUP)
             or self.appear(self.I_QUESTION_CHECK)
+            or self._special_chess_mode() is not None
+            or self._stage_marker_visible(self.I_STAGE_ORCHI)
+            or self._stage_marker_visible(self.I_STAGE_DEMON)
         )
 
     def _close_chess_lobby_abnormal_page(self) -> bool:

@@ -29,6 +29,12 @@ class ChessStateLoopMixin:
     def _read_chess_mode(self) -> str | None:
         value = super()._read_chess_mode()
         self._record_observation(mode=value)
+        if not hasattr(self, '_logged_chess_mode') or self._logged_chess_mode != value:
+            self._logged_chess_mode = value
+            logger.info(
+                f'Chess phase detected: mode={value or "未识别"}, '
+                f'round={getattr(self, "_current_round_no", None)}'
+            )
         return value
 
     def _read_level(self) -> int | None:
@@ -101,7 +107,7 @@ class ChessStateLoopMixin:
                 'confirmed within 5 seconds'
             )
             return True
-        if current_round in self.BOSS_CHALLENGE_ROUNDS:
+        if self._is_boss_challenge_round(round_no=current_round):
             logger.info(
                 'Skip post-grigri lineup check during boss round: '
                 f'round={current_round}'
@@ -247,7 +253,7 @@ class ChessStateLoopMixin:
                         )
 
             interval = (
-                3 * self.SLOW_POLL_INTERVAL
+                self.SCREENSHOT_INTERVAL
                 if mode == '鬼'
                 else self.SLOW_POLL_INTERVAL
             )

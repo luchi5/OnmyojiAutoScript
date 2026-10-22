@@ -1,0 +1,201 @@
+{
+  "status": "screenshot_templates_not_enabled",
+  "size": [
+    33,
+    33
+  ],
+  "missing": [
+    "kuanggu",
+    "dizangxiang"
+  ],
+  "templates": {
+    "zheng": {
+      "name": "狰",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111150_365764.png",
+      "crop_xywh": [
+        275,
+        296,
+        33,
+        33
+      ]
+    },
+    "jingji": {
+      "name": "镜姬",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111150_365764.png",
+      "crop_xywh": [
+        464,
+        321,
+        33,
+        33
+      ]
+    },
+    "bangjing": {
+      "name": "蚌精",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111150_365764.png",
+      "crop_xywh": [
+        791,
+        321,
+        33,
+        33
+      ]
+    },
+    "beichuifang": {
+      "name": "贝吹坊",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111353_262985.png",
+      "crop_xywh": [
+        732,
+        246,
+        33,
+        33
+      ]
+    },
+    "qingnvfang": {
+      "name": "青女房",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111353_262985.png",
+      "crop_xywh": [
+        991,
+        289,
+        33,
+        33
+      ],
+      "note": "Only one clear occurrence in current batch; independent-frame validation pending."
+    },
+    "mumei": {
+      "name": "木魅",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_112737_220086.png",
+      "crop_xywh": [
+        411,
+        229,
+        33,
+        33
+      ]
+    },
+    "diaopinghuo": {
+      "name": "钓瓶火",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_113531_112759.png",
+      "crop_xywh": [
+        49,
+        286,
+        33,
+        33
+      ]
+    },
+    "poshi": {
+      "name": "破势",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_113531_112759.png",
+      "crop_xywh": [
+        571,
+        269,
+        33,
+        33
+      ]
+    },
+    "yinmoluo": {
+      "name": "阴摩罗",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_113531_112759.png",
+      "crop_xywh": [
+        833,
+        305,
+        33,
+        33
+      ]
+    },
+    "wangqie": {
+      "name": "网切",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_113602_888214.png",
+      "crop_xywh": [
+        373,
+        269,
+        33,
+        33
+      ]
+    },
+    "beifu": {
+      "name": "被服",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_115052_335798.png",
+      "crop_xywh": [
+        452,
+        317,
+        33,
+        33
+      ]
+    },
+    "shanghunniao": {
+      "name": "伤魂鸟",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_115052_335798.png",
+      "crop_xywh": [
+        715,
+        272,
+        33,
+        33
+      ]
+    },
+    "huoling": {
+      "name": "火灵",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_115052_335798.png",
+      "crop_xywh": [
+        977,
+        316,
+        33,
+        33
+      ]
+    },
+    "zhaocaimao": {
+      "name": "招财猫",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111136_069264.png",
+      "crop_xywh": [
+        784,
+        302,
+        33,
+        33
+      ]
+    },
+    "yingshengchong": {
+      "name": "应声虫",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111136_069264.png",
+      "crop_xywh": [
+        1051,
+        299,
+        33,
+        33
+      ]
+    },
+    "niepanzhihuo": {
+      "name": "涅槃之火",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111400_403085.png",
+      "crop_xywh": [
+        77,
+        269,
+        33,
+        33
+      ]
+    },
+    "wangliangzhixia": {
+      "name": "魍魉之匣",
+      "source": "C:\\Users\\Xylitol\\Desktop\\chess_picture\\chess_20261021_111856_918894.png",
+      "crop_xywh": [
+        732,
+        332,
+        33,
+        33
+      ]
+    },
+    "fuyi": {
+      "name": "蝠翼",
+      "source": "C:/Users/Xylitol/Documents/MuMu共享文件夹/Screenshots/MuMu-20261020-225836-843.png",
+      "crop_xywh": [
+        612,
+        320,
+        33,
+        33
+      ],
+      "note": "Earlier clean screenshot; current batch has overlay near this icon."
+    }
+  },
+  "validation": {
+    "screenshots": 56,
+    "threshold_used_for_offline_check": 0.85,
+    "report": ".codex/chess_new/validation.json",
+    "note": "Counts are template matches, not manually annotated recall/precision."
+  }
+}
