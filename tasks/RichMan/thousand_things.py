@@ -26,21 +26,17 @@ class ThousandThings(GameUi, RichManAssets):
             return
         self.screenshot()
         if borrow_only_page(self.device.image):
-            logger.info('Borrow-only newcomer/returning page: lending and Thousand Things unavailable')
+            logger.info('借用页面：先退出，再检查千物宝库')
             self._tt_leave_borrow()
-            return
         self.goto_page(page_travel)
 
         self.screenshot()
-        if beginner_travel(self.device.image):
-            logger.info('Newcomer/returning travel area: skip lending and unavailable Thousand Things shop')
-            return
-        if con.earn_money:
+        is_beginner = beginner_travel(self.device.image)
+        logger.info('珍旅居：明确识别为新手，跳过式神借出，继续检查宝库' if is_beginner
+                    else '珍旅居：未识别到明确新手标志，按普通账号处理')
+        if con.earn_money and not is_beginner:
             logger.info('Start Earn Money')
             self.tt_earn_money()
-            self.screenshot()
-            if beginner_travel(self.device.image):
-                return
 
         while 1:
             self.screenshot()

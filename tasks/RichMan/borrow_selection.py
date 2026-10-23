@@ -44,12 +44,16 @@ def empty_borrow_slots(image):
 
 
 def beginner_travel(image):
-    returning = cv2.cvtColor(extra_template('returning_travel.png'), cv2.COLOR_BGR2RGB)
-    if cv2.minMaxLoc(cv2.matchTemplate(image[190:355, 595:650], returning, cv2.TM_CCOEFF_NORMED))[1] >= 0.85:
-        return True
-    template = extra_template('beginner_travel.png')
-    return cv2.minMaxLoc(cv2.matchTemplate(image[15:65, 470:765], template,
-                                          cv2.TM_CCOEFF_NORMED))[1] >= 0.85
+    """Only explicit newcomer banner identifies beginners; unknown uses normal flow."""
+    if image is None or image.shape != (720, 1280, 3):
+        return False
+    template = extra_template('newcomer_banner.png')
+    if template is None:
+        return False
+    # Grayscale avoids mixing the RGB screenshot with BGR-loaded templates.
+    template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+    region = cv2.cvtColor(image[15:65, 470:765], cv2.COLOR_RGB2GRAY)
+    return cv2.minMaxLoc(cv2.matchTemplate(region, template, cv2.TM_CCOEFF_NORMED))[1] >= 0.85
 
 
 def borrow_only_page(image):

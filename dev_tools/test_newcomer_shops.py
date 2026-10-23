@@ -33,7 +33,7 @@ class ShopRegressions(unittest.TestCase):
     def test_returning_travel_title_and_restriction(self):
         im=frame('borrow_selection/returning.png')
         self.assertTrue(GameUiAssets.I_CHECK_TRAVEL_TITLE.match(im))
-        self.assertTrue(beginner_travel(im))
+        self.assertFalse(beginner_travel(im))
         for name in ['shop8_locked.png','shop9_newcomer.png']:
             self.assertFalse(GameUiAssets.I_CHECK_TRAVEL_TITLE.match(frame(name)))
             self.assertFalse(beginner_travel(frame(name)))

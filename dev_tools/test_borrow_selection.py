@@ -3,7 +3,7 @@ import ast
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import cv2
 import numpy as np
@@ -33,6 +33,12 @@ class RecognitionTests(unittest.TestCase):
         image[:80] = cv2.imread(str(FIXTURES / 'beginner.png'))
         self.assertTrue(beginner_travel(image))
         self.assertFalse(beginner_travel(np.zeros_like(image)))
+
+    def test_unknown_or_missing_template_uses_normal_account(self):
+        self.assertFalse(beginner_travel(None))
+        self.assertFalse(beginner_travel(np.zeros((10, 10, 3), np.uint8)))
+        with patch('tasks.RichMan.borrow_selection.extra_template', return_value=None):
+            self.assertFalse(beginner_travel(np.zeros((720, 1280, 3), np.uint8)))
 
     def test_actual_borrow_only_screen(self):
         image = np.zeros((720, 1280, 3), np.uint8)
@@ -112,7 +118,7 @@ class FlowTests(unittest.TestCase):
         self.assertFalse(h._tt_prepare_borrow())
         h.click.assert_called_once_with('I_TT_SHIKIGAMI_REPLACE')
 
-    def test_beginner_skips_lending_and_closed_shop(self):
+    def test_beginner_skips_lending_but_checks_shop(self):
         h = self.harness([{'empty': 3, 'beginner': True,
                            'visible': {'I_TT_CHECK', 'I_TT_ENTER'}}])
         h.execute_tt(SimpleNamespace(enable=True, earn_money=True, mystery_amulet=False,
@@ -121,13 +127,23 @@ class FlowTests(unittest.TestCase):
         h.goto_page.assert_called_once_with('travel')
         h.click.assert_not_called()
 
+    def test_unknown_account_still_lends_and_buys_configured_goods(self):
+        h = self.harness([{'empty': 3, 'visible': {'I_TT_CHECK', 'I_TT_ENTER'}}])
+        h.tt_buy_black_daruma_scrap = Mock()
+        h.tt_buy_ap = Mock()
+        h.execute_tt(SimpleNamespace(enable=True, earn_money=True, mystery_amulet=False,
+                                    black_daruma_fragment=True, ap=True))
+        h.tt_earn_money.assert_called_once()
+        h.tt_buy_black_daruma_scrap.assert_called_once()
+        h.tt_buy_ap.assert_called_once()
+
     def test_borrow_only_page_returns_to_map_without_lending(self):
         h = self.harness([{'empty': 3, 'borrow_only': True},
                           {'empty': 3, 'borrow_only': True},
-                          {'empty': 3, 'visible': {'I_TT_ENTER'}}])
-        h.execute_tt(SimpleNamespace(enable=True, earn_money=True))
-        h.tt_earn_money.assert_not_called()
-        h.goto_page.assert_not_called()
+                          {'empty': 3, 'visible': {'I_TT_ENTER', 'I_TT_CHECK'}}])
+        h.execute_tt(SimpleNamespace(enable=True, earn_money=True, mystery_amulet=False, black_daruma_fragment=False, ap=False))
+        h.tt_earn_money.assert_called_once()
+        h.goto_page.assert_called_once_with('travel')
         h.appear_then_click.assert_called_once_with('I_UI_BACK_YELLOW', interval=1)
 
     def test_unrecognized_exit_stops_task(self):
