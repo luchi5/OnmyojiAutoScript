@@ -137,6 +137,7 @@ class ChessSeasonUpdateTests(unittest.TestCase):
 
     def purchase_task(self, frames):
         task = self.make_task()
+        task.device.click_record_remove = Mock()
         task.screenshot = Mock()
         task.click = Mock(return_value=True)
         task.appear = Mock(return_value=False)
@@ -183,7 +184,7 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(task.click.call_count, 2)
 
-    def test_failed_buy_with_full_hand_uses_existing_lineup_sale_before_retry(self):
+    def test_failed_buy_with_full_hand_defers_to_normal_hand_processing(self):
         card = {'source': 'frame', 'score': .98}
         task = self.purchase_task([card, card, card, card, None, None])
         task._recognize_shop_slot = Mock(return_value=card)
@@ -191,10 +192,10 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         task._hand_card_detections.side_effect = [[{}] * 10, [{}] * 10, [{}] * 9]
         task._free_one_hand_slot_for_purchase = Mock(side_effect=[
             {'equipped': [], 'sold_non_lineup': []}, {'type': 'lineup'}])
-        self.assertTrue(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
-        self.assertEqual([call.kwargs for call in task._free_one_hand_slot_for_purchase.call_args_list],
-                         [{'sell_lineup': False}, {'sell_lineup': True}])
-        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
+        self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
+        self.assertTrue(task._hand_purchase_blocked)
+        task._free_one_hand_slot_for_purchase.assert_not_called()
+        task._chess_click_until_disappear.assert_called_once()
 
     def test_still_full_after_both_recovery_steps_never_retries_purchase(self):
         card = {'source': 'frame', 'score': .98}
@@ -204,7 +205,7 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         task._hand_card_detections.return_value = [{}] * 10
         task._free_one_hand_slot_for_purchase = Mock(return_value={})
         self.assertFalse(task._buy_shop_slot(4, ChessAssets.C_SHIKIGAMI_4, 'kaoru'))
-        self.assertEqual(task._free_one_hand_slot_for_purchase.call_count, 2)
+        task._free_one_hand_slot_for_purchase.assert_not_called()
         task._chess_click_until_disappear.assert_called_once()
 
     def test_full_hand_recovery_failure_does_not_retry_purchase(self):
@@ -284,7 +285,7 @@ class ChessSeasonUpdateTests(unittest.TestCase):
         task = self.purchase_task([card, card, None, None])
         task.device.click_record_remove = Mock()
         self.assertTrue(task._buy_shop_slot(3, ChessAssets.C_SHIKIGAMI_3, 'hakurou'))
-        task.device.click_record_remove.assert_called_once_with(ChessAssets.C_SHIKIGAMI_3)
+        task.device.click_record_remove.assert_called_once_with(ChessAssets.C_SHIKIGAMI_3.name)
 
     def test_blocked_purchase_does_not_clear_click_history(self):
         task = self.purchase_task([{'source': 'frame', 'score': .99}])

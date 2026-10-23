@@ -45,7 +45,7 @@ class ChessPurchasePauseTests(unittest.TestCase):
             self.assertFalse(task._buy_shop_slot(5, ChessAssets.C_SHIKIGAMI_5, 'komatsumaru'))
         task._chess_click_until_disappear.assert_called_once()
         self.assertEqual(task._hand_card_detections.call_count, calls)
-        self.assertEqual(task._free_one_hand_slot_for_purchase.call_count, 2)
+        task._free_one_hand_slot_for_purchase.assert_not_called()
 
     def test_cycle_completion_does_not_reset_pause_but_new_game_does(self):
         task = self.task()
@@ -132,7 +132,7 @@ class ChessPurchasePauseTests(unittest.TestCase):
                 task._chess_click_until_disappear.assert_not_called()
 
     def test_obscured_failed_purchase_stays_paused_across_economy_entries(self):
-        for mode, count, attempts in (('战', 2, 1), ('备', 2, 2), ('备', 0, 1)):
+        for mode, count, attempts in (('战', 2, 1), ('备', 2, 1), ('备', 0, 1)):
             with self.subTest(mode=mode, count=count):
                 task = self.task()
                 task._read_chess_mode.return_value = mode
@@ -142,7 +142,7 @@ class ChessPurchasePauseTests(unittest.TestCase):
 
                 def failed_attempt(rule, **kwargs):
                     for _ in range(kwargs['max_clicks']):
-                        Device.click_record_add(task.device, rule)
+                        Device.click_record_add(task.device, rule.name)
                         Device.click_record_check(task.device)
                     return False
 
@@ -157,6 +157,32 @@ class ChessPurchasePauseTests(unittest.TestCase):
                 self.assertEqual(len(task.device.click_record), 2 * attempts)
                 task.device.click_record_remove.assert_not_called()
                 task._free_one_hand_slot_for_purchase.assert_not_called()
+
+    def test_repeated_verified_recoveries_reset_only_slot_history(self):
+        task = self.task()
+        task.device.click_record = deque(['unrelated_button'], maxlen=15)
+        task.device.click_record_remove = lambda rule: Device.click_record_remove(task.device, rule)
+        task.device.click_record_clear = lambda: task.device.click_record.clear()
+        def failed_attempt(rule, **kwargs):
+            for _ in range(kwargs['max_clicks']):
+                Device.click_record_add(task.device, rule.name)
+            return False
+        task._chess_click_until_disappear.side_effect = failed_attempt
+        for round_no in range(21, 33):
+            self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+            task.chess_state.begin_round(round_no)
+            task._schedule_economy_cycle()
+            self.assertTrue(task._hand_purchase_blocked)
+            self.assertEqual(task._click_shop_refresh_and_confirm_slots(True), 'no_progress')
+            task._hand_card_detections.return_value = [{}] * 10
+            self.assertFalse(task._resume_shop_after_hand_processing())
+            self.assertIn('shikigami_2', task.device.click_record)
+            task._hand_card_detections.return_value = [{}] * 9
+            with patch('tasks.Chess.runtime.economy.time.sleep'):
+                self.assertTrue(task._resume_shop_after_hand_processing())
+            self.assertNotIn('shikigami_2', task.device.click_record)
+            self.assertIn('unrelated_button', task.device.click_record)
+        task._free_one_hand_slot_for_purchase.assert_not_called()
 
     def test_account24_full_hand_under_battle_effects_never_resumes(self):
         files = list(Path('log/error/1792687336857').glob('*.png'))
@@ -261,7 +287,7 @@ class ChessPurchasePauseTests(unittest.TestCase):
 
         def failed_attempt(rule, **kwargs):
             for _ in range(kwargs['max_clicks']):
-                Device.click_record_add(task.device, rule)
+                Device.click_record_add(task.device, rule.name)
                 Device.click_record_check(task.device)
             return False
         task._chess_click_until_disappear = Mock(side_effect=failed_attempt)

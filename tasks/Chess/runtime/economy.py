@@ -444,6 +444,10 @@ class ChessEconomyMixin:
                 time.sleep(self.ACTION_SETTLE_INTERVAL)
         if counts[0] != counts[1]:
             return False
+        # A verified recovery starts a new bounded purchase attempt. Remove
+        # only card-slot history, never the global protection or other buttons.
+        for slot in range(1, 6):
+            self.device.click_record_remove(getattr(self, f'C_SHIKIGAMI_{slot}').name)
         self._hand_purchase_blocked = False
         self._hand_resume_purchase_pending = True
         logger.info(f'Resume Chess purchases: hand space confirmed in two frames, count={counts[-1]}')
@@ -455,7 +459,7 @@ class ChessEconomyMixin:
         click_rule: RuleClick,
         matched_name: str,
     ) -> bool:
-        """先有界尝试购买；失败且手满时清理，复核容量后再重试。"""
+        """有界尝试购买；未确认成功即暂停，交由正常手牌流程恢复。"""
         if self._hand_purchase_blocked:
             return False
         known_price = SHIKIGAMI_BY_ROMAJI[matched_name].cost
@@ -468,133 +472,32 @@ class ChessEconomyMixin:
         # A target missing before any click is not a confirmed purchase.
         if current_match is None:
             return False
-        attempts = 0
-        emergency_cleanup_done = False
-        lineup_sale_done = False
-
-        while current_match is not None and time.monotonic() < deadline:
-            if not self._is_purchase_allowed():
-                logger.debug(
-                    f'Stop buying {matched_name}: Hyakki mode detected'
-                )
-                return False
-            if not self._can_afford_shop_shikigami(
-                slot_index,
-                known_price=known_price,
-            ):
-                logger.debug(
-                    f'Skip buying {matched_name}: insufficient gold for '
-                    f'shop slot {slot_index}'
-                )
-                return False
-            attempts += 1
-            logger.info(
-                f'Buy Chess card: '
-                f'{self._shikigami_display_name(matched_name)} '
-                f'(slot={slot_index}, '
-                f'attempt={attempts}, source={current_match["source"]}, '
-                f'identity_score={current_match["score"]:.3f})'
-            )
-            clicked_and_gone = self._chess_click_until_disappear(
-                click_rule,
-                click_target=click_rule,
-                visible=lambda: self._recognize_shop_slot(
-                    slot_index, click_rule, expected_name=matched_name,
-                ) is not None,
-                guard=lambda: self._is_purchase_allowed() and not self.appear(self.I_SELECT_GRIGRI),
-                interval=0.3,
-                timeout=min(2.0, max(0.0, deadline-time.monotonic())),
-                confirm_frames=2,
-                max_clicks=2,
-            )
-            if clicked_and_gone:
-                # Confirmed progress ends this slot's previous click streak.
-                # Failed purchases retain their history and global protection.
-                remove = getattr(self.device, 'click_record_remove', None)
-                if callable(remove):
-                    remove(click_rule)
-                return True
-            if not self._is_purchase_allowed() or self.appear(self.I_SELECT_GRIGRI):
-                return False
-            current_match = self._recognize_shop_slot(
-                slot_index,
-                click_rule,
-                expected_name=matched_name,
-            )
-            if current_match is None:
-                # Timeout or pre-click disappearance did not pass two-frame confirmation.
-                return False
-            if current_match is not None:
-                if not self._is_purchase_allowed():
-                    logger.debug(
-                        f'Stop buying {matched_name}: Hyakki mode detected'
-                    )
-                    return False
-                if not self._can_afford_shop_shikigami(
-                    slot_index,
-                    known_price=known_price,
-                ):
-                    logger.debug(
-                        f'Stop retrying {matched_name}: insufficient gold '
-                        f'for shop slot {slot_index}'
-                    )
-                    return False
-                # Successful purchases never scan the hand. Only diagnose
-                # capacity after a bounded purchase attempt failed.
-                hand_count = len(self._hand_card_detections())
-                if hand_count < self.HAND_CAPACITY:
-                    # Detection counts are only a lower bound: battle effects
-                    # can hide a full hand. Do not retry there, or let the next
-                    # economy entry immediately restart a failed attempt.
-                    if hand_count == 0 or self._read_chess_mode() != '备' or attempts >= 2:
-                        logger.warning('Chess purchase unconfirmed; pause until preparation confirms hand space')
-                        self._pause_shop_for_full_hand()
-                        return False
-                    logger.debug('Chess purchase unconfirmed with hand space; retry once without cleanup')
-                    continue
-
-                while hand_count >= self.HAND_CAPACITY:
-                    if emergency_cleanup_done and lineup_sale_done:
-                        logger.warning('Chess hand remains full after bounded recovery; stop buying')
-                        self._pause_shop_for_full_hand()
-                        return False
-                    sell_lineup = emergency_cleanup_done
-                    logger.info('Chess purchase blocked with full hand; clean up and recheck capacity')
-                    recovery = self._free_one_hand_slot_for_purchase(sell_lineup=sell_lineup)
-                    if recovery is None:
-                        self._pause_shop_for_full_hand()
-                        return False
-                    if sell_lineup:
-                        lineup_sale_done = True
-                    else:
-                        emergency_cleanup_done = True
-                    if not self._is_purchase_allowed() or self.appear(self.I_SELECT_GRIGRI):
-                        self._pause_shop_for_full_hand()
-                        return False
-                    current_match = self._recognize_shop_slot(
-                        slot_index, click_rule, expected_name=matched_name,
-                    )
-                    if current_match is None:
-                        # Cleanup or a shop transition is not a purchase.
-                        self._pause_shop_for_full_hand()
-                        return False
-                    # Cleaning is not proof of space: do not click again until
-                    # a fresh post-cleanup frame really has fewer than 10 cards.
-                    hand_count = len(self._hand_card_detections())
-                    if hand_count == 0:
-                        self._pause_shop_for_full_hand()
-                        return False
-
-        if current_match is None:
-            logger.debug(
-                'Chess shop purchase succeeded by identity disappearance: '
-                f'slot={slot_index}, name={matched_name}, attempts={attempts}'
-            )
+        if not self._is_purchase_allowed() or not self._can_afford_shop_shikigami(
+            slot_index, known_price=known_price,
+        ):
+            return False
+        clicked_and_gone = self._chess_click_until_disappear(
+            click_rule,
+            click_target=click_rule,
+            visible=lambda: self._recognize_shop_slot(
+                slot_index, click_rule, expected_name=matched_name,
+            ) is not None,
+            guard=lambda: self._is_purchase_allowed() and not self.appear(self.I_SELECT_GRIGRI),
+            interval=0.3,
+            timeout=min(2.0, max(0.0, deadline-time.monotonic())),
+            confirm_frames=2,
+            max_clicks=2,
+        )
+        if clicked_and_gone:
+            self.device.click_record_remove(click_rule.name)
             return True
-
+        # Every unconfirmed attempt latches the pause, including phase changes
+        # and disappearing targets. Normal hand processing owns recovery;
+        # neither a new round nor a one-frame count permits another click.
+        self._pause_shop_for_full_hand()
         logger.warning(
-            f'Chess shop purchase timed out: slot={slot_index}, '
-            f'name={matched_name}, identity remains in slot'
+            f'Chess purchase unconfirmed: slot={slot_index}, name={matched_name}; '
+            'keep purchases and refresh paused until preparation confirms space'
         )
         self._pause_shop_for_full_hand()
         return False

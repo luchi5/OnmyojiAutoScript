@@ -150,3 +150,7 @@ class ChessAssets:
 
 	I_REWARD_CHESS = RuleImage(roi_front=(485,227,310,44), roi_back=(480,222,320,54), threshold=0.8, method="Template matching", file="./tasks/Chess/c/c_reward_chess.png")
 	I_CLOSE_RED = RuleImage(roi_front=(1169,60,33,25), roi_back=(1077,19,151,144), method='Template matching', threshold=0.8, file='./tasks/Chess/c/page_close_red.png')
+
+	I_TUTORIAL_PROMPT = RuleImage(roi_front=(549, 296, 184, 39), roi_back=(541, 288, 200, 55), threshold=0.9, method="Template matching", profile="High", file="./tasks/Chess/c/c_tutorial_prompt.png")
+
+	I_TUTORIAL_SKIP = RuleImage(roi_front=(483, 421, 79, 38), roi_back=(475, 413, 95, 54), threshold=0.9, method="Template matching", profile="High", file="./tasks/Chess/c/c_tutorial_skip.png")

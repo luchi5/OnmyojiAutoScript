@@ -901,6 +901,7 @@ class ChessLegacyScriptTask(
         matched_loading_started_at = None
         matched_loading_logged = False
         lobby_frames = 0
+        tutorial_skip_attempts = 0
         matchmaking_timeout = float(
             getattr(self, '_matchmaking_timeout_seconds', 60)
         )
@@ -909,6 +910,20 @@ class ChessLegacyScriptTask(
             # 在每次截图之前清除，不能等识别到“取消等待”后才清除。
             self.device.stuck_record_clear()
             self.screenshot()
+            # First-entry tutorial overlays the still-visible lobby start button.
+            # Require the exact prompt and skip label before touching this modal.
+            if self.appear(self.I_TUTORIAL_PROMPT):
+                if not self.appear(self.I_TUTORIAL_SKIP):
+                    raise GameStuckError('Chess: tutorial prompt visible but skip button not recognized')
+                if tutorial_skip_attempts >= 3:
+                    raise GameStuckError('Chess: tutorial skip did not dismiss prompt after 3 attempts')
+                self.click(self.I_TUTORIAL_SKIP)
+                tutorial_skip_attempts += 1
+                logger.info('Chess first-entry tutorial: skip and wait for game entry')
+                lobby_frames = 0
+                deadline = time.monotonic() + timeout
+                time.sleep(self.ACTION_SETTLE_INTERVAL)
+                continue
             if self._recover_chess_outside_page():
                 deadline = time.monotonic() + timeout
                 waiting_logged = False

@@ -317,5 +317,25 @@
     "threshold": 0.9,
     "profile": "High",
     "description": "逢魔阶段"
+  },
+  {
+    "itemName": "tutorial_prompt",
+    "imageName": "c_tutorial_prompt.png",
+    "roiFront": "549,296,184,39",
+    "roiBack": "541,288,200,55",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "profile": "High",
+    "description": "首次教程弹窗，须与另一标志同时匹配"
+  },
+  {
+    "itemName": "tutorial_skip",
+    "imageName": "c_tutorial_skip.png",
+    "roiFront": "483,421,79,38",
+    "roiBack": "475,413,95,54",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "profile": "High",
+    "description": "首次教程弹窗，须与另一标志同时匹配"
   }
 ]

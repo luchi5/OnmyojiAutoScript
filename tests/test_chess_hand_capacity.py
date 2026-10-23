@@ -29,47 +29,24 @@ class ChessHandCapacityTests(unittest.TestCase):
         task._hand_card_detections.assert_not_called()
         task._free_one_hand_slot_for_purchase.assert_not_called()
 
-    def test_two_cards_over_limit_only_attempts_initial_purchase(self):
+    def test_confirmed_purchase_removes_actual_control_name_only(self):
         task = self.task()
-        task._hand_card_detections.side_effect = [[{}] * 12, [{}] * 11, [{}] * 10]
-        self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        task._chess_click_until_disappear.assert_called_once()
-        task.click.assert_not_called()
-        self.assertEqual([call.kwargs for call in task._free_one_hand_slot_for_purchase.call_args_list],
-                         [{'sell_lineup': False}, {'sell_lineup': True}])
-
-    def test_overflow_recovery_only_buys_after_hand_drops_below_capacity(self):
-        task = self.task()
-        events = []
-        def buy(*args, **kwargs):
-            events.append('buy')
-            return events.count('buy') == 2
-        def count():
-            value = (11, 10, 9)[events.count('count')]
-            events.append('count')
-            return [{}] * value
-        task._chess_click_until_disappear.side_effect = buy
-        task._hand_card_detections.side_effect = count
+        task.device.click_record = deque(['shikigami_2'] * 8 + ['other'], maxlen=15)
+        task.device.click_record_remove = lambda rule: Device.click_record_remove(task.device, rule)
+        task._chess_click_until_disappear.return_value = True
         self.assertTrue(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        self.assertEqual(task._free_one_hand_slot_for_purchase.call_count, 2)
-        self.assertEqual(events, ['buy', 'count', 'count', 'count', 'buy'])
-        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
-        self.assertEqual(task._chess_click_until_disappear.call_args.kwargs['max_clicks'], 2)
+        self.assertEqual(list(task.device.click_record), ['other'])
 
-    def test_failed_purchase_with_space_retries_once_without_cleanup(self):
-        task = self.task()
-        task._hand_card_detections.return_value = [{}] * 9
-        task._chess_click_until_disappear.side_effect = [False, True]
-        self.assertTrue(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        task._hand_card_detections.assert_called_once()
-        task._free_one_hand_slot_for_purchase.assert_not_called()
-
-    def test_repeated_failure_with_space_stops_without_selling(self):
-        task = self.task()
-        task._hand_card_detections.return_value = [{}] * 9
-        self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
-        self.assertEqual(task._chess_click_until_disappear.call_count, 2)
-        task._free_one_hand_slot_for_purchase.assert_not_called()
+    def test_failed_purchase_pauses_without_emergency_sale_or_retry(self):
+        for count in (0, 2, 9, 10, 11, 12):
+            with self.subTest(count=count):
+                task = self.task()
+                task._hand_card_detections.return_value = [{}] * count
+                self.assertFalse(task._buy_shop_slot(2, ChessAssets.C_SHIKIGAMI_2, 'keisei_chihime'))
+                self.assertTrue(task._hand_purchase_blocked)
+                task._chess_click_until_disappear.assert_called_once()
+                task._free_one_hand_slot_for_purchase.assert_not_called()
+                task._hand_card_detections.assert_not_called()
 
     def test_insufficient_gold_does_not_attempt_purchase_or_scan_hand(self):
         task = self.task()
@@ -99,7 +76,7 @@ class ChessHandCapacityTests(unittest.TestCase):
         task.device.click_record_remove = Mock()
 
         def real_guard_click(rule, **kwargs):
-            Device.click_record_add(task.device, rule)
+            Device.click_record_add(task.device, rule.name)
             Device.click_record_check(task.device)
             return True
 
