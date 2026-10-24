@@ -43,7 +43,7 @@ class RoundVision:
         self.last_evidence = ()
         for name in ('match', 'roster_title', 'roster_close', 'series_fan',
                      'series_one', 'loss_red', 'loss_gray', 'continue',
-                     'deploy_confirm', 'member_waiting', 'wins_zero', 'central_loss_gray'):
+                     'deploy_confirm', 'member_waiting', 'wins_zero', 'central_loss_gray', 'reward_bag'):
             self.templates[name] = self._load(RES/'round'/(name+'.png'))
         for name, path in {
             'title': RES/'team/title.png', 'roster': RES/'my_roster_heading.png',
@@ -168,9 +168,16 @@ class RoundVision:
         red2 = self._hit(image, 'loss_red', (650, 360, 695, 405))
         if fan and continuing and red1 and red2:
             one = self._hit(image, 'series_one', (543, 270, 607, 368))
+            counter = self._find(self._texts(image), r'[0-5]番胜', (480, 250, 800, 370))
             return view('series_result', {'collect': continuing},
-                        wins=1 if one else None, losses=2,
+                        wins=int(counter.text[0]) if counter else (1 if one else None), losses=2,
                         evidence=('central_series_banner', 'two_red_loss_marks', 'continue_hint'))
+
+        reward_continue = self._hit(image, 'continue', (525, 658, 755, 720), brightness=80)
+        if (self._hit(image, 'title', (130, 5, 285, 60), brightness=80) and reward_continue
+                and self._hit(image, 'reward_bag', (500, 380, 790, 650))):
+            return view('popup', {'close': reward_continue},
+                        evidence=('mode_title', 'observed_reward_bag', 'continue_hint'))
 
         # Deployment is deliberately before generic battle recognition.
         marker = self._hit(image, 'teammate', (75, 20, 600, 115), brightness=45)

@@ -54,3 +54,20 @@ class RoundVisionTest(unittest.TestCase):
         self.assertIsNone(result.outcome)
         self.assertEqual(set(result.actions), {'result_continue'})
 
+    def test_zero_win_terminal_retains_both_losses(self):
+        self.paint('series_fan', (600, 280))
+        self.paint('continue', (550, 680))
+        self.paint('loss_red', (610, 368))
+        self.paint('loss_red', (655, 368))
+        self.ocr.labels = [label('0番胜', (540, 275, 775, 365))]
+        result = self.vision.read(self.blank)
+        self.assertEqual((result.phase, result.wins, result.losses), ('series_result', 0, 2))
+
+    def test_reward_bag_needs_mode_and_continue(self):
+        self.paint('title', (140, 10))
+        self.paint('continue', (550, 680))
+        self.paint('reward_bag', (520, 400))
+        self.assertEqual(self.vision.read(self.blank).phase, 'popup')
+        self.blank[658:720] = 0
+        self.assertNotEqual(self.vision.read(self.blank).phase, 'popup')
+
