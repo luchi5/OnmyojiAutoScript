@@ -50,23 +50,29 @@ class DeploymentActions(unittest.TestCase):
                     ("ichikami", "masakado", "momiji"), clock=lambda: 100.5)
 
     def test_drag_verify_then_confirm(self):
+        clock = Mock(return_value=100.5)
+        self.runner.clock = clock
+        self.io.drag.side_effect = lambda *args: setattr(clock, 'return_value', 101)
         self.runner.observe = Mock(side_effect=[
-            self.frame, self.frame, replace(self.frame, current="masakado")])
+            self.frame, self.frame, replace(self.frame, captured=100.75, current="masakado")])
         self.assertEqual(self.runner.step(True), "confirmation_sent")
         self.io.drag.assert_called_once_with((660, 588), (940, 340))
         self.io.confirm.assert_called_once()
+        self.assertEqual(self.runner.verified, set())
+        self.assertIn(("right", 2), self.runner.pending)
 
     def test_wrong_portrait_after_drag_never_confirms(self):
         self.runner.observe = Mock(return_value=self.frame)
         self.assertEqual(self.runner.step(True), "drag_not_verified_no_confirmation")
         self.io.confirm.assert_not_called()
-        self.assertEqual(self.runner.step(True), "needs_manual_selection")
+        self.assertEqual(self.runner.step(True), "waiting_for_fresh_drag_retry")
         self.io.drag.assert_called_once()
 
     def test_correct_default_confirms_without_drag(self):
         self.runner.observe = Mock(return_value=replace(self.frame, current="masakado"))
         self.assertEqual(self.runner.step(True), "confirmation_sent")
-        self.assertEqual(self.runner.step(True), "confirmation_already_sent")
+        self.assertEqual(self.runner.step(True), "confirmation_pending")
+        self.assertEqual(self.runner.confirmed, set())
         self.io.drag.assert_not_called()
         self.io.confirm.assert_called_once()
 

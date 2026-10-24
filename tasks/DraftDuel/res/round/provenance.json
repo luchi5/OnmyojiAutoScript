@@ -1,0 +1,123 @@
+{
+  "match": {
+    "source": "tests/fixtures/draft_duel/round2/01-tool-selection.png",
+    "sha256": "a0105ac37a1171c936d883489286d8a485c7c16a13cb4c1e7372f44f6af9c80c",
+    "crop_xyxy": [
+      1145,
+      573,
+      1262,
+      691
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "roster_title": {
+    "source": "tests/fixtures/draft_duel/round2/01-tool-result.png",
+    "sha256": "1043f4d42a62319281847ddf40c3733bd60ba2d67135011b1ab9b42422b63071",
+    "crop_xyxy": [
+      565,
+      20,
+      707,
+      60
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "roster_close": {
+    "source": "tests/fixtures/draft_duel/round2/01-tool-result.png",
+    "sha256": "1043f4d42a62319281847ddf40c3733bd60ba2d67135011b1ab9b42422b63071",
+    "crop_xyxy": [
+      1177,
+      85,
+      1244,
+      153
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "series_fan": {
+    "source": "log/draft-duel-pair-01-09-20261020/01-deploy-readonly.png",
+    "sha256": "4f6bd4493f41c6cb1637cd428d42db55b4fba3a5de34da8bfb81b8eb9133c167",
+    "crop_xyxy": [
+      596,
+      278,
+      765,
+      360
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "series_one": {
+    "source": "log/draft-duel-pair-01-09-20261020/01-deploy-readonly.png",
+    "sha256": "4f6bd4493f41c6cb1637cd428d42db55b4fba3a5de34da8bfb81b8eb9133c167",
+    "crop_xyxy": [
+      556,
+      282,
+      597,
+      359
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "loss_red": {
+    "source": "log/draft-duel-pair-01-09-20261020/01-deploy-readonly.png",
+    "sha256": "4f6bd4493f41c6cb1637cd428d42db55b4fba3a5de34da8bfb81b8eb9133c167",
+    "crop_xyxy": [
+      614,
+      367,
+      642,
+      397
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "loss_gray": {
+    "source": "tests/fixtures/draft_duel/round2/01-tool-selection.png",
+    "sha256": "a0105ac37a1171c936d883489286d8a485c7c16a13cb4c1e7372f44f6af9c80c",
+    "crop_xyxy": [
+      173,
+      176,
+      194,
+      200
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "continue": {
+    "source": "log/draft-duel-pair-01-09-20261020/01-deploy-readonly.png",
+    "sha256": "4f6bd4493f41c6cb1637cd428d42db55b4fba3a5de34da8bfb81b8eb9133c167",
+    "crop_xyxy": [
+      554,
+      677,
+      729,
+      709
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "deploy_confirm": {
+    "source": "log/draft-duel-pair-01-09-20261020/01-deploy.png",
+    "sha256": "102ed2c2372bcfd551de18083c13877f16741d43230bcfd1c316397fd3bf998b",
+    "crop_xyxy": [
+      1118,
+      558,
+      1207,
+      619
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "member_waiting": {
+    "source": "tests/fixtures/draft_duel/round2/09-tool-selection.png",
+    "sha256": "2d58280237d9b7d34568c0d3e5d135774e87f0f82240cbc109f4275f88fe9d8b",
+    "crop_xyxy": [
+      1151,
+      603,
+      1250,
+      648
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  },
+  "wins_zero": {
+    "source": "tests/fixtures/draft_duel/round2/01-tool-selection.png",
+    "sha256": "a0105ac37a1171c936d883489286d8a485c7c16a13cb4c1e7372f44f6af9c80c",
+    "crop_xyxy": [
+      140,
+      106,
+      180,
+      157
+    ],
+    "evidence": "real archived screenshot, 2026-10-20"
+  }
+}

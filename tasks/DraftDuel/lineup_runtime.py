@@ -10,9 +10,11 @@ import cv2
 from tasks.DraftDuel.strategy import Candidate, Stats, rank_lineups
 from tasks.DraftDuel.ratings import Ratings, rating_policy
 from tasks.DraftDuel.deployment import DeploymentVision, Deployment, TARGETS
+from tasks.DraftDuel.ocr_names import read_name
+from tasks.DraftDuel.ocr_numbers import read_number
 
 
-def read_roster(detail, lobby, owner, ocr):
+def read_roster(detail, lobby, owner, ocr, *, allow_unknown=False, read_stats=True):
     if detail.shape[:2] != (720, 1280) or lobby.shape[:2] != (720, 1280):
         raise ValueError("Roster screenshots must be 1280x720")
     ratings = Ratings()
@@ -21,34 +23,29 @@ def read_roster(detail, lobby, owner, ocr):
                  ("crit_chance", 405), ("effect_hit", 495), ("effect_resist", 539))
     for index in range(5):
         x = 223+index*194
-        name, confidence = ocr(detail[164:198, x:x+190])
-        name = re.sub(r"\s+", "", name)
-        if confidence < .8 or name not in ratings.profiles:
-            name, confidence = ocr(cv2.resize(detail[160:205, x+10:x+180], None, fx=2, fy=2))
-            name = re.sub(r"\s+", "", name)
-        if confidence < .8 or name not in ratings.profiles:
-            raise ValueError("Unverified roster name %s slot %d: %r" % (owner, index, name))
+        reading = read_name(ocr, detail[164:198, x:x+190], ratings.profiles,
+                            threshold=.8, expanded=detail[160:205, x+10:x+180])
+        name = reading.name
+        if name is None:
+            if not allow_unknown:
+                raise ValueError("Unverified roster name %s slot %d: %s %r" %
+                                 (owner, index, reading.reason, reading.to_dict()))
+            # This is an observed portrait identity, not an invented character.
+            # It can be matched and deployed without claiming any role/strength.
+            name = "未识别头像:%s:%d" % (owner, index)
+        if name in portraits and allow_unknown:
+            name = "未识别头像:%s:%d" % (owner, index)
         stats = {}
-        for key, y in stat_rows:
-            readings = []
-            for threshold in (110, 125, 140):
-                crop = (detail[y-16:y+24, x+65:x+125] if key == "speed"
-                        else detail[y-16:y+19, x+50:x+135])
-                gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
-                binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)[1]
-                text, score = ocr(cv2.cvtColor(binary, cv2.COLOR_GRAY2BGR))
-                text = text.strip().replace("%", "")
-                if score >= .8 and re.fullmatch(r"\d+(?:\.\d+)?", text):
-                    readings.append(float(text))
-            values = {v for v in readings if readings.count(v) >= 2}
-            if len(values) == 1:
-                value = values.pop()
-                limit = 100 if key == "crit_chance" else (500 if key == "speed" else 100000)
-                minimum = 50 if key == "speed" else 0
-                if minimum <= value <= limit:
-                    stats[key] = value
+        for key, y in stat_rows if read_stats else ():
+            limit = 100 if key == "crit_chance" else (500 if key == "speed" else 100000)
+            reading_number = read_number(ocr, detail[y-15:y+17, x+30:x+160],
+                minimum=50 if key == "speed" else 0, maximum=limit,
+                percent=key in ("crit_chance", "effect_hit", "effect_resist"))
+            if reading_number.value is not None:
+                stats[key] = reading_number.value
         candidates.append(ratings.annotate(Candidate(
-            owner+":"+str(index), owner, name, stats=Stats(**stats), confidence=1)))
+            owner+":"+str(index), owner, name, stats=Stats(**stats),
+            confidence=reading.confidence)))
         lx = 470+86*index
         portraits[name] = lobby[39:81, lx+5:lx+56].copy()
     if len(portraits) != 5:

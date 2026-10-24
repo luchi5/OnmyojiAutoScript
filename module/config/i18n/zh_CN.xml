@@ -755,10 +755,10 @@ Refresh：直接刷新，如果刷新操作进入CD，将标记为失败并退�
     <message><source>Phase Timeout Seconds</source><translation>阶段确认超时（秒）</translation></message>
     <message><source>Matchmaking Timeout Seconds</source><translation>匹配限制时间（秒）</translation></message>
     <message><source>draft_duel_partner_config_help</source><translation>填写另一账号的脚本配置名；两个账号必须互相填写对方。队长由两个配置名自动确定，不需要手动选择角色。此字段请分别设置，不要联动复制。</translation></message>
-    <message><source>draft_duel_challenge_limit_help</source><translation>本次任务最多开启的完整挑战轮数，默认1轮。挑战完成以游戏结算为准，不把未确认结果计为完成。</translation></message>
-    <message><source>draft_duel_limit_time_help</source><translation>本次任务的时间上限，默认1小时；达到后停止开启新的对局，正在进行的对局完成结算后再结束。</translation></message>
-    <message><source>draft_duel_coin_budget_help</source><translation>本次任务每个账号用于新挑战报名的金币上限，默认0表示不允许花费金币。实际扣费必须从游戏画面确认；费用无法确认时不报名。</translation></message>
-    <message><source>draft_duel_free_only_help</source><translation>默认开启，仅在确认可以免费报名时开启新挑战。关闭后仍受金币预算限制。</translation></message>
+    <message><source>draft_duel_challenge_limit_help</source><translation>以队长设置为准，达到6胜或2败并完成双方结算才计1轮；设几轮就连续完成几轮，不按单场计数。中断保留进度，恢复不重复计数。</translation></message>
+    <message><source>draft_duel_limit_time_help</source><translation>单轮运行保护时限，默认1小时；达到后保存进度供下次恢复，不把未完成轮计数。</translation></message>
+    <message><source>draft_duel_coin_budget_help</source><translation>旧版兼容字段，当前按完整轮数运行，不再以金币预算拦截开轮。</translation></message>
+    <message><source>draft_duel_free_only_help</source><translation>旧版兼容字段，当前按完整轮数运行，此开关不再限制开轮。</translation></message>
     <message><source>draft_duel_partner_wait_seconds_help</source><translation>等待已配置搭档进入同一协同任务的最长时间，默认120秒；超时后停止本次配对。</translation></message>
     <message><source>draft_duel_phase_timeout_seconds_help</source><translation>等待选将、组队等阶段完成画面确认的最长时间，默认120秒；超时后重新识别双方状态，不重复执行已确认动作。</translation></message>
 </context>

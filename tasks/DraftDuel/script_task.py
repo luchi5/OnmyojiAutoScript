@@ -1,7 +1,7 @@
-"""Draft Duel scheduled entry: invite, one start and both accounts' five picks.
+"""Draft Duel scheduled entry: one full series, including autonomous recovery.
 
 Do not treat the offline coordination/strategy tests as a completed live run.
-Admission always checks both accounts' visible fees and configured budgets.
+The leader's configured count means fully settled series, not battles.
 """
 from datetime import datetime
 from pathlib import Path
@@ -60,9 +60,6 @@ class ScriptTask(GameUi):
             return None
         account = pair.for_account(self.config.config_name)
         settings = account.settings
-        if settings.user_status == TeamRole.LEADER:
-            self.goto_page(page_draft_duel)
-        # A member does not navigate: invitations can arrive in the courtyard.
         ocr = TimedOCR()
         evidence = Path(__file__).resolve().parents[2] / 'log/draft-duel-task-runtime' / (self.config.config_name+'-'+str(time.time_ns()))
         evidence.mkdir(parents=True, exist_ok=True)
@@ -76,15 +73,28 @@ class ScriptTask(GameUi):
                     record['screenshot'] = filename
                 with (evidence/'events.jsonl').open('a', encoding='utf-8') as stream:
                     stream.write(json.dumps(record, ensure_ascii=False)+'\n')
-            ready = DraftWorkflow(pair, self.config.config_name, TaskTeamIO(self), TeamVision(ocr),
-                                  Path(__file__).resolve().parents[2], event=event).run()
+            io = TaskTeamIO(self)
+            workflow = DraftWorkflow(pair, self.config.config_name, io, TeamVision(ocr),
+                                     Path(__file__).resolve().parents[2], event=event)
+            if settings.user_status == TeamRole.LEADER and not workflow.has_pending_series():
+                from tasks.DraftDuel.round_vision import RoundVision
+                image, captured = io.capture()
+                view = RoundVision(ocr).read(image, captured)
+                if view.phase in ('lobby_ready', 'roster_detail', 'matching', 'deploying',
+                                  'battle', 'result', 'series_result'):
+                    workflow._save_draft_checkpoint()
+                    event({'phase': 'existing_series_adopted', 'screen': view.phase}, image)
+                else:
+                    self.goto_page(page_draft_duel)
+            # Members remain passive; a resumed series never navigates out.
+            ready = workflow.run()
         except SessionError as error:
             logger.warning(f'DraftDuel stopped: {error}')
             ready = False
         finally:
             ocr.close()
         if ready:
-            logger.info('DraftDuel task completed: both accounts selected five shikigami')
+            logger.info('DraftDuel task completed: configured full-series count settled for both accounts')
             self.set_next_run(task='DraftDuel', success=True, finish=True)
             raise TaskEnd('DraftDuel')
         self.device.save_screenshot(genre='draft_duel_workflow_failed')

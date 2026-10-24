@@ -16,6 +16,7 @@ import numpy as np
 
 from tasks.DraftDuel.ratings import Ratings, rating_policy
 from tasks.DraftDuel.strategy import Candidate, rank_draft_choices
+from tasks.DraftDuel.ocr_names import read_name
 
 BUTTONS = ((398, 660), (773, 660), (1149, 660))
 NAMES = ((215, 672, 125, 37), (585, 672, 140, 37), (945, 672, 165, 37))
@@ -37,6 +38,16 @@ class TimedOCR:
             return "", 0
         return items[0].ocr_text, float(items[0].score)
 
+    def name_readings(self, image):
+        """Detect once, then validate on the complete detected text at 2x."""
+        padded = cv2.copyMakeBorder(image, 15, 15, 15, 15, cv2.BORDER_CONSTANT)
+        items = self.model.detect_and_ocr(padded)
+        if len(items) != 1:
+            return (("", 0.),)
+        item = items[0]
+        enlarged = cv2.resize(item.text_img, None, fx=2, fy=2)
+        return ((item.ocr_text, float(item.score)), self.model.ocr_single_line(enlarged))
+
     def close(self):
         pass
 
@@ -51,6 +62,8 @@ class Frame:
     signature: str
     roster: np.ndarray
     image: np.ndarray | None = None
+    complete_candidates: bool = True
+    buttons_verified: bool = False
 
     def remaining(self, now):
         return self.seconds - (now - self.captured)
@@ -60,6 +73,7 @@ class DraftVision:
     def __init__(self, ocr, ratings=None):
         self.ocr = ocr
         self.ratings = ratings or Ratings()
+        self.last_ocr = {}
         self.button = cv2.imread(str(Path(__file__).with_name("res") / "draft_select.png"))
         self.lobby_title = cv2.imread(str(Path(__file__).with_name('res') / 'team/title.png'))
         self.roster_heading = cv2.imread(str(Path(__file__).with_name('res') / 'my_roster_heading.png'))
@@ -74,13 +88,14 @@ class DraftVision:
                 return False
         return True
 
-    def read(self, image, owner, captured=None):
+    def read(self, image, owner, captured=None, *, allow_partial=False):
         captured = time.monotonic() if captured is None else captured
+        self.last_ocr = {"owner": owner, "names": [], "reason": "unrecognized_page"}
         if image is None or image.shape[:2] != (720, 1280):
             return None
         header, confidence = self.ocr(image[123:160, 480:795])
         text = re.sub(r"\s+", "", header)
-        match = re.search(r"请选择第([1-5])名式神.*?(\d{1,2})[sS秒]?", text)
+        match = re.fullmatch(r"请选择第([1-5])名式神[^\d]*?(\d{1,2})[sS秒]?", text)
         if confidence < .85 or not match:
             return None
         round_no, seconds = map(int, match.groups())
@@ -95,24 +110,29 @@ class DraftVision:
             score = cv2.matchTemplate(roi, self.button, cv2.TM_CCOEFF_NORMED).max()
             if score < .8:
                 return None
-            name, conf = self.ocr(image[y:y+h, x:x+w])
-            name = re.sub(r"[\s、，,。·]+", "", name)
-            if (conf < .85 or name not in self.ratings.profiles) and hasattr(self.ocr, "name"):
-                name, conf = self.ocr.name(image[y:y+h, x:x+w])
-                name = re.sub(r"\s+", "", name)
-            names.append(name if conf >= .85 else "")
-            if conf >= .85 and name in self.ratings.profiles:
+            reading = read_name(self.ocr, image[y:y+h, x:x+w], self.ratings.profiles)
+            self.last_ocr["names"].append(reading.to_dict())
+            name, conf = reading.name, reading.confidence
+            names.append(name or "")
+            if name is not None:
                 candidates.append(self.ratings.annotate(Candidate(
                     "%s:r%d:s%d" % (owner, round_no, slot), owner, name,
                     confidence=float(conf))))
-        if not candidates:
+        known = [name for name in names if name]
+        # Conflicting duplicate identities are not usable fallback candidates.
+        if len(known) != len(set(known)):
+            self.last_ocr["reason"] = "incomplete_or_duplicate_candidates"
             return None
-        rated = [c for c in candidates if c.strength is not None]
-        if rated:
-            candidates = rated
+        complete = len(candidates) == 3
+        if not complete and not allow_partial:
+            self.last_ocr["reason"] = "incomplete_or_duplicate_candidates"
+            return None
+        self.last_ocr["reason"] = ("all_candidates_identified" if complete else
+                                   "partial_candidates_auto_reread")
         signature = "%d:%s" % (round_no, "|".join(names))
         roster = cv2.resize(image[20:90, 438:858], (210, 35))
-        return Frame(owner, captured, round_no, seconds, tuple(candidates), signature, roster, image)
+        return Frame(owner, captured, round_no, seconds, tuple(candidates), signature,
+                     roster, image, complete, True)
 
 
 class AdbIO:
@@ -160,6 +180,7 @@ class LocalDraft:
         self.local = threading.local()
         self.pending = {}
         self.awaiting = {}
+        self.recovery_reads = {}
         self.event = event or (lambda record, image=None: None)
 
     def observe(self, owner):
@@ -182,7 +203,7 @@ class LocalDraft:
                 self.event({'phase': 'pick_confirmed', 'owner': owner, 'pick': before.round_no,
                             'name': candidate.name, 'portrait_delta': delta}, image)
                 return ("confirmed", candidate)
-        return self.local.vision.read(image, owner, at)
+        return self.local.vision.read(image, owner, at, allow_partial=True)
 
     def observe_pair(self):
         for owner in self.devices:
@@ -216,6 +237,18 @@ class LocalDraft:
             return "already_attempted"
         if not same_selection(frame, fresh, time.monotonic()):
             return "changed_or_expired"
+        identity = (candidate.candidate_id, candidate.name)
+        if any(identity not in {(c.candidate_id, c.name) for c in f.candidates}
+               for f in (frame, fresh)):
+            return "candidate_changed"
+        if not frame.complete_candidates:
+            if not (frame.buttons_verified and fresh.buttons_verified
+                    and fresh.captured > frame.captured):
+                return "fallback_needs_fresh_confirmation"
+            self.event({'phase': 'pick_recovery_fallback', 'owner': frame.owner,
+                        'pick': frame.round_no, 'name': candidate.name,
+                        'known_candidates': [c.name for c in frame.candidates],
+                        'reason': 'partial_candidates_stable_on_two_captures'}, fresh.image)
         # Mark before sending: an ADB timeout must never cause duplicate clicks.
         self.attempted.add(key)
         slot = int(candidate.candidate_id.rsplit(":s", 1)[1])
@@ -228,12 +261,31 @@ class LocalDraft:
     def step(self, execute=False):
         owners = tuple(self.devices)
         frames = self.observe_pair()
-        active = [f for f in frames if f is not None
-                  and (f.owner, f.round_no) not in self.attempted
-                  and f.owner not in self.awaiting
-                  and f.remaining(time.monotonic()) > 6]
+        active, recovering = [], []
+        for frame in frames:
+            key = (frame.owner, frame.round_no)
+            if key in self.attempted or frame.owner in self.awaiting:
+                continue
+            now = time.monotonic()
+            if now-frame.captured >= 3 or frame.remaining(now) <= 6:
+                continue
+            if not frame.complete_candidates:
+                last_at, count = self.recovery_reads.get(key, (None, 0))
+                if last_at is None or frame.captured > last_at:
+                    count += 1
+                    self.recovery_reads[key] = (frame.captured, count)
+                recovery = {'phase': 'pick_auto_reread', 'owner': frame.owner,
+                            'pick': frame.round_no, 'reads': count,
+                            'known_candidates': [c.name for c in frame.candidates]}
+                recovering.append(recovery)
+                self.event(recovery, frame.image)
+                if (not frame.buttons_verified or not frame.candidates
+                        or (count < 3 and frame.remaining(now) > 10)):
+                    continue
+            active.append(frame)
         if not active:
-            return {"state": "waiting_or_unrecognized", "actions": []}
+            return {"state": "auto_rereading" if recovering else "waiting_or_unrecognized",
+                    "actions": [], "recovery": recovering}
         plans = rank_draft_choices(
             tuple(c for f in active for c in f.candidates), self.confirmed, owners,
             active_owners=tuple(f.owner for f in active), policy=rating_policy())
@@ -249,7 +301,7 @@ class LocalDraft:
         actions = [act(c) for c in plan.choices]
         return {"state": "ranked", "score": plan.evaluation.total, "actions": actions,
                 "reasons": [t.reason for t in plan.evaluation.terms],
-                "warnings": list(plan.evaluation.warnings)}
+                "warnings": list(plan.evaluation.warnings), "recovery": recovering}
 
     def close(self):
         self.pool.shutdown(wait=True)
