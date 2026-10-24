@@ -4,11 +4,21 @@ import unittest
 from unittest.mock import Mock
 
 import cv2
+import numpy as np
 
 from tasks.DraftDuel.team import TeamAction, TeamView, TeamWorker, TeamVision, execute_action
 
 
 class TeamWorkerTests(unittest.TestCase):
+    def test_long_nickname_requires_complete_wide_read(self):
+        vision = TeamVision(Mock())
+        vision.match = Mock(side_effect=lambda image, name, *args: (1, 1) if name == 'title' else None)
+        vision.text = Mock(side_effect=['队长', '长昵称截断', '完整的长昵称'])
+        image = np.zeros((720, 1280, 3), dtype=np.uint8)
+        self.assertEqual(vision.read(image, '完整的长昵称', '队长').kind, 'team_ready')
+        vision.text = Mock(side_effect=['队长', '长昵称截断', '另一位长昵称'])
+        self.assertNotEqual(vision.read(image, '完整的长昵称', '队长').kind, 'team_ready')
+
     def worker(self, role):
         self.now = 100
         return TeamWorker(role, clock=lambda: self.now)

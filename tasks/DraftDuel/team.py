@@ -90,26 +90,30 @@ class TeamVision:
                     tab = name
             hits = []
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            edges = cv2.Canny(gray[158:529, 350:930], 60, 150)
             # Card borders form horizontal lines; pair consecutive lines at
             # least 70px apart to locate rows after arbitrary scrolling.
-            counts = np.count_nonzero(edges, axis=1)
-            ys = [y+158 for y in range(len(counts)) if counts[y] > 300]
-            tops = []
-            for y in ys:
-                if not tops or y-tops[-1] > 8:
-                    tops.append(y)
-            for y in tops:
-                if y+80 > 530:
-                    continue
-                for x in (351, 646):
+            for x in (351, 646):
+                # Each column has independent borders: highlighted/offline
+                # cards can hide an edge in just one column.
+                edges = cv2.Canny(gray[158:529, x:x+280], 60, 150)
+                counts = np.count_nonzero(edges, axis=1)
+                ys = [y+158 for y in range(len(counts)) if counts[y] > 180]
+                tops = []
+                for y in ys:
+                    if not tops or y-tops[-1] > 5:
+                        tops.append(y)
+                matched_y = None
+                for y in tops:
+                    if y+80 > 530 or (matched_y is not None and y-matched_y < 50):
+                        continue
                     # Verify bottom border belongs to the same full card.
-                    if not any(76 <= bottom-y <= 94 for bottom in tops):
+                    if not any(76 <= bottom-y <= 94 for bottom in ys):
                         continue
                     name = self.text(image, (x+90, y+9, 180, 33))
                     if name == teammate:
                         selected = self.match(image, 'selected', (x+238, y-10, 55, 58), .86) is not None
                         hits.append(((x+150, y+38), selected))
+                        matched_y = y
             signature = str(hash(cv2.resize(image[165:525, 355:925], (57, 36)).tobytes()))
             if len(hits) == 1:
                 return TeamView('friend_list', hits[0][0], hits[0][1], tab, signature)
@@ -120,6 +124,9 @@ class TeamVision:
         if title:
             left = self.text(image, (640, 174, 126, 30))
             right = self.text(image, (977, 168, 122, 33))
+            if right not in (own_name, teammate):
+                # Longer centered nicknames extend beyond the short-name crop.
+                right = self.text(image, (940, 168, 190, 33))
             if own_name and {left, right} == {own_name, teammate}:
                 # The configured member must occupy the formerly empty slot.
                 # Plus disappearance is necessary, together with both names.
@@ -205,6 +212,7 @@ class TaskTeamIO:
     """Runner boundary; raw device screenshot avoids generic invite handlers."""
     def __init__(self, task):
         self.task = task
+        self.scroll_sequence = 0
 
     def capture(self):
         self.task.device.screenshot()
@@ -214,7 +222,9 @@ class TaskTeamIO:
         self.task.device.click(x, y, control_name=control_name)
 
     def swipe(self, x1, y1, x2, y2, ms):
-        self.task.device.swipe((x1, y1), (x2, y2), duration=ms/1000)
+        self.scroll_sequence += 1
+        self.task.device.swipe((x1, y1), (x2, y2), duration=ms/1000,
+                               control_name=f'DRAFT_DUEL_TEAM_SCROLL_{self.scroll_sequence}')
 
 
 def run_team(io, vision, settings, own_name='', *, execute=False, seconds=None, event=None, on_tick=None):
