@@ -43,7 +43,7 @@ class RoundVision:
         self.last_evidence = ()
         for name in ('match', 'roster_title', 'roster_close', 'series_fan',
                      'series_one', 'loss_red', 'loss_gray', 'continue',
-                     'deploy_confirm', 'member_waiting', 'wins_zero'):
+                     'deploy_confirm', 'member_waiting', 'wins_zero', 'central_loss_gray'):
             self.templates[name] = self._load(RES/'round'/(name+'.png'))
         for name, path in {
             'title': RES/'team/title.png', 'roster': RES/'my_roster_heading.png',
@@ -213,6 +213,17 @@ class RoundVision:
         if fan and continuing and six:
             return view('series_result', {'collect': continuing}, wins=6,
                         evidence=('central_six_wins', 'continue_hint'))
+
+        # Ordinary DraftDuel results use cumulative counters, not Duel's
+        # victory/defeat art. Both accounts' counters determine the delta.
+        central_score = self._find(texts, r'[0-5]番胜', (480, 250, 800, 370))
+        if fan and continuing and central_score:
+            gray_left = self._hit(image, 'central_loss_gray', (604, 360, 648, 405))
+            gray_right = self._hit(image, 'central_loss_gray', (650, 360, 695, 405))
+            if bool(red1) != bool(gray_left) and bool(red2) != bool(gray_right):
+                return view('result', {'result_continue': continuing},
+                            wins=int(central_score.text[0]), losses=int(bool(red1))+int(bool(red2)),
+                            evidence=('central_series_banner', 'cumulative_result_counters', 'continue_hint'))
 
         if title and roster and (match or member_waiting):
             wins = None
