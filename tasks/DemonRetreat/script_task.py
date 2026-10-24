@@ -8,6 +8,7 @@ from cached_property import cached_property
 from module.exception import TaskEnd
 from module.logger import logger
 from module.base.timer import Timer
+from module.atom.image import RuleImage
 
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_main, page_hunt, page_shikigami_records, page_guild
@@ -21,6 +22,13 @@ from tasks.DemonRetreat.config import DemonRetreat
 from tasks.Component.guild_retry_schedule import plan_opening_check
 
 class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssShadowsAssets):
+
+    # Guild boss results can keep the default drum despite a custom battle theme.
+    # Own a separate rule: costume replacement mutates the shared I_WIN in place.
+    I_DEMON_DEFAULT_WIN = RuleImage(
+        roi_front=(385, 47, 100, 100), roi_back=(296, 33, 414, 224),
+        threshold=0.8, method="Template matching",
+        file="./tasks/Component/GeneralBattle/gb/gb_win.png")
 
     def run(self):
         """
@@ -263,9 +271,14 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DemonRetreatAssets, AbyssSha
         stuck_timer.start()
         while 1:
             self.screenshot()
+            win_rule = None
             if self.appear(self.I_WIN):
+                win_rule = self.I_WIN
+            elif self.appear(self.I_DEMON_DEFAULT_WIN):
+                win_rule = self.I_DEMON_DEFAULT_WIN
+            if win_rule is not None:
                 logger.info('Battle win')
-                self.ui_click_until_disappear(self.I_WIN)
+                self.ui_click_until_disappear(win_rule)
                 return True
             # 战斗过程中出现准备
             if self.appear_then_click(self.I_PREPARE_HIGHLIGHT, interval=1.5):
