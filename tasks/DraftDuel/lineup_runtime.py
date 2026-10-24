@@ -124,10 +124,14 @@ class RoundDeploymentVision(DeploymentVision):
         for name in names:
             row = []
             template = cv2.cvtColor(self.top[name], cv2.COLOR_BGR2GRAY)
+            # Portrait frames differ between the lobby and deployment cards.
+            # Match the interior artwork, retaining the five-way assignment
+            # and its ambiguity margin rather than lowering confidence.
+            template = template[3:-3, 3:-3]
             for slot in range(5):
                 x = 268+slot*114
                 s, center = self.multiscale(gray[510:min(690, image.shape[0]), x:x+112],
-                                          template, (1.4, 1.45, 1.5, 1.55, 1.6))
+                                          template, tuple(1.3+i*.02 for i in range(21)))
                 row.append(s)
                 if center:
                     centers[name, slot] = (x+center[0], 510+center[1])

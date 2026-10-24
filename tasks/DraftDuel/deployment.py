@@ -131,7 +131,7 @@ class DeploymentVision:
             if len(text) != len(components):
                 incomplete_digits = True
                 reading["reason"] = "digit_count_disagreement"
-            elif not 0 <= value <= 30:
+            elif not 0 <= value <= 40:
                 out_of_range = True
                 reading["reason"] = "out_of_range"
             else:
