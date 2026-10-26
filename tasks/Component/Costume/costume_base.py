@@ -296,8 +296,17 @@ class CostumeBase:
                                 roi_back=(350, 400, 550, 200), threshold=0.85,
                                 method='Template matching',
                                 file=path.replace('.png', '_compact.png'))
+            variants = [variant, alternate, screen, compact]
+            if label == 'card':
+                # Screen-realm characters vary with banner animation, and a
+                # shikigami can cover the bottom character after collection.
+                # Match the unobscured printed top within the card-entry area.
+                variants.append(RuleImage(
+                    roi_front=(0, 0, 13, 32), roi_back=(730, 280, 150, 280),
+                    threshold=0.90, method='Template matching',
+                    file=path.replace('.png', '_screen_clear.png')))
             name = target.name
-            RuleGif.attach_to(target, originals + [variant, alternate, screen, compact])
+            RuleGif.attach_to(target, originals + variants)
             target.preserve_variant_rules = True
             target.name = name
 

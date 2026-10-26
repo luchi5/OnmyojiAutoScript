@@ -208,6 +208,10 @@ class ChessStateLoopMixin:
                 self._select_grigri_and_check_lineup()
                 continue
 
+            if self._check_top_four_exit(round_no, mode):
+                self._publish_chess_events(game_ended=True)
+                return None
+
             if decision.action in (ChessAction.BATTLE, ChessAction.PASSIVE):
                 if mode == '鬼' and not progress.hyakki_round_seen:
                     progress.hyakki_round_seen = True

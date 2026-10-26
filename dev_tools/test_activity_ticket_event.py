@@ -36,7 +36,11 @@ def load_event(clock):
 
     logger = ModuleType('module.logger')
     logger.logger = FakeLogger()
-    with patch.dict(sys.modules, {'module.logger': logger}):
+    # RuleImage's mall helper imports RuleOcr, but these image/click tests must
+    # never construct its real OCR runtime. Event OCR is faked separately below.
+    ocr = ModuleType('module.atom.ocr')
+    ocr.RuleOcr = Mock(side_effect=AssertionError('Image tests must not construct OCR'))
+    with patch.dict(sys.modules, {'module.logger': logger, 'module.atom.ocr': ocr}):
         from module.atom.image import RuleImage
         from module.atom.click import RuleClick, RuleClickExclude
     tree = ast.parse(SOURCE.read_text(encoding='utf-8'))

@@ -18,6 +18,8 @@ def borrow_cards(image):
     full, tick = templates()
     if full is None or tick is None:
         return []
+    # Device screenshots are RGB; cv2.imread templates are BGR.
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     cards = []
     # Restrict recognition to the roster, excluding the chosen cards at the bottom.
     for y in (250, 367, 484):
@@ -37,7 +39,12 @@ def extra_template(name):
 
 
 def empty_borrow_slots(image):
+    if image is None or image.shape != (720, 1280, 3):
+        return None
     template = extra_template('empty_slot.png')
+    if template is None:
+        return None
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     return sum(cv2.minMaxLoc(cv2.matchTemplate(image[610:695, x:x + 85], template,
                                                cv2.TM_CCOEFF_NORMED))[1] >= 0.85
                for x in (735, 860, 985))
@@ -57,6 +64,11 @@ def beginner_travel(image):
 
 
 def borrow_only_page(image):
+    if image is None or image.shape != (720, 1280, 3):
+        return False
     template = extra_template('borrow_only.png')
+    if template is None:
+        return False
+    image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     return cv2.minMaxLoc(cv2.matchTemplate(image[60:145, 630:965], template,
                                           cv2.TM_CCOEFF_NORMED))[1] >= 0.85

@@ -208,6 +208,7 @@ class DemonHarness:
         namespace = {
             'logger': self.logger,
             'Answer': lambda: SimpleNamespace(answer_one=lambda **kwargs: 1),
+            'read_letter_option': lambda image, rule: rule.detect_text(image),
             'RuleImage': lambda **kwargs: 'result',
             'Timer': lambda seconds: FakeTimer(self.clock, seconds),
             'GameStuckError': RuntimeError,

@@ -13,9 +13,13 @@ ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / 'dev_tools/fixtures/borrow_selection'
 
 
+def rgb_fixture(name):
+    return cv2.cvtColor(cv2.imread(str(FIXTURES / name)), cv2.COLOR_BGR2RGB)
+
+
 class RecognitionTests(unittest.TestCase):
     def test_actual_account_13_has_two_empty_slots_and_fourth_card_selected(self):
-        image = cv2.imread(str(FIXTURES / 'partial.png'))
+        image = rgb_fixture('partial.png')
         cards = borrow_cards(image)
         self.assertEqual(empty_borrow_slots(image), 2)
         self.assertEqual(sum(c[2] for c in cards), 1)
@@ -25,12 +29,12 @@ class RecognitionTests(unittest.TestCase):
 
     def test_manually_filled_reference_has_three_selected_cards(self):
         image = np.zeros((720, 1280, 3), np.uint8)
-        image[220:590, 290:1050] = cv2.imread(str(FIXTURES / 'roster.png'))
+        image[220:590, 290:1050] = rgb_fixture('roster.png')
         self.assertEqual(sum(c[2] for c in borrow_cards(image)), 3)
 
     def test_beginner_banner(self):
         image = np.zeros((720, 1280, 3), np.uint8)
-        image[:80] = cv2.imread(str(FIXTURES / 'beginner.png'))
+        image[:80] = rgb_fixture('beginner.png')
         self.assertTrue(beginner_travel(image))
         self.assertFalse(beginner_travel(np.zeros_like(image)))
 
@@ -42,9 +46,9 @@ class RecognitionTests(unittest.TestCase):
 
     def test_actual_borrow_only_screen(self):
         image = np.zeros((720, 1280, 3), np.uint8)
-        image[:150] = cv2.imread(str(FIXTURES / 'borrow_only.png'))
+        image[:150] = rgb_fixture('borrow_only.png')
         self.assertTrue(borrow_only_page(image))
-        self.assertFalse(borrow_only_page(cv2.imread(str(FIXTURES / 'partial.png'))))
+        self.assertFalse(borrow_only_page(rgb_fixture('partial.png')))
 
 
 class FlowTests(unittest.TestCase):

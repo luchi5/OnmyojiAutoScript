@@ -552,7 +552,11 @@ class ScriptTask(GameUi, GeneralInvite, GeneralRoom, BondlingBattle, SwitchSoul,
             self.screenshot()
 
             if self.appear(self.I_BALL_AREA):
-                return True
+                # The map icon can flash during the settlement transition.
+                sleep(0.5)
+                self.screenshot()
+                if self.appear(self.I_BALL_AREA):
+                    return True
 
             # 如果不在结契界面，就等待
             if not self.in_catch_ui():

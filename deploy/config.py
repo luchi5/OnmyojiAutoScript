@@ -34,6 +34,7 @@ class ConfigModel:
     InstallUiautomator2: bool = True
 
     # Ocr
+    OcrBackend: str = "legacy"
     UseOcrServer: bool = False
     StartOcrServer: bool = False
     OcrServerPort: int = 22268

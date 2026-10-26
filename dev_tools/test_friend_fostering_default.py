@@ -20,7 +20,7 @@ class FosteringDefaultTests(unittest.TestCase):
                             I_U_ENTER_REALM='enter', I_U_ADD_1='slot1', I_U_ADD_2='slot2',
                             switch_friend_list=Mock(), screenshot=Mock(),
                             in_utilize_list=lambda: True,
-                            _select_optimal_resource_card=lambda: True,
+                            _select_with_friend_fallback=lambda friend: True,
                             _enter_friend_growth=lambda: entered,
                             in_shikigami_growth=lambda: True,
                             appear=lambda marker: marker in markers,

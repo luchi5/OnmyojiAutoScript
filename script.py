@@ -824,7 +824,7 @@ class Script:
         handler = task_module.LoginHandler(config=self.config, device=self.device)
         # A failed first login must stop instead of cycling the app.
         handler._allow_login_restart = False
-        self.device.app_start()
+        self.device.app_start(normal_start=True)
         handler.app_handle_login()
         return True
 

@@ -2,7 +2,8 @@
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 import unittest
-from test_account_session_guard import (
+from unittest.mock import patch
+from dev_tools.test_account_session_guard import (
     fake_script, fake_device, message_frame, GameStuckError, GameTooManyClickError,
     GamePageUnknownError, GameBugError, GameNotRunningError, ScriptError,
     RequestHumanTakeover,
@@ -13,6 +14,12 @@ RECOVERABLE = (GameStuckError, GameTooManyClickError, GamePageUnknownError,
 
 
 class RestartSwitchGateTests(unittest.TestCase):
+    def setUp(self):
+        # Never read or write the real half-hour takeover recovery ledger.
+        policy = patch('module.device.account_session_recovery.claim_recovery', return_value=True)
+        self.recovery_claim = policy.start()
+        self.addCleanup(policy.stop)
+
     def test_disabled_restart_stops_every_ordinary_recovery_before_actions(self):
         for error_type in RECOVERABLE:
             with self.subTest(error=error_type.__name__):
@@ -82,12 +89,15 @@ class RestartSwitchGateTests(unittest.TestCase):
         with self.assertRaises(SystemExit): script.run('KekkaiUtilize')
         self.assertNotIn('Restart', script.actions)
 
-    def test_queued_takeover_cannot_bypass_a_newly_disabled_switch(self):
+    def test_authorized_takeover_is_independent_of_ordinary_restart_switch(self):
         script = fake_script(fake_device(message_frame()))
         script.config.model.restart.scheduler.enable = True
         self.assertFalse(script.run('KekkaiUtilize'))
         self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
         script.config.model.restart.scheduler.enable = False
+        self.assertTrue(script.run('Restart'))
+        self.assertFalse(script._account_session_restart_authorized)
+        # The one-use takeover permission must not authorize a later restart.
         with self.assertRaises(SystemExit): script.run('Restart')
         self.assertNotIn('Restart', script.actions)
 
@@ -108,18 +118,21 @@ class RestartSwitchGateTests(unittest.TestCase):
         self.assertEqual(calls, ['GameStart', 'GotoMain'])
         self.assertFalse(script.config.model.restart.scheduler.enable)
 
-    def test_takeover_stops_with_switch_off(self):
+    def test_takeover_without_recovery_claim_stops_even_with_switch_on(self):
         script = fake_script(fake_device(message_frame()))
+        script.config.model.restart.scheduler.enable = True
+        self.recovery_claim.return_value = False
         with self.assertRaises(SystemExit): script.run('KekkaiUtilize')
         self.assertFalse(getattr(script, '_account_session_restart_pending', False))
         self.assertEqual(script.device.sleeps, [])
         self.assertNotIn('Restart', script.actions)
 
-    def test_pending_takeover_rechecks_switch(self):
+    def test_pending_takeover_uses_its_independent_one_use_permission(self):
         script = fake_script(fake_device())
         script._account_session_restart_pending = True
-        with self.assertRaises(SystemExit): script._get_next_task_with_recovery()
-        self.assertFalse(getattr(script, '_account_session_restart_authorized', False))
+        self.assertEqual(script._get_next_task_with_recovery(), 'Restart')
+        self.assertTrue(script._account_session_restart_authorized)
+        self.assertFalse(script._account_session_restart_pending)
 
     def test_notifications_or_evidence_failures_cannot_prevent_stop(self):
         for which in ('evidence', 'notification', 'both', 'rejected'):

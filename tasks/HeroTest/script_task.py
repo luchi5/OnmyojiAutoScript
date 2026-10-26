@@ -302,30 +302,33 @@ class ScriptTask(GameUi, GeneralBattle, HeroTestAssets, SwitchSoul):
 
     def init_pages(self):
         """初始化页面"""
+        # Navigation runs on the task's page snapshot. Connect both directions
+        # there so the new mode is reachable without changing global pages.
+        hero_page = self.navigator.resolve_page(pages.page_hero_test)
         match self.conf.herotest.layer:
             case Layer.YANWU:
                 self.page_hero_mode = self.navigator.add_page(
                     pages.Page(self.I_CHECK_HERO1_EXP, key="page_hero_mode", name="page_hero_mode", register=False)
                 )
-                pages.page_hero_test.connect(self.page_hero_mode, self.I_GBB, key="page_hero_test->page_hero_mode")
+                hero_page.connect(self.page_hero_mode, self.I_GBB, key="page_hero_test->page_hero_mode")
             case Layer.MIJING:
                 self.page_hero_mode = self.navigator.add_page(
                     pages.Page(self.I_CHECK_HERO1_SKILL, key="page_hero_mode", name="page_hero_mode", register=False)
                 )
-                pages.page_hero_test.connect(self.page_hero_mode, self.I_BCMJ, key="page_hero_test->page_hero_mode")
+                hero_page.connect(self.page_hero_mode, self.I_BCMJ, key="page_hero_test->page_hero_mode")
             case Layer.CHUANCHENG:
                 self.page_hero_mode = self.navigator.add_page(
                     pages.Page(self.I_CHECK_HERO2_EXP, key="page_hero_mode", name="page_hero_mode", register=False)
                 )
-                pages.page_hero_test.connect(self.page_hero_mode, self.I_ENTER_CCSL, key="page_hero_test->page_hero_mode")
+                hero_page.connect(self.page_hero_mode, self.I_ENTER_CCSL, key="page_hero_test->page_hero_mode")
             case Layer.MENGXU:
                 self.page_hero_mode = self.navigator.add_page(
                     pages.Page(self.I_CHECK_HERO2_SKILL, key="page_hero_mode", name="page_hero_mode", register=False)
                 )
-                pages.page_hero_test.connect(self.page_hero_mode, self.I_ENTER_MXMJ, key="page_hero_test->page_hero_mode")
+                hero_page.connect(self.page_hero_mode, self.I_ENTER_MXMJ, key="page_hero_test->page_hero_mode")
             case _:
                 raise ValueError(f'Unknown Layer {Layer}')
-        self.page_hero_mode.connect(pages.page_hero_test, self.I_BACK_YOLLOW, key="page_hero_mode->page_hero_test")
+        self.page_hero_mode.connect(hero_page, self.I_BACK_YOLLOW, key="page_hero_mode->page_hero_test")
 
 
 if __name__ == "__main__":

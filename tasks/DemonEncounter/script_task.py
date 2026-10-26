@@ -23,6 +23,7 @@ from tasks.DemonEncounter.assets import DemonEncounterAssets
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.Component.GeneralBattle.config_general_battle import GeneralBattleConfig
 from tasks.DemonEncounter.data.answer import Answer
+from tasks.DemonEncounter.letter_ocr import read_letter_option
 
 
 class LanternClass(Enum):
@@ -290,21 +291,25 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         # 延长时间并在战斗结束后改回来
         self.device.stuck_timer_long = Timer(480, count=480).start()
         preset_switched = False
+        prepare_wait_started = time.monotonic()
         while True:
             self.screenshot()
             if self.appear(self.I_BOSS_DONE_CHECK):
                 break
             if self.appear(self.I_BOSS_GATHER):
+                prepare_wait_started = time.monotonic()
                 self.device.stuck_record_clear()
                 self.device.stuck_record_add('BATTLE_STATUS_S')
                 logger.info('Boss Gathering...')
                 sleep(2)
                 continue
             if self.appear(self.I_BOSS_WAIT):
+                prepare_wait_started = time.monotonic()
                 logger.info('Boss battle failed, waiting for 2 seconds...')
                 sleep(2)
                 continue
             if self.appear(self.I_PREPARE_HIGHLIGHT):
+                prepare_wait_started = time.monotonic()
                 if preset_switched:
                     self.run_general_battle()
                     continue
@@ -318,6 +323,10 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                     general_battle_config = convert_to_general_battle_config(self.boss_type,
                                                                              demon_battle_conf=self.conf.demon_battle_config)
                 self.run_general_battle(config=general_battle_config)
+                continue
+            if self._take_over_started_boss(prepare_wait_started, preset_switched):
+                preset_switched = True
+                prepare_wait_started = time.monotonic()
                 continue
             logger.info('Unknown scene Or Boss fight failed.waiting for Prepare_Button appear...')
             self.wait_until_appear(self.I_PREPARE_HIGHLIGHT, wait_time=2)
@@ -335,6 +344,26 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             if self.appear_then_click(self.I_BOSS_BACK_WHITE, interval=1):
                 continue
         # 返回到封魔主界面
+
+    def _take_over_started_boss(self, wait_started, preset_switched):
+        """Recover a missed preparation screen without changing an active team."""
+        if time.monotonic() - wait_started < 5:
+            return False
+        if not self.is_in_real_battle(False):
+            return False
+        logger.warning('Prepare button missed, but battle icon detected; take over battle settlement')
+        if preset_switched:
+            config = GeneralBattleConfig()
+            self.current_count += 1
+        else:
+            kwargs = ({'best_demon_battle_conf': self.conf.best_demon_battle_config}
+                      if self.best_demon_enable else
+                      {'demon_battle_conf': self.conf.demon_battle_config})
+            config = convert_to_general_battle_config(self.boss_type, **kwargs)
+            self.current_count = 1
+        # Do not re-enter preparation or switch presets after combat started.
+        self.battle_wait(random_click_swipt_enable=config.random_click_swipt_enable)
+        return True
 
     def wait_lantern_discovery(self):
         """Wait for lagging discovery results instead of repeatedly clicking."""
@@ -510,12 +539,16 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 3: self.C_ANSWER_3,
             }
             index = None
-            self.screenshot()
             question = self.O_LETTER_QUESTION.detect_text(self.device.image)
             question = question.replace('?', '').replace('？', '')
-            answer_1 = self.O_LETTER_ANSWER_1.detect_text(self.device.image)
-            answer_2 = self.O_LETTER_ANSWER_2.detect_text(self.device.image)
-            answer_3 = self.O_LETTER_ANSWER_3.detect_text(self.device.image)
+            answer_1 = read_letter_option(self.device.image, self.O_LETTER_ANSWER_1)
+            answer_2 = read_letter_option(self.device.image, self.O_LETTER_ANSWER_2)
+            answer_3 = read_letter_option(self.device.image, self.O_LETTER_ANSWER_3)
+            if any('获得奖励' in text for text in (question, answer_1, answer_2, answer_3)):
+                logger.warning('Letter text contains a reward overlay; wait for it to clear')
+                return None
+            if not all(text.strip() for text in (question, answer_1, answer_2, answer_3)):
+                logger.warning('Incomplete letter OCR; use available options or the default answer')
             if answer_1 == '其余选项皆对':
                 index = 1
             elif answer_2 == '其余选项皆对':
@@ -542,11 +575,15 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
             file='./tasks/DemonEncounter/demon/letter_answer_result.png')
         timeout = Timer(90).start()
         answered = set()
+        attempts = {}
+        pending_count = None
+        retry_wait = Timer(3)
         last_count = None
         stable_frames = 0
         while not timeout.reached():
             self.screenshot()
             if self.ui_reward_appear_click():
+                last_count, stable_frames = None, 0
                 time.sleep(0.5)
                 continue
             if not self.appear(self.I_LETTER_CLOSE):
@@ -558,12 +595,14 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 continue
             current, _, total = self.O_LETTER_COUNT.ocr(self.device.image)
             if total != 3 or current not in (1, 2, 3):
+                last_count, stable_frames = None, 0
                 continue
             count = int(current)
             stable_frames = stable_frames + 1 if count == last_count else 1
             last_count = count
             # Results may advance directly without a reward overlay.
             if self.appear(result_mark):
+                answered.add(count)
                 if count == 3:
                     self.click(self.I_LETTER_CLOSE, interval=1.5)
                 else:
@@ -572,15 +611,41 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 continue
             if stable_frames < 2 or count in answered:
                 continue
+            if pending_count is not None and count > pending_count:
+                answered.add(pending_count)
+                pending_count = None
+            if pending_count == count and not retry_wait.reached():
+                continue
+            if attempts.get(count, 0) >= 3:
+                raise GameStuckError(f'Demon letter question {count}: no result after 3 answer attempts')
             logger.hr(f'Answer {count}', 3)
             answer_click = answer()
-            # answer() takes a fresh screenshot: verify it is still this question.
+            if answer_click is None:
+                last_count, stable_frames = None, 0
+                continue
+            # OCR takes time: a delayed reward can cover this question meanwhile.
+            self.screenshot()
+            if self.ui_reward_appear_click():
+                last_count, stable_frames = None, 0
+                time.sleep(0.5)
+                continue
+            if not self.appear(self.I_LETTER_CLOSE):
+                last_count, stable_frames = None, 0
+                continue
             now, _, maximum = self.O_LETTER_COUNT.ocr(self.device.image)
             if now != count or maximum != 3 or self.appear(result_mark):
+                last_count, stable_frames = None, 0
                 continue
+            # BaseTask.click returns False without an interval even when input
+            # was sent. Only a later screenshot can acknowledge this attempt.
             self.click(answer_click)
-            answered.add(count)
-            self.device.click_record_clear()
+            attempts[count] = attempts.get(count, 0) + 1
+            pending_count = count
+            retry_wait.reset()
+            # Keep the existing per-question click-history boundary, but a
+            # retry must not erase the device's repeated-click protection.
+            if attempts[count] == 1:
+                self.device.click_record_clear()
         raise GameStuckError('Demon letter did not advance after answering; stop repeated clicks')
 
     def _battle(self, target_click):

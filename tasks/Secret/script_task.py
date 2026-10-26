@@ -222,6 +222,10 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
             """
             ocr_target.roi[0] = int(roi[0]) - 118
             ocr_target.roi[1] = int(roi[1]) + 37
+            # Full-text OCR can place the anchor several pixels further left.
+            # Keep both reward digits: the old 23px crop cut 21 down to 2.
+            ocr_target.roi[2] = 34
+            ocr_target.roi[3] = 28
             # print(f'检测到的未通过ROI: {roi}')
             # print(f'检测到的勾玉数量ROI: {ocr_target.roi}')
             jade_num = ocr_target.ocr(self.device.image)
@@ -238,7 +242,7 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, SecretAssets):
                     logger.info(f'No find jade number, but find gold number {gold_number}')
                     return 1
                 return None
-            elif jade_num > 70:
+            elif jade_num > 70 or jade_num % 7 != 0:
                 logger.warning(f'OCR failed, try again {jade_num}')
                 return None
             # 勾玉数量 = 层数 * 7

@@ -29,6 +29,10 @@ class UtilizeNavigationError(Exception):
     """Recoverable loss of the friend-list page."""
 
 
+class UtilizeListsEmpty(Exception):
+    """Both friend groups were scanned without any matching card."""
+
+
 class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
     last_best_index = 99
     utilize_add_count = 0
@@ -83,6 +87,9 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
     def check_utilize_add(self):
         con = self.config.kekkai_utilize.utilize_config
+        self._utilize_friend = con.select_friend_list
+        self._empty_friend_groups = set()
+        self.utilize_add_count = 0
         while 1:
             self.utilize_add_count += 1
             if self.utilize_add_count >= 5:
@@ -124,6 +131,11 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                 else '默认/全部')
             try:
                 utilized = self.run_utilize(con.select_friend_list, foster_class, con.shikigami_order)
+            except UtilizeListsEmpty:
+                self.back_realm()
+                logger.info('两个好友分组均未识别到可选结界卡，结束本次寄养，按任务间隔下轮再试')
+                self.set_next_run(task='KekkaiUtilize', finish=True, success=False, server=False)
+                return
             except UtilizeNavigationError as exc:
                 logger.warning(str(exc))
                 self.back_realm()
@@ -505,6 +517,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         :return:
         """
         logger.hr('Start utilize')
+        friend = getattr(self, '_utilize_friend', friend)
         self.screenshot()
         if not self.in_utilize_list():
             raise UtilizeNavigationError('Friend-list page missing before scan')
@@ -521,9 +534,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             self.switch_friend_list(friend)
 
         # --------------- 结界卡选择 ---------------
-        selected = (self._select_lazy_resource_card(friend)
-                    if getattr(self, 'utilize_lazy_mode_active', False)
-                    else self._select_optimal_resource_card())
+        selected = self._select_with_friend_fallback(friend)
         if not selected:
             return False
 
@@ -566,6 +577,32 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
             switch_friend_growth_class(self, ShikigamiClass(shikigami_class))
             self.set_shikigami(shikigami_order, stop_image)
         return True
+
+    def _select_with_friend_fallback(self, friend):
+        for _ in range(2):
+            self._scan_no_cards = False
+            selected = (self._select_lazy_resource_card(friend)
+                        if getattr(self, 'utilize_lazy_mode_active', False)
+                        else self._select_optimal_resource_card())
+            if selected:
+                return True
+            # Timeouts, OCR failures and a recorded non-perfect card keep the
+            # existing retry/confirmation flow; they are not an empty list.
+            if not self._scan_no_cards:
+                return False
+            empty = getattr(self, '_empty_friend_groups', set())
+            empty.add(friend)
+            self._empty_friend_groups = empty
+            if len(empty) == 2:
+                raise UtilizeListsEmpty()
+            friend = (SelectFriendList.DIFFERENT_SERVER
+                      if friend == SelectFriendList.SAME_SERVER
+                      else SelectFriendList.SAME_SERVER)
+            logger.info(f'当前分组连续扫描未识别到可选结界卡，切换好友分组: {friend}')
+            self.ap_max_num = self.jade_max_num = 0
+            self._reset_utilize_friend_list(friend)
+            self._utilize_friend = friend
+        return False
 
     @cached_property
     def _friend_fostering_timers(self):
@@ -754,13 +791,18 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         """True selects a card, None exhausts the list, False is an incomplete scan."""
         timeout = Timer(120).start()
         misses = 0
+        seen_cards = False
+        self._scan_no_cards = False
         for _ in range(21):
             if timeout.reached():
                 logger.warning('Lazy card scan timed out; do not assume higher star cards are absent')
                 return False
             self.screenshot()
+            if not self.in_utilize_list():
+                raise UtilizeNavigationError('Friend-list page missing during lazy card scan')
             cards = self._deduplicate_card_matches(
                 self.lazy_scan_targets.find_everyone(self.device.image))
+            seen_cards = seen_cards or bool(cards)
             for target, _, area in cards:
                 card_class = target_to_card_class(target)
                 if not self._lazy_card_matches_rule(card_class, minimum_star, maximum_star):
@@ -779,6 +821,7 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
                     return True
             misses = 0 if cards else misses + 1
             if self.appear(self.I_U_EMPTY_CARD) or misses > 3:
+                self._scan_no_cards = not seen_cards
                 return None
             self.perform_swipe_action()
         logger.warning('Lazy card scan reached its swipe limit; do not assume higher star cards are absent')
@@ -817,6 +860,8 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
         logger.info(f'启动{"探索模式" if not selected_card else f"确认模式 | 目标: {best_card_type} @ {best_card_num}"}')
         timer = Timer(TIMEOUT).start()
         miss_count = 0  # 连续无卡计数器
+        seen_cards = False
+        self._scan_no_cards = False
 
         # ============== 主滑动循环 ==============#
         for swipe_count in range(MAX_SWIPES + 1):
@@ -827,15 +872,19 @@ class ScriptTask(GameUi, ReplaceShikigami, KekkaiUtilizeAssets):
 
             # ------ 步骤1: 截图识别结界卡 ------#
             self.screenshot()
+            if not self.in_utilize_list():
+                raise UtilizeNavigationError('Friend-list page missing during card scan')
             cards = self.order_targets.find_everyone(self.device.image)
+            seen_cards = seen_cards or bool(cards)
 
             # 处理无卡情况
             if not cards:
                 miss_count += 1
-                logger.info(f'第{swipe_count}次滑动 | 未检测到结界卡' if swipe_count > 0 else '初始界面 | 未检测到结界卡')
+                logger.info(f'第{swipe_count}次扫描 | 未识别到符合类型和星级设置的结界卡')
                 # 连续无卡超过阈值则终止
                 if miss_count > CONSEC_MISS:
-                    logger.warning(f'⚠️ 连续{miss_count}次 | 未检测到结界卡, 终止流程')
+                    self._scan_no_cards = not seen_cards
+                    logger.warning(f'连续{miss_count}次未识别到可选结界卡，结束当前分组扫描')
                     return None
                 # 执行滑动操作
                 self.perform_swipe_action()

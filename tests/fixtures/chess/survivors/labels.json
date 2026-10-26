@@ -1,0 +1,9 @@
+{
+  "description": "Real 1280x720 captures, anonymized to public avatar rims and health pixels only. Four/five-player boundary cases are composed in the test and are not live captures.",
+  "two_alive.png": {"alive": 2, "source": "2026-10-21_16-30-57-274855"},
+  "six_alive.png": {"alive": 6, "source": "20261010 negative-chess-2"},
+  "seven_alive.png": {"alive": 7, "source": "20261010 negative-chess-1"},
+  "seven_alive_high_health.png": {"alive": 7, "source": "20261010 negative-chess-0"},
+  "shop_occluded.png": {"alive": null, "source": "1792766490842"},
+  "dialog_dimmed.png": {"alive": null, "source": "1792988150073"}
+}

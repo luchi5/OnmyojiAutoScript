@@ -10,6 +10,7 @@ import numpy as np
 from module.exception import GameStuckError
 from tasks.Chess.assets import ChessAssets
 from tasks.GameUi.assets import GameUiAssets
+from tasks.GameUi.navigator import GameUi
 from tasks.GlobalGame.assets import GlobalGameAssets
 from tasks.GameUi.page import page_chess
 from tests.test_chess_share_guard import FrameChess, LOBBY, RANK
@@ -36,6 +37,8 @@ class ChessOutsidePageTests(unittest.TestCase):
     def test_result_flow_navigates_from_courtyard_without_clicking_collection(self):
         task = FrameChess([(ChessAssets.I_SHARE,),
                            (GameUiAssets.I_CHECK_MAIN,) + RANK,
+                           (GameUiAssets.I_CHECK_MAIN,) + RANK,
+                           (GameUiAssets.I_CHECK_MAIN,) + RANK,
                            LOBBY, LOBBY])
         task.goto_page = Mock(side_effect=lambda _: setattr(task, "visible", LOBBY))
         self.assertTrue(task.return_to_chess_lobby())
@@ -43,16 +46,16 @@ class ChessOutsidePageTests(unittest.TestCase):
         self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
 
     def test_collection_recovery_during_start_waits_for_stable_lobby(self):
-        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,), LOBBY, LOBBY,
+        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,)] * 3 + [LOBBY, LOBBY,
                            (ChessAssets.I_OPEN_LINEUP,)])
         task.goto_page = Mock(side_effect=lambda _: setattr(task, "visible", LOBBY))
         task._wait_until_in_chess_game(timeout=30, retry_start=True)
         task.goto_page.assert_called_once_with(page_chess)
         self.assertEqual([item[0] for item in task.clicked], [ChessAssets.I_CHESS_START])
-        self.assertEqual(task.clicked[0][1], 3)
+        self.assertEqual(task.clicked[0][1], 5)
 
     def test_rank_restart_returns_to_lobby_after_collection_recovery(self):
-        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,), LOBBY, LOBBY])
+        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,)] * 3 + [LOBBY, LOBBY])
         task.goto_page = Mock(side_effect=lambda _: setattr(task, "visible", LOBBY))
         self.assertFalse(task._restart_chess_game_from_result())
         task.goto_page.assert_called_once_with(page_chess)
@@ -206,11 +209,81 @@ class ChessOutsidePageTests(unittest.TestCase):
         self.assertFalse(task.clicked)
 
     def test_failed_navigation_propagates_without_result_clicks(self):
-        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,)])
+        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,)] * 3)
         task.goto_page = Mock(side_effect=GameStuckError('fixture'))
         with self.assertRaises(GameStuckError):
             task.return_to_chess_lobby()
         self.assertFalse(task.clicked)
+
+    def test_transient_courtyard_match_returns_to_rank_settlement(self):
+        task = FrameChess([])
+        rank = (task.I_CHESS_RANK_TRACK_LEFT, task.I_CHESS_RANK_TRACK_RIGHT)
+        task.frames = [(GameUiAssets.I_CHECK_MAIN,), rank, rank, LOBBY, LOBBY]
+        task.goto_page = Mock(side_effect=AssertionError('Transient match must not navigate'))
+        self.assertTrue(task.return_to_chess_lobby())
+        self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
+        self.assertEqual(task.clicked[0][1], 3)
+
+    def test_unknown_frame_cancels_outside_confirmation_without_clicking(self):
+        task = FrameChess([()])
+        task.visible = (GameUiAssets.I_CHECK_MAIN,)
+        task.goto_page = Mock()
+        self.assertTrue(task._recover_chess_outside_page())
+        task.goto_page.assert_not_called()
+        self.assertFalse(task.clicked)
+
+    def test_different_outside_pages_do_not_count_as_consistent_frames(self):
+        task = FrameChess([(GameUiAssets.I_CHECK_COLLECTION,)])
+        task.visible = (GameUiAssets.I_CHECK_MAIN,)
+        task.goto_page = Mock()
+        self.assertTrue(task._recover_chess_outside_page())
+        task.goto_page.assert_not_called()
+
+    def test_navigation_hands_back_result_before_or_after_page_detection(self):
+        for during_detection in (False, True):
+            with self.subTest(during_detection=during_detection):
+                task = FrameChess([(GameUiAssets.I_CHECK_MAIN,)] * 2)
+                task.visible = (GameUiAssets.I_CHECK_MAIN,)
+                rank = (task.I_CHESS_RANK_TRACK_LEFT, task.I_CHESS_RANK_TRACK_RIGHT)
+                task.frames.append(() if during_detection else rank)
+
+                def detect(*args, **kwargs):
+                    task.visible = rank
+                    return None
+
+                def navigate(_):
+                    task._refresh_current_page(page_chess, skip_first_screenshot=False)
+                    self.fail('Navigation must return the settlement to its caller')
+
+                task.goto_page = Mock(side_effect=navigate)
+                with patch.object(GameUi, '_refresh_current_page', side_effect=detect) as base:
+                    self.assertTrue(task._recover_chess_outside_page())
+                    self.assertEqual(base.call_count, int(during_detection))
+                self.assertFalse(task._chess_outside_recovering)
+                self.assertFalse(task.clicked)
+                self.assertTrue(task._advance_chess_result_stage())
+                self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
+
+    def test_unrelated_navigation_keeps_original_behavior(self):
+        task = FrameChess([])
+        with patch.object(GameUi, '_refresh_current_page', return_value=page_chess) as base:
+            self.assertEqual(task._refresh_current_page(page_chess, False), page_chess)
+            base.assert_called_once_with(page_chess, False)
+
+    def test_saved_account24_rank_progress_is_a_settlement(self):
+        files = list(Path('log/error/1793008693645').glob('*.png'))
+        if not files:
+            self.skipTest('Local incident screenshot is not part of the public repository')
+        frame = cv2.cvtColor(cv2.imdecode(np.fromfile(files[0], np.uint8), cv2.IMREAD_COLOR),
+                             cv2.COLOR_BGR2RGB)
+        task = FrameChess([])
+        task.appear = lambda marker, **kwargs: marker.match(frame)
+        task.goto_page = Mock()
+        self.assertTrue(task._chess_rank_progress_visible())
+        self.assertFalse(task._chess_outside_page_visible())
+        self.assertTrue(task._advance_chess_result_stage())
+        task.goto_page.assert_not_called()
+        self.assertEqual([item[0] for item in task.clicked], [task.CHESS_RESULT_CONTINUE])
 
     def test_saved_incident_recognizes_collection_and_blocks_result_actions(self):
         files = list(Path('log/error/1791775331979').glob('*.png'))
@@ -220,6 +293,7 @@ class ChessOutsidePageTests(unittest.TestCase):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         task = FrameChess([])
         task.appear = lambda marker, **kwargs: marker.match(frame)
+        task.screenshot = Mock()  # Same saved outside page on all three observations.
         task.goto_page = Mock(side_effect=lambda _: setattr(task, "appear", lambda marker, **kwargs: False))
         self.assertTrue(GameUiAssets.I_CHECK_COLLECTION.match(frame))
         self.assertFalse(task.chess_lobby_visible())

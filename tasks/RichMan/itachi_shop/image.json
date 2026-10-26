@@ -2,11 +2,11 @@
   {
     "itemName": "itachi_shop_entry",
     "imageName": "itachi_shop_itachi_shop_entry.png",
-    "roiFront": "47,635,45,40",
-    "roiBack": "42,630,55,50",
+    "roiFront": "301,635,45,40",
+    "roiBack": "20,620,550,80",
     "method": "Template matching",
     "threshold": 0.8,
-    "description": ""
+    "description": "底部商店图标动态定位，兼容新增手册入口前后的位置"
   },
   {
     "itemName": "itachi_shop_check",

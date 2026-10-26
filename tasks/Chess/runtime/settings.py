@@ -11,6 +11,8 @@ class ChessRuntimeSettings:
     """Tuning values shared by the Chess runtime mixins."""
 
     RANK_PROTECTION_EXIT_COUNT = 2
+    TOP_FOUR_CONFIRM_FRAMES = 3
+    TOP_FOUR_MIN_ROUND = 20
 
     HAND_AREA = (179, 540, 957, 158)
     # Retained for ordinary soul and protection templates, not shikigami fallback.

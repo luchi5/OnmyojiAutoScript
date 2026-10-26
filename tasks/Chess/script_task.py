@@ -17,6 +17,7 @@ from tasks.Chess.runtime.settings import ChessRuntimeSettings
 from tasks.Chess.runtime.result_navigation import chess_game_ui_type
 from tasks.Chess.runtime.lobby_recovery import ChessLobbyRecoveryMixin
 from tasks.Chess.runtime.state_loop import ChessStateLoopMixin
+from tasks.Chess.runtime.top_four_exit import ChessTopFourExitMixin
 from tasks.Component.GeneralBattle.general_battle import GeneralBattle
 from tasks.GameUi.game_ui import GameUi
 from tasks.GameUi.page import page_chess
@@ -25,6 +26,7 @@ ChessGameUi = chess_game_ui_type(GameUi)
 
 
 class ChessLegacyScriptTask(
+    ChessTopFourExitMixin,
     ChessLobbyRecoveryMixin,
     ChessHyakkiDraftMixin,
     ChessRecognitionMixin,
@@ -234,6 +236,7 @@ class ChessLegacyScriptTask(
             int(getattr(chess_config, 'matchmaking_timeout_seconds', 60)),
         )
         self._consecutive_matchmaking_timeouts = 0
+        self._top_four_exit_blocked = False
         completed = 0
         coin_limit_reached = False
         rank_protection_exits_remaining = 0
@@ -243,6 +246,7 @@ class ChessLegacyScriptTask(
             f'lineup={strategy["key"]} ({strategy["display_name"]}), '
             f'run_count={target_count}, limit_time={self.limit_time}, '
             f'coin_full_exit={coin_full_exit}, '
+            f'top_four_exit={self._top_four_exit_enabled()}, '
             f'rank_protection={rank_protection}, '
             f'matchmaking_timeout={self._matchmaking_timeout_seconds}s'
         )
@@ -306,13 +310,16 @@ class ChessLegacyScriptTask(
                 continue
 
             completed += 1
-            if rank_protection and game_rank is not None and game_rank <= 4:
+            if rank_protection and (
+                game_rank is not None and 1 <= game_rank <= 4
+            ):
                 rank_protection_exits_remaining = (
                     self.RANK_PROTECTION_EXIT_COUNT
                 )
                 logger.info(
                     'Chess rank protection activated: '
-                    f'last_rank=第{game_rank}名, schedule '
+                    f'last_rank={game_rank if game_rank is not None else "unknown"}, '
+                    f'top_four_exit={getattr(self, "_top_four_exit_succeeded", False)}, schedule '
                     f'{self.RANK_PROTECTION_EXIT_COUNT} active exits'
                 )
             else:
@@ -453,6 +460,9 @@ class ChessLegacyScriptTask(
             if round_transition_pending:
                 time.sleep(self.SLOW_POLL_INTERVAL)
                 continue
+
+            if self._check_top_four_exit(round_no, mode):
+                return None
 
             in_game = mode is not None or self._is_in_chess_game()
             if in_game:
@@ -673,7 +683,7 @@ class ChessLegacyScriptTask(
             f'{self.GAME_END_CONFIRM_FRAMES} frames, context={context}'
         )
         deadline = time.monotonic() + self.GAME_OVER_WAIT_TIMEOUT
-        while time.monotonic() < deadline:
+        while True:
             self.device.stuck_record_clear()
             if self._is_in_chess_game():
                 logger.info(
@@ -693,6 +703,10 @@ class ChessLegacyScriptTask(
                         f'Chess game-over rank OCR: [{raw}] -> 第{rank}名'
                     )
                 return True
+            # The screenshot at the end of the previous poll may finish after
+            # the deadline. Inspect that frame before rejecting it as a timeout.
+            if time.monotonic() >= deadline:
+                break
             time.sleep(2 * self.SLOW_POLL_INTERVAL)
             self.screenshot()
 
@@ -1161,6 +1175,8 @@ class ChessLegacyScriptTask(
         self._arakawa_goldfish_current_position = None
         self._board_special_units = {}
         self._last_game_rank = None
+        self._top_four_shop_check_round = None
+        self._top_four_exit_succeeded = False
         self._reset_economy_state()
         strategy = self.get_lineup_strategy()
         logger.debug(

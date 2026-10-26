@@ -67,6 +67,9 @@ Deploy:
     InstallUiautomator2: true
 
   Ocr:
+    # Backend for newly created local models / OCR servers: legacy or rapid-small.
+    # rapid-small requires requirements-rapidocr.txt in an isolated runtime.
+    OcrBackend: legacy
     # Run Ocr as a service, can reduce memory usage by not import mxnet everytime you start an alas instance
 
     # Whether to use ocr server

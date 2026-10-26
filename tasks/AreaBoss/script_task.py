@@ -376,10 +376,12 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         """
         reward_floor = self.config.area_boss.boss.reward_floor
         if fileter_open and not self.appear(self.I_AB_FILTER_OPENED):
-            self.open_filter()
-        # 如果打不开鬼王详情界面,直接退出
+            self.open_filter(allow_detail=True)
+        # A late detail page may appear after the final entry check. When
+        # reopening the filter, accept that page and continue this same boss.
         if not self.open_boss_detail(battle, 3):
-            return False
+            if self.open_filter(allow_detail=True):
+                return False
 
         boss_identity = self._area_boss_identity()
         if seen_names is not None:
@@ -405,7 +407,7 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
             self.ui_click_until_disappear(self.I_AB_CLOSE_RED, interval=3)
             return True
 
-        # Only start a battle after the requested difficulty is confirmed.
+        # Prefer confirmed difficulty; ordinary level 1 has a bounded OCR fallback.
         try:
             ready = True
             if reward_floor in (AreaBossFloor.ONE, AreaBossFloor.TEN):
@@ -582,6 +584,13 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         # complete original number instead of that permissive repair.
         reader.after_process = lambda text: text.strip()
         results = reader.detect_and_ocr(self.device.image)
+        if not results:
+            # A lone stylized '1' can be missed by the text detector. Read the
+            # diamond's digits directly, excluding its border and nearby controls.
+            reader.roi = (322, 183, 46, 48)
+            reader.area = reader.roi
+            text = reader.ocr_single_line(self.device.image)
+            return int(text) if re.fullmatch(r'[1-9]|[1-5][0-9]|60', text) else None
         if len(results) != 1:
             return None
         text = results[0].ocr_text
@@ -615,6 +624,10 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
                 next_drag = time.monotonic() + 3
             time.sleep(0.2)
         logger.warning(f'Cannot confirm Area Boss normal level {level}')
+        if (level == 1 and self.appear(self.I_AB_CLOSE_RED)
+                and self._normal_mode_visible() and self._normal_level() is None):
+            logger.warning('Area Boss normal mode confirmed; level OCR unavailable after retries; continue with user-authorized level-1 fallback')
+            return True
         return False
 
     def switch_to_level_1(self) -> bool:
@@ -1005,10 +1018,28 @@ class ScriptTask(GeneralBattle, GameUi, SwitchSoul, AreaBossAssets):
         return not self.appear(self.I_AB_GROUP_RANK_NONE)
         pass
 
-    def open_filter(self):
-        """打开筛选界面"""
+    def open_filter(self, allow_detail: bool = False) -> bool:
+        """Return True for the filter, or False for a confirmed allowed detail page."""
         logger.info("openFilter")
-        self.ui_click(self.I_FILTER, self.I_AB_FILTER_OPENED, interval=3)
+        while 1:
+            self.screenshot()
+            if self.appear(self.I_AB_FILTER_OPENED):
+                return True
+            if self.appear(self.I_FILTER):
+                self.appear_then_click(self.I_FILTER, interval=3)
+                continue
+            # Only infer detail from its positive controls, never merely from
+            # the missing filter icon. Confirm again after a fresh screenshot.
+            if self.appear(self.I_AB_CLOSE_RED) and self.appear(self.I_FIRE):
+                self.screenshot()
+                if self.appear(self.I_AB_CLOSE_RED) and self.appear(self.I_FIRE):
+                    if allow_detail:
+                        logger.info('Area Boss detail already open; continue current boss')
+                        return False
+                    # List/tab callers still require an actual open filter.
+                    self.ui_click_until_disappear(self.I_AB_CLOSE_RED, interval=1)
+                    continue
+            time.sleep(0.2)
 
     def switch_to_collect(self):
         while 1:

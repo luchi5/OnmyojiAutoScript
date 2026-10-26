@@ -162,6 +162,8 @@ def fake_script(device, task_error=None, task_callback=None):
     script._try_acquire_queue_token = lambda: True
     script.exception_handler = lambda **kwargs: actions.append('exception_handler')
     script.save_error_log = lambda: actions.append('save_evidence')
+    # Email transport is outside this device-free recovery harness.
+    script._notify_error_email = lambda *args, **kwargs: None
     script.logger, script.notifications, script.actions = logger, notifications, actions
     return script
 

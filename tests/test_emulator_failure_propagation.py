@@ -141,6 +141,8 @@ class ScriptNotificationTests(unittest.TestCase):
             namespace[name] = type(name, (Exception,), {})
         cls = isolated_class('script.py', 'Script', {'run'}, namespace)
         script = cls()
+        script._start_game_normally = Mock()
+        script._notify_error_email = Mock()
         script.instance_guard = None
         script._try_acquire_queue_token = Mock(return_value=True)
         script.config_name = 'test-account'
@@ -153,6 +155,8 @@ class ScriptNotificationTests(unittest.TestCase):
             script.run('DailyTrifles')
         self.assertEqual(caught.exception.code, 1)
         screenshot.assert_called_once()
+        script._start_game_normally.assert_called_once_with()
+        script._notify_error_email.assert_called_once_with('DailyTrifles', screenshot.side_effect)
         push.assert_called_once()
         self.assertFalse(script.device._account_session_recovery)
 
@@ -164,6 +168,7 @@ class ScriptNotificationTests(unittest.TestCase):
             "RequestHumanTakeover": RequestHumanTakeover,
         })
         script = script_class()
+        script._notify_error_email = Mock()
         script.config_name = "test-account"
         push = Mock(return_value=accepted, side_effect=notifier_error)
         script.config = SimpleNamespace(notifier=SimpleNamespace(push=push))

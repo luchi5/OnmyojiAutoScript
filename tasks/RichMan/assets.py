@@ -68,7 +68,7 @@ class RichManAssets:
 	# 中级盘剩余 
 	O_BL_RES_MEDIUM = RuleOcr(roi=(918,285,28,27), area=(918,285,28,27), mode="Digit", method="Default", keyword="", name="bl_res_medium")
 	# 检查契灵的钱是否够 
-	O_BL_CHECK_MONEY = RuleOcr(roi=(1137,12,125,33), area=(1137,12,125,33), mode="DigitCounter", method="Default", keyword="", name="bl_check_money")
+	O_BL_CHECK_MONEY = RuleOcr(roi=(1110,12,152,33), area=(1110,12,152,33), mode="DigitCounter", method="Default", keyword="", name="bl_check_money")
 
 
 	# Image Rule Assets
@@ -435,7 +435,7 @@ class RichManAssets:
     # Additional weekly purchase assets (source metadata in guild/ and itachi_shop/).
 	I_GUILD_HONOR_GIFT = RuleImage(roi_front=(569,212,74,73), roi_back=(315,164,584,370), threshold=0.8, method="Template matching", file="./tasks/RichMan/guild/guild_guild_honor_gift.png")
 	C_ITACHI_GIFT = RuleClick(roi_front=(731,250,153,55), roi_back=(731,250,153,55), name="itachi_gift")
-	I_ITACHI_SHOP_ENTRY = RuleImage(roi_front=(47,635,45,40), roi_back=(42,630,55,50), threshold=0.8, method="Template matching", file="./tasks/RichMan/itachi_shop/itachi_shop_itachi_shop_entry.png")
+	I_ITACHI_SHOP_ENTRY = RuleImage(roi_front=(301,635,45,40), roi_back=(20,620,550,80), threshold=0.8, method="Template matching", file="./tasks/RichMan/itachi_shop/itachi_shop_itachi_shop_entry.png")
 	I_ITACHI_SHOP_CHECK = RuleImage(roi_front=(121,37,78,39), roi_back=(116,33,88,49), threshold=0.8, method="Template matching", file="./tasks/RichMan/itachi_shop/itachi_shop_itachi_shop_check.png")
 	O_ITACHI_COIN = RuleOcr(roi=(1081,21,134,38), area=(1081,21,134,38), mode="DigitCounter", method="Default", keyword="", name="itachi_coin")
 	O_ITACHI_BUY_COST = RuleOcr(roi=(634,530,70,41), area=(634,530,70,41), mode="Digit", method="Default", keyword="", name="itachi_buy_cost")

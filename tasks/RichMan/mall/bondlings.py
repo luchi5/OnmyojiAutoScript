@@ -164,6 +164,17 @@ class Bondlings(Buy, MallNavbar):
         if not (names[check_class] & texts):
             raise GameStuckError('Contract shop item not confirmed; purchase blocked: {}'.format(sorted(texts)))
 
+    def _click_bondling_quantity_control(self, control):
+        # These templates include decoration outside the round hit area. Clicking
+        # their corners can dismiss the dialog instead of changing the quantity.
+        if not self.appear(control, interval=0.8):
+            return False
+        x, y, width, height = control.roi_front
+        roi = (int(x + width / 2) - 5, int(y + height / 2) - 5, 10, 10)
+        target = RuleClick(roi_front=roi, roi_back=roi, name=control.name)
+        self.click(target)
+        return True
+
     def _buy_bondling_checked(self, button, number, check_class):
         timer = Timer(10).start()
         while not timer.reached():
@@ -206,11 +217,11 @@ class Bondlings(Buy, MallNavbar):
                 confirmed = 0
                 if current < number and not maximum_attempted:
                     maximum_attempted = True
-                    self.appear_then_click(self.I_BUY_PLUS, interval=0.8)
+                    self._click_bondling_quantity_control(self.I_BUY_PLUS)
                     previous_control = None
                 else:
                     control = self.I_BUY_ADD if current < number else self.I_BUY_SUB
-                    if self.appear_then_click(control, interval=0.8):
+                    if self._click_bondling_quantity_control(control):
                         previous_control = control
                         previous = current
             time.sleep(0.4)

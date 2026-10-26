@@ -13,7 +13,7 @@ import zerorpc
 
 from module.exception import ScriptError
 from module.logger import logger
-from module.ocr.ppocr import TextSystem
+from module.ocr.backend import configured_text_system
 
 _OCR_SERVER_PROCESS: Optional[multiprocessing.Process] = None
 
@@ -119,7 +119,8 @@ def run_ocr_server(host: str, port: int) -> None:
 
 class OcrServer:
     def __init__(self) -> None:
-        self.model = TextSystem()
+        from module.server.setting import State
+        self.model = configured_text_system(State.deploy_config)
 
     def ping(self) -> bool:
         return True

@@ -25,8 +25,10 @@ NAMES = ((215, 672, 125, 37), (585, 672, 140, 37), (945, 672, 165, 37))
 class TimedOCR:
     """Dedicated local model per worker, no shared OCR server queue."""
     def __init__(self):
-        from module.ocr.ppocr import TextSystem
-        self.model = TextSystem()
+        from module.ocr.backend import configured_text_system
+        from module.server.setting import State
+        # This dedicated worker decodes ADB PNGs with OpenCV (BGR).
+        self.model = configured_text_system(State.deploy_config, input_color="BGR")
 
     def __call__(self, image):
         return self.model.ocr_single_line(image)
@@ -49,7 +51,9 @@ class TimedOCR:
         return ((item.ocr_text, float(item.score)), self.model.ocr_single_line(enlarged))
 
     def close(self):
-        pass
+        close = getattr(self.model, "close", None)
+        if close is not None:
+            close()
 
 
 @dataclass(frozen=True)

@@ -1,7 +1,7 @@
 from typing import Dict
 
 from module.base.decorator import cached_property
-from module.ocr.ppocr import TextSystem
+from module.ocr.backend import configured_text_system
 from module.ocr.rpc import ModelProxy
 from module.server.setting import State
 
@@ -9,7 +9,7 @@ from module.server.setting import State
 class OcrModel:
     @cached_property
     def ch(self):
-        return TextSystem()
+        return configured_text_system(State.deploy_config)
 
 
 OCR_MODEL = OcrModel()

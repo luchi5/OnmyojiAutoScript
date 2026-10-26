@@ -13,6 +13,7 @@ config/abyss_progress/
 config/account_session_recovery/
 config/bondling_resume/
 config/secret_status/
+/config/ocr_runtime/
 data/ActivityShikigami/
 /migration-records/
 log/daily_feedback_debug/
@@ -225,6 +226,7 @@ celerybeat-schedule
 # Environments
 .env
 .venv
+/.venv-rapid/
 env/
 venv/
 ENV/

@@ -138,6 +138,24 @@ class RealmEntryLayoutTests(unittest.TestCase):
         self.assertEqual(len(clicks), 1)
         task._realm_entry_fallback_target.assert_not_called()
 
+    def test_collected_screen_realm_card_enters_using_unobscured_label(self):
+        image = load(ROOT / 'dev_tools/fixtures/realm_card_screen_collected.png')
+        task = make_task(image)
+        task._realm_entry_fallback_target = Mock(side_effect=AssertionError('Bypassed label entry'))
+        clicks, run = replay(task)
+        run()
+        self.assertEqual(len(clicks), 1)
+        _, (x, y, width, height) = clicks[0]
+        self.assertEqual((x, y, width, height), (794, 318, 13, 32))
+        task._realm_entry_fallback_target.assert_not_called()
+
+    def test_collected_screen_realm_label_still_requires_panel_confirmation(self):
+        task = make_task(load(ROOT / 'dev_tools/fixtures/realm_card_screen_collected.png'))
+        clicks, run = replay(task, show_panel=False)
+        with self.assertRaisesRegex(GameStuckError, '45 seconds'):
+            run()
+        self.assertEqual(len(clicks), 3)
+
     def test_switch_off_candidates_and_growth_overlay_suppress_layout(self):
         task = make_task(self.incident())
         costume = task.config.global_game.costume_config

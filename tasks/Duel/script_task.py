@@ -74,8 +74,22 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
         if datetime.now() - self.start_time >= self.limit_time:
             logger.info('Duel task is over time')
             return False
+        if self.conf.duel_config.honor_full_exit:
+            honor_full = self.check_honor()
+            if honor_full is None:
+                logger.warning('Duel honor not confirmed; do not match or mark the task completed, retry in 3 minutes')
+                self.set_next_run(task='Duel', target=datetime.now() + timedelta(minutes=3), server=False)
+                raise TaskEnd('Duel honor not confirmed')
+            if honor_full:
+                logger.info('Duel task is over honor')
+                return False
         # 当前分数跟目标分数比较, 判断分数是否已经满足条件
-        if self.get_and_update_cur_score() >= self.conf.duel_config.target_score:
+        score = self.get_and_update_cur_score()
+        if score is None:
+            logger.warning('Duel score not confirmed; do not match or mark the task completed, retry in 3 minutes')
+            self.set_next_run(task='Duel', target=datetime.now() + timedelta(minutes=3), server=False)
+            raise TaskEnd('Duel score not confirmed')
+        if score >= self.conf.duel_config.target_score:
             logger.info('Duel task is over score')
             return False
         # 若不开启名仕战斗, 则到达名士直接退出
@@ -84,10 +98,6 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             return False
         # 练习
         if self.appear(self.I_BATTLE_WITH_TRAIN) or self.appear(self.I_BATTLE_WITH_TRAIN2):
-            return False
-        # 荣誉满了，退出
-        if self.conf.duel_config.honor_full_exit and self.check_honor():
-            logger.info('Duel task is over honor')
             return False
         return True
 
@@ -219,23 +229,40 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
             if self.appear_then_click(self.I_DUEL_EXIT, interval=1) or self.appear_then_click(self.I_EXIT, interval=1):
                 continue
 
-    def check_honor(self) -> bool:
-        """检查荣誉是否满了"""
-        if not self.appear(self.I_DUEL_HONOR):
-            return False
-        roi_x = self.I_DUEL_HONOR.roi_front[0] + self.I_DUEL_HONOR.roi_front[2]
-        roi_y = self.I_DUEL_HONOR.roi_front[1]
-        roi_w = 110
-        roi_h = self.I_DUEL_HONOR.roi_front[3]
-        self.O_D_HONOR.roi = [roi_x, roi_y, roi_w, roi_h]
-        current, remain, total = self.O_D_HONOR.ocr(self.device.image)
-        return current == total and remain == 0
+    def check_honor(self) -> bool | None:
+        """连续新截图确认荣誉计数；找不到图标或读数不确定时返回None。"""
+        previous = None
+        for attempt in range(3):
+            if attempt:
+                sleep(0.3)
+            self.screenshot()
+            if not self.appear(self.I_DUEL_HONOR):
+                logger.warning('Duel honor icon not found')
+                previous = None
+                continue
+            roi_x = self.I_DUEL_HONOR.roi_front[0] + self.I_DUEL_HONOR.roi_front[2]
+            roi_y = self.I_DUEL_HONOR.roi_front[1]
+            roi_h = self.I_DUEL_HONOR.roi_front[3]
+            self.O_D_HONOR.roi = [roi_x, roi_y, 110, roi_h]
+            reading = self.O_D_HONOR.ocr(self.device.image)
+            current, remain, total = reading
+            if total <= 0 or current < 0 or current > total or remain != total - current:
+                logger.warning(f'Reject inconsistent duel honor counter: {reading}')
+                previous = None
+                continue
+            counter = (current, total)
+            if counter == previous:
+                logger.info(f'Duel honor confirmed: {current}/{total}')
+                return current == total
+            previous = counter
+        logger.warning('Duel honor OCR is unknown')
+        return None
 
-    def get_and_update_cur_score(self, skip_screenshot: bool = True) -> int:
+    def get_and_update_cur_score(self, skip_screenshot: bool = True) -> int | None:
         """
         获取并更新当前斗技分数, 要求处于斗技主界面, 同时更新名仕状态
         :param skip_screenshot: 是否跳过截图
-        :return: 当前斗技分数
+        :return: 当前斗技分数；连续新截图未确认一致有效读数时返回None
         """
         self.maybe_screenshot(skip_screenshot)
         score = self.current_score
@@ -249,11 +276,24 @@ class ScriptTask(GameUi, GeneralBattle, SwitchSoul, DuelAssets, SwitchOnmyoji):
                 self.pre_battle_lose_cnt = self.battle_lose_count
                 score -= 100
         else:
-            score, remain, total = self.O_D_SCORE.ocr(self.device.image)
-            if score > 10000:
-                # 识别错误分数超过一万, 去掉最高位
-                logger.warning('Recognition error, score is too high')
-                score = int(str(score)[1:])
+            previous = None
+            for attempt in range(3):
+                if attempt:
+                    sleep(0.3)
+                self.screenshot()
+                reading = self.O_D_SCORE.ocr(self.device.image)
+                score, remain, total = reading
+                if total <= 0 or score < 0 or score > total or remain != total - score:
+                    logger.warning(f'Reject inconsistent duel score counter: {reading}')
+                    previous = None
+                    continue
+                counter = (score, total)
+                if counter == previous:
+                    break
+                previous = counter
+            else:
+                logger.warning('Duel score OCR is unknown; no truncation or cached-score fallback')
+                return None
         logger.info(f'battle score: {score}')
         self.current_score = score
         return self.current_score

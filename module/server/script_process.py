@@ -215,6 +215,8 @@ class ScriptProcess(ScriptWSManager):
 
 
 def func(config: str, state_queue: multiprocessing.Queue, log_pipe_in) -> None:
+    # Set only in the fresh account child; never change the GUI's environment.
+    os.environ["OAS_ACCOUNT_NAME"] = config
     def signal_handler(signum, frame):
         logger.info(f'Script {config} received signal {signum}, exiting gracefully')
         log_pipe_in.close()

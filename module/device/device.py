@@ -219,8 +219,12 @@ class Device(Platform, Screenshot, Control, AppControl):
         self.click_record_check = empty_function
         self.stuck_record_check = empty_function
 
-    def app_start(self):
-        if not self.config.script.error.handle_error:
+    def app_start(self, *, normal_start=False):
+        # Only the scheduler's closed-game startup may bypass the recovery gate.
+        # This permission belongs to one call; it must not enable later restarts.
+        if normal_start and self.app_is_running():
+            return
+        if not normal_start and not self.config.script.error.handle_error:
             logger.critical('No app stop/start, because HandleError disabled')
             logger.critical('Please enable Alas.Error.HandleError or manually login to AzurLane')
             raise RequestHumanTakeover

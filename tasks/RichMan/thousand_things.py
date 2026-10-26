@@ -81,7 +81,8 @@ class ThousandThings(GameUi, RichManAssets):
             if self.ocr_appear_click(self.O_TT_BLUE_TICKET, interval=1):
                 continue
         logger.info('Buy mystery amulet')
-        self.tt_get_reward(self.I_TT_BUY_CONFIRM)
+        if not self.tt_get_reward(self.I_TT_BUY_CONFIRM):
+            return False
         logger.info('Buy mystery amulet success')
         time.sleep(0.5)
         return True
@@ -100,7 +101,8 @@ class ThousandThings(GameUi, RichManAssets):
             if self.ocr_appear_click(self.O_TT_BLACK, interval=1):
                 continue
         logger.info('Buy black daruma scrap')
-        self.tt_get_reward(self.I_TT_BUY_CONFIRM)
+        if not self.tt_get_reward(self.I_TT_BUY_CONFIRM):
+            return False
         logger.info('Buy black daruma scrap success')
         time.sleep(0.5)
         return True
@@ -112,26 +114,60 @@ class ThousandThings(GameUi, RichManAssets):
             return False
         if not self.tt_check_money(600):
             return False
-        self.O_TT_NUMBER.keyword = '2'
-        click_count = 0
-        while 1:
+        maximum_clicked = False
+        verified_twos = 0
+        for _ in range(30):
             self.screenshot()
-            if self.ocr_appear(self.O_TT_NUMBER):
-                break
-            appear_max = self.appear(self.I_TT_BUY_UP)
-            if click_count >= 4:
-                logger.warning('Buy ap failed')
-                break
-            if self.appear_then_click(self.I_TT_BUY_UP, interval=0.5):
-                click_count += 1
+            # Never read a number from the shop or an item-description overlay.
+            if not self._tt_buy_dialog_open():
+                verified_twos = 0
+                self.ocr_appear_click(self.O_TT_AP, interval=1)
+                time.sleep(0.3)
                 continue
-            if not appear_max and self.ocr_appear_click(self.O_TT_AP, interval=2.3):
-                continue
-        logger.info('Buy ap')
-        self.tt_get_reward(self.I_TT_BUY_CONFIRM)
-        logger.info('Buy ap success')
-        time.sleep(0.5)
-        return True
+            quantity = self._tt_read_purchase_quantity()
+            verified_twos = verified_twos + 1 if quantity == 2 else 0
+            if verified_twos >= 2:
+                logger.info('Buy ap: quantity 2 verified on two screenshots')
+                if not self.tt_get_reward(self.I_TT_BUY_CONFIRM):
+                    return False
+                logger.info('Buy ap success')
+                time.sleep(0.5)
+                return True
+            if quantity == 1 and not maximum_clicked:
+                self.click(self.I_TT_BUY_UP)
+                maximum_clicked = True
+            time.sleep(0.3)
+        logger.warning('Buy ap failed: quantity 2 was not verified; skip this purchase')
+        self._tt_close_buy_dialog()
+        return False
+
+    def _tt_buy_dialog_open(self):
+        return self.appear(self.I_TT_BUY_CONFIRM) and self.appear(self.I_TT_BUY_UP)
+
+    def _tt_read_purchase_quantity(self):
+        from copy import copy
+        # The dialog moves vertically with its description. Anchor to its max
+        # button instead of the old fixed ROI, which cut off the number.
+        x, y, _, _ = self.I_TT_BUY_UP.roi_front
+        reader = copy(self.O_TT_NUMBER)
+        reader.mode = reader.mode.__class__.SINGLE
+        reader.roi = [x - 191, y + 7, 80, 42]
+        reader.area = list(reader.roi)
+        text = reader.ocr(self.device.image)
+        # Single mode preserves empty/unknown text; Digit silently turns it to 0.
+        if not isinstance(text, str) or text.strip() not in ('1', '2'):
+            return None
+        return int(text.strip())
+
+    def _tt_close_buy_dialog(self):
+        for _ in range(6):
+            self.screenshot()
+            if not (self.appear(self.I_TT_BUY_CONFIRM) or self.appear(self.I_TT_BUY_UP)):
+                return True
+            self.appear_then_click(self.I_UI_BACK_RED, interval=0.5)
+            time.sleep(0.3)
+        logger.warning('Purchase dialog did not close; continue recovery through the shop exit')
+        return False
 
     def tt_check_money(self, mix: int) -> bool:
         self.screenshot()
@@ -146,39 +182,27 @@ class ThousandThings(GameUi, RichManAssets):
         return False
 
     def tt_get_reward(self, image_button):
-        from time import sleep
+        deadline = time.monotonic() + 18
         click_count = 0
-        while 1:
+        reward_seen = False
+        for _ in range(45):
             self.screenshot()
-
-            if click_count >= 6:
-                logger.warning('Get reward failed')
-                while 1:
-                    self.screenshot()
-                    if not self.appear(self.I_TT_BUY_UP):
-                        break
-                    if self.appear_then_click(self.I_UI_BACK_RED, interval=3):
-                        continue
+            if time.monotonic() >= deadline:
                 break
-
             if self.ui_reward_appear_click():
-                sleep(0.5)
-                while 1:
-                    self.screenshot()
-                    # 等待动画结束
-                    if not self.appear(self.I_UI_REWARD, threshold=0.6):
-                        logger.info('Get reward success')
-                        break
-
-                    # 一直点击
-                    if self.ui_reward_appear_click():
-                        continue
-                break
-
-            if self.appear_then_click(image_button, interval=2):
-                click_count += 1
+                reward_seen = True
+                time.sleep(0.5)
                 continue
-        return True
+            if reward_seen and not self.appear(self.I_UI_REWARD, threshold=0.6):
+                logger.info('Get reward success')
+                return True
+            if not reward_seen and click_count < 3 and self._tt_buy_dialog_open():
+                if self.appear_then_click(image_button, interval=2):
+                    click_count += 1
+            time.sleep(0.3)
+        logger.warning('Purchase reward was not confirmed; stop waiting for this item')
+        self._tt_close_buy_dialog()
+        return False
 
     def _tt_prepare_borrow(self):
         pending = None
@@ -209,6 +233,10 @@ class ThousandThings(GameUi, RichManAssets):
             cards = borrow_cards(self.device.image)
             selected = sum(card[2] for card in cards)
             empty = empty_borrow_slots(self.device.image)
+            logger.info(f'借出式神识别：可见{len(cards)}张，已选{selected}张，空位{empty}')
+            if empty is None:
+                logger.warning('借出空位识别不可用，结束本次配置')
+                return False
             if replacing:
                 # A replacement must return to the roster before confirming it.
                 return replace_clicked and bool(cards)

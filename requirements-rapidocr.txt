@@ -1,0 +1,8 @@
+# Optional overlay for an isolated runtime. Do not install into a running toolkit.
+rapidocr==3.10.0
+onnxruntime==1.23.2
+numpy==1.26.4
+opencv-python==4.11.0.86
+opencv-python-headless==4.11.0.86
+omegaconf==2.4.0
+colorlog==6.12.0

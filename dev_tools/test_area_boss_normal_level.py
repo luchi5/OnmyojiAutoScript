@@ -54,6 +54,10 @@ class Reader:
         # must bypass without altering the original reputation rule.
         return 1 if text in ('00', '000') else text
 
+    def ocr_single_line(self, image):
+        assert self.roi == (322, 183, 46, 48)
+        return self.harness.frame.get('direct_text', '')
+
     def detect_and_ocr(self, image):
         assert self.roi == (300, 160, 110, 100)
         assert self.area == self.roi
@@ -208,7 +212,23 @@ class NormalLevelTests(unittest.TestCase):
                 self.assertEqual(h.O_AB_REPUTATION.after_process('00'), 1)
                 self.assertEqual(h.O_AB_REPUTATION.roi, (1180, 61, 82, 32))
         h = Harness([{'texts': ['00']}])
-        self.assertFalse(h.switch_to_level_1())
+        self.assertTrue(h.switch_to_level_1())
+
+    def test_direct_recognition_rescues_missing_single_digit_detection(self):
+        h = Harness([{'texts': [], 'direct_text': '1'}])
+        self.assertTrue(h.switch_to_level_1())
+        self.assertEqual(h.swipes, [])
+
+    def test_unreadable_normal_one_retries_before_fallback(self):
+        h = Harness([{'texts': []}])
+        self.assertTrue(h.boss_fight(object()))
+        self.assertEqual(h.battles, 1)
+        self.assertEqual(len(h.swipes), 3)
+        self.assertGreaterEqual(h.clock.now, 115)
+
+    def test_unreadable_sixty_never_uses_one_fallback(self):
+        h = Harness([{'texts': []}], floor=AreaBossFloor.NORMAL_LV60)
+        self.assertFalse(h.switch_to_level_60())
 
     def test_partial_and_multiple_ocr_results_are_unconfirmed(self):
         for texts in ([], ['1', '60']):

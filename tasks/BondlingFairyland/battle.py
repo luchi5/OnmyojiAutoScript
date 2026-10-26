@@ -122,11 +122,26 @@ class BondlingBattle(GeneralBattle, BondlingFairylandAssets):
         bondling_mode = self.config.bondling_fairyland.bondling_config.bondling_mode
         cap_again = bondling_mode in [BondlingMode.MODE3, BondlingMode.MODE4]
         cap_cnt, max_cap = 0, 10
+        capture_return = Timer(1, count=2)
         while 1:
             # 捕获次数超过最大次数限制, 则不再进行捕获
             if cap_cnt >= max_cap:
                 cap_again = False
             self.screenshot()
+            # Some settlements return directly to the challenge page without
+            # a reward screen. Confirm a stable return, with results taking
+            # priority over controls visible behind settlement overlays.
+            if (not self._capture_result_visible()
+                    and not self.appear(self.I_BUFF)
+                    and not self.appear(self.I_PREPARE_HIGHLIGHT)
+                    and not self.is_in_real_battle(False)
+                    and self.appear(self.I_BALL_FIRE)):
+                capture_return.start()
+                if capture_return.reached():
+                    logger.info('Battle returned to capture page without reward screen')
+                    return win
+            else:
+                capture_return.clear()
             # 如果捕获成功
             if self.appear_then_click(self.I_CAP_SUCCESS, action=self.C_CAP_SUCCESS,  interval=1):
                 win = True

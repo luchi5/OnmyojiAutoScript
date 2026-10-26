@@ -145,6 +145,91 @@
       "path": "dev_tools/test_dokan_soul_transition.py",
       "required": true,
       "scope": "Dokan records entry and interrupted soul-switch replay with a real prepare-button crop"
+    },
+    {
+      "path": "dev_tools/test_area_boss_detail_recovery.py",
+      "required": true,
+      "scope": "AST detail/filter recovery with fake frames and clicks"
+    },
+    {
+      "path": "dev_tools/test_bondling_battle_return.py",
+      "required": true,
+      "scope": "AST battle return with fake reward and UI transitions"
+    },
+    {
+      "path": "dev_tools/test_demon_letter.py",
+      "required": true,
+      "scope": "AST quiz flow with fake clock, OCR and delayed rewards"
+    },
+    {
+      "path": "dev_tools/test_demon_started_boss.py",
+      "required": true,
+      "scope": "AST missed-preparation recovery with fake active battle"
+    },
+    {
+      "path": "dev_tools/test_guild_store_scan.py",
+      "required": true,
+      "scope": "AST store scan using fake offers and purchases"
+    },
+    {
+      "path": "dev_tools/test_secret_layer_crop.py",
+      "required": true,
+      "scope": "AST crop coordinates with fake OCR results"
+    },
+    {
+      "path": "dev_tools/test_thousand_things_purchase.py",
+      "required": true,
+      "scope": "AST shop quantity and confirmation with fake UI"
+    },
+    {
+      "path": "dev_tools/test_utilize_friend_fallback.py",
+      "required": true,
+      "scope": "AST friend fallback with fake navigation and cards"
+    },
+    {
+      "path": "tests/test_chess_result_deadline.py",
+      "required": true,
+      "scope": "Fake clock and settlement frames without device input"
+    },
+    {
+      "path": "tests/test_demon_letter_ocr.py",
+      "required": true,
+      "scope": "Synthetic pixels and mocked OCR numeric fallback"
+    },
+    {
+      "path": "tests/test_draft_duel_admission_ocr.py",
+      "required": true,
+      "scope": "Mocked admission OCR with conflicting price rejection"
+    },
+    {
+      "path": "tests/test_duel_score_validation.py",
+      "required": true,
+      "scope": "AST score/honor validation with fake OCR and scheduler"
+    },
+    {
+      "path": "dev_tools/test_borrow_selection.py",
+      "required": true,
+      "scope": "Sanitized roster crops and AST borrowing flow without devices"
+    },
+    {
+      "path": "dev_tools/test_delegation_demon_rewards.py",
+      "required": true,
+      "scope": "AST reward transitions and fake UI/clock"
+    },
+    {
+      "path": "dev_tools/test_friend_fostering_default.py",
+      "required": true,
+      "scope": "AST fostering with mocked entry and rarity selection"
+    },
+    {
+      "path": "dev_tools/test_normal_game_start.py",
+      "required": true,
+      "scope": "AST one-call startup gate with fake devices, no app launch"
+    },
+    {
+      "path": "dev_tools/test_restart_switch_gate.py",
+      "required": true,
+      "scope": "AST recovery gate with mocked recovery ledger and notifications"
     }
   ],
   "stub_project_logger": true

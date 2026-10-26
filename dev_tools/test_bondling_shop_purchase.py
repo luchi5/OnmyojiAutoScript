@@ -12,7 +12,7 @@ def harness(item='随机御魂',quantities=('10','10')):
     h=SimpleNamespace(device=SimpleNamespace(image=None,click_record_remove=Mock()),O_BUY_NUMBER=SimpleNamespace(roi=(0,0,10,10)),
         I_BUY_PLUS='plus',I_BUY_ADD='add',I_BUY_SUB='sub',C_BUY_MORE='purchase')
     h.screenshot=Mock(side_effect=clock.advance);h.appear=lambda r:r=='plus'
-    h.appear_then_click=Mock(return_value=True);h.click=Mock();h.ui_reward_appear_click=Mock(return_value=True)
+    h.appear_then_click=Mock(return_value=True);h._click_bondling_quantity_control=Mock(return_value=True);h.click=Mock();h.ui_reward_appear_click=Mock(return_value=True)
     quantity=Mock(side_effect=quantities)
     def reader(**kw):
         return SimpleNamespace(detect_and_ocr=lambda im:[SimpleNamespace(ocr_text=item)],ocr=quantity)
@@ -39,7 +39,7 @@ class PurchaseTests(unittest.TestCase):
         h=harness();h._buy_bondling_checked('entry',10,1);h.click.assert_called_once_with('purchase')
     def test_excess_quantity_is_reduced(self):
         h=harness(quantities=['11','10','10']);h._buy_bondling_checked('entry',10,1)
-        h.appear_then_click.assert_called_once_with('sub',interval=0.8)
+        h._click_bondling_quantity_control.assert_called_once_with('sub')
         h.click.assert_called_once_with('purchase')
     def test_missing_reward_does_not_repeat_purchase(self):
         h=harness();h.ui_reward_appear_click.return_value=False
@@ -49,13 +49,13 @@ class PurchaseTests(unittest.TestCase):
     def test_maximum_arrow_replaces_repeated_adds(self):
         h=harness(quantities=['1','25','25'])
         h._buy_bondling_checked('entry',25,1)
-        h.appear_then_click.assert_called_once_with('plus',interval=0.8)
+        h._click_bondling_quantity_control.assert_called_once_with('plus')
         h.click.assert_called_once_with('purchase')
 
     def test_maximum_over_target_is_reduced_before_purchase(self):
         h=harness(quantities=['1','12','11','10','10'])
         h._buy_bondling_checked('entry',10,1)
-        self.assertEqual([c.args[0] for c in h.appear_then_click.call_args_list],['plus','sub','sub'])
+        self.assertEqual([c.args[0] for c in h._click_bondling_quantity_control.call_args_list],['plus','sub','sub'])
         h.click.assert_called_once_with('purchase')
 
     def test_long_adjustment_only_clears_guard_for_verified_progress(self):
@@ -70,6 +70,27 @@ class PurchaseTests(unittest.TestCase):
             h._buy_bondling_checked('entry',25,1)
         h.device.click_record_remove.assert_not_called()
         h.click.assert_not_called()
+
+class QuantityClickTests(unittest.TestCase):
+    def test_only_center_of_verified_control_is_clicked_with_same_guard_name(self):
+        from module.atom.click import RuleClick
+        method=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',
+            ('_click_bondling_quantity_control',),{'RuleClick':RuleClick})['_click_bondling_quantity_control']
+        h=SimpleNamespace(appear=Mock(return_value=True),click=Mock())
+        control=SimpleNamespace(name='BUY_BUY_SUB',roi_front=[467,429,50,48])
+        self.assertTrue(method(h,control))
+        h.appear.assert_called_once_with(control,interval=0.8)
+        target=h.click.call_args.args[0]
+        self.assertEqual(target.roi_front,(487,448,10,10))
+        self.assertEqual(target.name,control.name)
+    def test_missing_control_is_never_clicked(self):
+        from module.atom.click import RuleClick
+        method=extract_methods(ROOT/'tasks/RichMan/mall/bondlings.py','Bondlings',
+            ('_click_bondling_quantity_control',),{'RuleClick':RuleClick})['_click_bondling_quantity_control']
+        h=SimpleNamespace(appear=Mock(return_value=False),click=Mock())
+        self.assertFalse(method(h,SimpleNamespace(name='minus')))
+        h.click.assert_not_called()
+
 
 class LocationTests(unittest.TestCase):
     def locate(self, sold=False):

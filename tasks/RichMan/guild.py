@@ -25,7 +25,9 @@ class Guild(Buy, GameUi, RichManAssets):
         if not con.enable:
             return
         logger.hr('Start guild', 1)
-        self.goto_page(page_guild)
+        self.screenshot()
+        if not self.appear(self.I_GUILD_CLOSE_RED):
+            self.goto_page(page_guild)
         while 1:
             self.screenshot()
             if self.appear(self.I_GUILD_CLOSE_RED):
@@ -36,35 +38,13 @@ class Guild(Buy, GameUi, RichManAssets):
                 continue
         logger.info('Enter guild store success')
         time.sleep(0.5)
-        # while 1:
-        #     self.screenshot()
-        #     # 功勋商店 购买皮肤券 现在问题是皮肤券作为下滑判断标志,下滑过程中roi_front[1]发生了变化,
-        #     # 导致后续识别本周剩余数量位置偏差,现在解决方案是创建一个相同属性的I_GUILD_SKIN_CHECK 来作为判断标志
-        #     if self.appear(self.I_GUILD_SKIN_CHECK):
-        #         break
-        #     if self.swipe(self.S_GUILD_STORE, interval=1.5):
-        #         time.sleep(2)
-        #         continue
-        # self.wait_until_stable(self.I_GUILD_SKIN_CHECK)
-        # 开始购买
-        # if con.mystery_amulet:
-        #     # 蓝票
-        #     self._guild_mystery_amulet()
-        # if con.black_daruma_scrap:
-        #     # 黑碎
-        #     self._guild_black_daruma_scrap()
-        # if con.skin_ticket:
-        #     # 皮肤券
-        #     self._guild_skin_ticket(con.skin_ticket)
-
-
         # 对应的图片, 对应的函数
         # 这里的顺序就是，在游戏中出现的顺序
         items = [
             *([(self.I_GUILD_HONOR_GIFT, self._guild_honor_gift)] if getattr(con, "honor_gift", False) else []),
             *([(self.I_GUILD_BLUE, self._guild_mystery_amulet)] if con.mystery_amulet else []),
             *([(self.I_GUILD_SCRAP, self._guild_black_daruma_scrap)] if con.black_daruma_scrap else []),
-            *([(self.I_GUILD_SKIN, self._guild_skin_ticket)] if con.skin_ticket else []),
+            *([(self.I_GUILD_SKIN, lambda: self._guild_skin_ticket(con.skin_ticket))] if con.skin_ticket else []),
         ]
         items_all_done = not items
         swipe_no_progress = 0
@@ -77,7 +57,8 @@ class Guild(Buy, GameUi, RichManAssets):
                     continue
                 self.wait_until_stable(button)
                 try:
-                    func()
+                    result = func()
+                    logger.info(f'功勋商店商品处理：{button.name}，购买结果={result}')
                     # 如果这里是最后一个，就是代表前面的都购买完成了
                     if len(items) == 1:
                         items_all_done = True
@@ -88,20 +69,22 @@ class Guild(Buy, GameUi, RichManAssets):
                     logger.warning(f'Button {button.name} click failed')
                 break
             if items_all_done:
-                logger.info(f'All items have been purchased {items}')
+                logger.info('功勋商店配置商品已逐项处理')
                 break
             # 刚购买成功: 先等待界面稳定并重新识别, 视野内还有商品就继续买, 不要急着滑动
             if bought_this_round:
                 time.sleep(1)
                 continue
-            # 连续多次滑动都没有买到东西, 防止无限滑动触发点击保护
-            swipe_no_progress += 1
+            # BaseTask.swipe returns None even when it swipes. Count actual
+            # unconditional gestures and always wait for the page to settle.
             if swipe_no_progress >= 8:
-                logger.warning(f'Swipe {swipe_no_progress} times without buying, stop guild store')
+                logger.warning(f'功勋商店实际滑动8次仍未识别：{[item[0].name for item in items]}')
                 break
-            if self.swipe(self.S_GUILD_STORE, interval=1.5):
-                time.sleep(2)
-                continue
+            self.swipe(self.S_GUILD_STORE)
+            swipe_no_progress += 1
+            logger.info(f'功勋商店寻找商品：实际滑动{swipe_no_progress}/8')
+            time.sleep(2)
+
 
 
         # 回去
@@ -114,6 +97,51 @@ class Guild(Buy, GameUi, RichManAssets):
             if self.appear_then_click(self.I_UI_BACK_YELLOW, interval=1):
                 continue
 
+    def _guild_buy_more(self, button, number):
+        """Guild-only exact quantity confirmation; never accept a low-score digit."""
+        self.screenshot()
+        if not self.appear(button):
+            return False
+        self.click(button)
+        deadline = time.monotonic() + 25
+        previous = None
+        stable = 0
+        while time.monotonic() < deadline:
+            time.sleep(0.4)
+            self.screenshot()
+            if not self.appear(self.I_BUY_PLUS):
+                continue
+            ocr = self.O_BUY_NUMBER
+            crop = ocr.pre_process(ocr.crop(self.device.image, ocr.roi))
+            text, score = ocr.model.ocr_single_line(crop)
+            value = int(text) if score >= 0.85 and re.fullmatch(r'[1-9][0-9]*', text) else None
+            if value is None:
+                previous, stable = None, 0
+                continue
+            stable = stable + 1 if value == previous else 1
+            previous = value
+            if stable < 2:
+                continue
+            if value == number:
+                logger.info(f'功勋商店购买数量双帧确认：{value}')
+                self.click(self.C_BUY_MORE)
+                end = time.monotonic() + 10
+                while time.monotonic() < end:
+                    self.screenshot()
+                    if self.ui_reward_appear_click():
+                        time.sleep(0.5)
+                        return True
+                    time.sleep(0.3)
+                raise RuntimeError('功勋商店购买提交后未确认奖励，停止以避免重复购买')
+            adjust = self.I_BUY_ADD if value < number else self.I_BUY_SUB
+            if not self.appear(adjust):
+                break
+            self.click(adjust)
+            previous, stable = None, 0
+        self.click(self.C_BUY_CANCEL)
+        logger.warning('功勋商店数量未确认，取消本次购买')
+        return False
+
     def _guild_honor_gift(self):
         logger.hr('Guild honor gift', 2)
         self.screenshot()
@@ -122,9 +150,7 @@ class Guild(Buy, GameUi, RichManAssets):
         if self.check_remain(self.I_GUILD_HONOR_GIFT) <= 0:
             logger.info('No guild honor gift available')
             return False
-        self.buy_more(self.I_GUILD_HONOR_GIFT, 1)
-        time.sleep(0.5)
-        return True
+        return self._guild_buy_more(self.I_GUILD_HONOR_GIFT, 1)
 
     def _guild_mystery_amulet(self):
         # 蓝票
@@ -136,9 +162,7 @@ class Guild(Buy, GameUi, RichManAssets):
         if number == 0:
             logger.warning('No mystery amulet can buy')
             return False
-        self.buy_more(self.I_GUILD_BLUE, number)
-        time.sleep(0.5)
-        return True
+        return self._guild_buy_more(self.I_GUILD_BLUE, number)
 
     def _guild_black_daruma_scrap(self):
         # 黑碎
@@ -169,9 +193,7 @@ class Guild(Buy, GameUi, RichManAssets):
             logger.warning('No skin ticket can buy')
             return False
         # 购买功勋商店皮肤券
-        self.buy_more(self.I_GUILD_SKIN, number)
-        time.sleep(0.5)
-        return True
+        return self._guild_buy_more(self.I_GUILD_SKIN, min(num, number))
 
     def check_remain(self, image: RuleImage) -> int:
         if not self.appear(image):
@@ -185,6 +207,9 @@ class Guild(Buy, GameUi, RichManAssets):
         result = self.O_GUILD_REMAIN.ocr(self.device.image)
         logger.warning(result)
         result = result.replace('？', '2').replace('?', '2').replace(':', '；')
+        if re.search(r'[1-9]\d*级寮解锁', ''.join(result.split())):
+            logger.info(f'Guild product {image.name} is locked: {result}; skip')
+            return 0
         if '本周剩余数量' not in result:
             raise ButtonException(f'Image {image.name} ocr result is empty: {result}')
         try:
