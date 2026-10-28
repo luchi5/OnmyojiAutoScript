@@ -57,7 +57,7 @@
     "itemName": "ms_check_blue",
     "imageName": "ms_ms_check_blue.png",
     "roiFront": "592,241,88,94",
-    "roiBack": "455,235,261,146",
+    "roiBack": "455,195,261,186",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "description"

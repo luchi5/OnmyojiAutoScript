@@ -1,5 +1,14 @@
 [
   {
+    "itemName": "check_main_9_roof",
+    "imageName": "main9_check_roof.png",
+    "roiFront": "920,239,189,44",
+    "roiBack": "800,210,360,100",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "结缘神社夜景右侧神社屋檐"
+  },
+  {
     "itemName": "check_main_9",
     "imageName": "main9_check_main_9.png",
     "roiFront": "764,117,134,42",

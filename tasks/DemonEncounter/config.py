@@ -39,10 +39,21 @@ class BestDemonBossSelect(BaseModel):
 
 
 # 不同封魔boss的御魂配置
+class SoulSelectionMode(str, Enum):
+    NAME = 'name'
+    POSITION = 'position'
+
+
 class DemonConfig(BaseModel):
+    selection_mode: SoulSelectionMode = Field(
+        default=SoulSelectionMode.NAME, title='御魂选择模式',
+        description='name：按分组名称、套装名称查找；position：按位置选择，例如1,2表示第1组第2套。',
+    )
+    position: str = Field(default='1,1', title='御魂位置',
+                          description='位置模式下普通逢魔各首领共用的位置：组号,套装序号；组1–7，套装1–4。')
     enable: bool = Field(
         default=False,
-        description="通过预设名称来匹配普通封魔御魂分组\n例如=> 逢魔之时,歌(中间的是英文逗号)",
+        description="切换普通逢魔御魂；按所选模式填写名称或位置，中间使用英文逗号。",
     )
     # 周一
     demon_kiryou_utahime: str = Field(default="group,team", description="鬼灵歌姬御魂")
@@ -62,9 +73,15 @@ class DemonConfig(BaseModel):
 
 # 不同极封魔boss的御魂配置
 class BestDemonConfig(BaseModel):
+    selection_mode: SoulSelectionMode = Field(
+        default=SoulSelectionMode.NAME, title='御魂选择模式',
+        description='name：按分组名称、套装名称查找；position：按位置选择，例如1,2表示第1组第2套。',
+    )
+    position: str = Field(default='1,1', title='御魂位置',
+                          description='位置模式下极逢魔各首领共用的位置：组号,套装序号；组1–7，套装1–4。')
     enable: bool = Field(
         default=False,
-        description="通过预设名称来匹配极封魔御魂分组\n例如=> 逢魔之时,歌(中间的是英文逗号)",
+        description="切换极逢魔御魂；按所选模式填写名称或位置，中间使用英文逗号。",
     )
     best_demon_kiryou_utahime: str = Field(default="group,team", description="极鬼灵歌姬御魂")
     best_demon_shinkirou: str = Field(default="group,team", description="极蜃气楼御魂")

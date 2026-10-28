@@ -33,6 +33,7 @@ main_costume_model = {
         'I_PET_HOUSE': f'I_PET_HOUSE_{i}'
     } for i in range(1, 17)
 }
+main_costume_model[MainType.COSTUME_MAIN_9]['I_CHECK_MAIN'] = ['I_CHECK_MAIN_9', 'I_CHECK_MAIN_9_ROOF']
 main_costume_model[MainType.COSTUME_MAIN_10]['I_CHECK_MAIN'] = ['I_CHECK_MAIN_10', 'I_CHECK_MAIN_10_MOON']
 
 # 玉岚狐庭（issue #1824）
@@ -54,6 +55,15 @@ main_costume_model[getattr(MainType, "COSTUME_MAIN_13")] = {
     'I_PET_HOUSE': ['I_PET_HOUSE_13',],
 }
 
+
+
+main_costume_model[MainType.COSTUME_MAIN_18] = {
+    'I_CHECK_MAIN': ['I_CHECK_MAIN_18', 'I_CHECK_MAIN_18_SHIFTED'],
+    'I_MAIN_GOTO_EXPLORATION': ['I_MAIN_GOTO_EXPLORATION_18', 'I_MAIN_GOTO_EXPLORATION_18_SHIFTED'],
+    'I_MAIN_GOTO_SUMMON': ['I_MAIN_GOTO_SUMMON_18', 'I_MAIN_GOTO_SUMMON_18_SHIFTED'],
+    'I_MAIN_GOTO_TOWN': ['I_MAIN_GOTO_TOWN_18', 'I_MAIN_GOTO_TOWN_18_SHIFTED'],
+    'I_PET_HOUSE': 'I_PET_HOUSE_18',
+}
 
 
 # 鲤鱼旗皮肤
@@ -168,6 +178,9 @@ class CostumeBase:
             if isinstance(value, list):
                 rules = [_clone_image(getattr(CostumeAssets, item)) for item in value]
                 RuleGif.attach_to(target, rules)
+                # Alternate landmarks (for example the moon) have their own
+                # search regions and thresholds, unlike frames of one animation.
+                target.preserve_variant_rules = True
             else:
                 rule = _clone_image(getattr(CostumeAssets, value))
                 target.__dict__.update(rule.__dict__)

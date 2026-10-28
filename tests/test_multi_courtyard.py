@@ -48,7 +48,7 @@ class MultiCourtyardTests(unittest.TestCase):
         field = next(f for f in model.script_task('GlobalGame')['costume_config'] if f['name'] == 'costume_main_type')
         self.assertEqual(field['type'], 'multi_enum')
         self.assertEqual(field['minItems'], 1)
-        self.assertEqual(len(field['enumEnum']), 18)
+        self.assertEqual(len(field['enumEnum']), 19)
         with patch.object(ConfigModel, 'save') as save:
             self.assertTrue(model.script_set_arg('GlobalGame', 'costume_config', 'costume_main_type', '["costume_main_16","costume_main_17"]'))
             save.assert_called_once()
@@ -81,6 +81,42 @@ class MultiCourtyardTests(unittest.TestCase):
         task.device.image = self.frame(CostumeAssets.I_CHECK_MAIN_17_A)
         self.assertFalse(task.appear(task.I_CHECK_MAIN, threshold=.99))
         self.assertEqual(task.current_main_type, MainType.COSTUME_MAIN)
+
+    def test_moon_landmark_keeps_its_roi_in_single_and_multi_skin_navigation(self):
+        from tasks.GameUi.navigator import GameUi
+        from tasks.GameUi.page_definition import Page
+        for selected in ('costume_main_10', ['costume_main', 'costume_main_10']):
+            with self.subTest(selected=selected):
+                task = self.task(selected)
+                task.device.image = self.frame(CostumeAssets.I_CHECK_MAIN_10_MOON)
+                self.assertTrue(task.appear(task.I_CHECK_MAIN))
+                self.assertEqual(task.current_main_type, MainType.COSTUME_MAIN_10)
+                page = Page(task.I_CHECK_MAIN, key='moon_test', register=False)
+                self.assertTrue(GameUi.match_page_once(task, page))
+                self.assertEqual(tuple(task.I_CHECK_MAIN.targets[1].roi_back),
+                                 tuple(CostumeAssets.I_CHECK_MAIN_10_MOON.roi_back))
+                self.assertEqual(task.I_CHECK_MAIN.targets[1].threshold,
+                                 CostumeAssets.I_CHECK_MAIN_10_MOON.threshold)
+                task.device.image = np.zeros((720, 1280, 3), np.uint8)
+                self.assertFalse(task.appear(task.I_CHECK_MAIN))
+
+    def test_shrine_roof_keeps_its_roi_in_single_and_multi_skin_navigation(self):
+        from tasks.GameUi.navigator import GameUi
+        from tasks.GameUi.page_definition import Page
+        for selected in ('costume_main_9', ['costume_main', 'costume_main_9']):
+            with self.subTest(selected=selected):
+                task = self.task(selected)
+                task.device.image = self.frame(CostumeAssets.I_CHECK_MAIN_9_ROOF)
+                self.assertTrue(task.appear(task.I_CHECK_MAIN))
+                self.assertEqual(task.current_main_type, MainType.COSTUME_MAIN_9)
+                page = Page(task.I_CHECK_MAIN, key='shrine_test', register=False)
+                self.assertTrue(GameUi.match_page_once(task, page))
+                self.assertEqual(tuple(task.I_CHECK_MAIN.targets[1].roi_back),
+                                 tuple(CostumeAssets.I_CHECK_MAIN_9_ROOF.roi_back))
+                self.assertEqual(task.I_CHECK_MAIN.targets[1].threshold,
+                                 CostumeAssets.I_CHECK_MAIN_9_ROOF.threshold)
+                task.device.image = np.zeros((720, 1280, 3), np.uint8)
+                self.assertFalse(task.appear(task.I_CHECK_MAIN))
 
     def test_animation_to_static_restores_methods_and_new_task_default(self):
         task = self.task(['costume_main_17', 'costume_main_1'])

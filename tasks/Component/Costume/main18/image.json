@@ -1,0 +1,83 @@
+[
+  {
+    "itemName": "check_main_18",
+    "imageName": "check_main_18.png",
+    "roiFront": "751,227,86,58",
+    "roiBack": "690,190,210,130",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "初语谧景焕新固定鸟居屋顶"
+  },
+  {
+    "itemName": "main_goto_exploration_18",
+    "imageName": "main_goto_exploration_18.png",
+    "roiFront": "490,142,35,62",
+    "roiBack": "420,110,200,150",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "探索灯笼"
+  },
+  {
+    "itemName": "main_goto_summon_18",
+    "imageName": "main_goto_summon_18.png",
+    "roiFront": "891,178,39,63",
+    "roiBack": "820,140,180,160",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "召唤灯笼"
+  },
+  {
+    "itemName": "main_goto_town_18",
+    "imageName": "main_goto_town_18.png",
+    "roiFront": "589,282,32,43",
+    "roiBack": "530,240,150,130",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "町中路牌"
+  },
+  {
+    "itemName": "pet_house_18",
+    "imageName": "pet_house_18.png",
+    "roiFront": "1068,15,39,38",
+    "roiBack": "1045,0,90,80",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "顶部宠物爪印入口"
+  },
+  {
+    "itemName": "check_main_18_shifted",
+    "imageName": "check_main_18_shifted.png",
+    "roiFront": "842,227,86,58",
+    "roiBack": "810,205,160,100",
+    "method": "Template matching",
+    "threshold": 0.9,
+    "description": "Shifted renewed courtyard layout"
+  },
+  {
+    "itemName": "main_goto_exploration_18_shifted",
+    "imageName": "main_goto_exploration_18_shifted.png",
+    "roiFront": "655,140,35,62",
+    "roiBack": "620,110,110,150",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "Shifted renewed courtyard layout"
+  },
+  {
+    "itemName": "main_goto_summon_18_shifted",
+    "imageName": "main_goto_summon_18_shifted.png",
+    "roiFront": "1058,179,39,63",
+    "roiBack": "1020,140,120,160",
+    "method": "Template matching",
+    "threshold": 0.8,
+    "description": "Shifted renewed courtyard layout"
+  },
+  {
+    "itemName": "main_goto_town_18_shifted",
+    "imageName": "main_goto_town_18_shifted.png",
+    "roiFront": "717,282,32,43",
+    "roiBack": "680,240,110,130",
+    "method": "Template matching",
+    "threshold": 0.85,
+    "description": "Shifted renewed courtyard layout"
+  }
+]

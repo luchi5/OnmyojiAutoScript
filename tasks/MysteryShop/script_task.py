@@ -103,6 +103,10 @@ class ScriptTask(FriendshipPoints, MysteryShopAssets, GeneralInvite):
                                     money_ocr=self.O_MALL_RESOURCE_5, buy_money=80):
                 pass
 
+    def buy_one(self, start_click, check_image):
+        # 神秘商店使用带数量选择的弹窗：先拉满，再点击下方购买按钮。
+        return self.buy_more(start_click)
+
     def share(self, share_config: ShareConfig = None):
         logger.hr('Share', 3)
         if not share_config.enable:

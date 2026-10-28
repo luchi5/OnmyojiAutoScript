@@ -91,6 +91,10 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         游戏界面突发异常检测
         :return: 没有出现返回False, 其他True
         """
+        from tasks.GlobalGame.wanted_invitation import handle_new_invitation
+        handled = handle_new_invitation(self)
+        if handled is not None:
+            return handled
         image = self.device.image
         appear_invitation = self.appear(self.I_G_ACCEPT)
         if not appear_invitation:

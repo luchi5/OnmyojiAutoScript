@@ -44,7 +44,7 @@ class MysteryShopAssets:
 	# description 
 	I_MS_EXP = RuleImage(roi_front=(0,0,100,100), roi_back=(0,0,100,100), threshold=0.8, method="Template matching", file="./tasks/MysteryShop/ms/ms_ms_exp.png")
 	# description 
-	I_MS_CHECK_BLUE = RuleImage(roi_front=(592,241,88,94), roi_back=(455,235,261,146), threshold=0.8, method="Template matching", file="./tasks/MysteryShop/ms/ms_ms_check_blue.png")
+	I_MS_CHECK_BLUE = RuleImage(roi_front=(592,241,88,94), roi_back=(455,195,261,186), threshold=0.8, method="Template matching", file="./tasks/MysteryShop/ms/ms_ms_check_blue.png")
 	# description 
 	I_MS_CHECK_BLACK = RuleImage(roi_front=(598,258,86,92), roi_back=(455,238,273,123), threshold=0.8, method="Template matching", file="./tasks/MysteryShop/ms/ms_ms_check_black.png")
 	# description 

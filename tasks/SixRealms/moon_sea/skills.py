@@ -7,11 +7,45 @@ from cached_property import cached_property
 
 from module.logger import logger
 from module.base.timer import Timer
+from module.atom.image import RuleImage
+from module.exception import GameStuckError
 from tasks.base_task import BaseTask
 from tasks.SixRealms.assets import SixRealmsAssets
 
 
 class MoonSeaSkills(BaseTask, SixRealmsAssets):
+
+    I_REFRESH_DIALOG = RuleImage(
+        roi_front=(424,280,438,60), roi_back=(420,276,446,68), threshold=0.9,
+        method='Template matching', file='./tasks/SixRealms/moon_sea/refresh/dialog.png')
+    I_REFRESH_UNCHECKED = RuleImage(
+        roi_front=(544,344,36,36), roi_back=(542,342,40,40), threshold=0.95,
+        method='Template matching', file='./tasks/SixRealms/moon_sea/refresh/unchecked.png')
+    I_REFRESH_CHECKED = RuleImage(
+        roi_front=(544,344,36,36), roi_back=(542,342,40,40), threshold=0.95,
+        method='Template matching', file='./tasks/SixRealms/moon_sea/refresh/checked.png')
+
+    def _handle_skill_refresh_confirm(self) -> bool:
+        if not self.appear(self.I_REFRESH_DIALOG):
+            return False
+        if not self.appear(self.I_REFRESH_CHECKED):
+            if not self.appear(self.I_REFRESH_UNCHECKED):
+                raise GameStuckError('Skill refresh reminder checkbox is unknown')
+            self.click(self.I_REFRESH_UNCHECKED)
+            # Click once only: a repeated click would clear the checkbox again.
+            for _ in range(3):
+                time.sleep(0.3)
+                self.screenshot()
+                if not self.appear(self.I_REFRESH_DIALOG):
+                    raise GameStuckError('Skill refresh dialog changed before confirmation')
+                if self.appear(self.I_REFRESH_CHECKED):
+                    break
+            else:
+                raise GameStuckError('Skill refresh reminder checkbox was not checked')
+        if not self.appear_then_click(self.I_UI_CONFIRM):
+            raise GameStuckError('Skill refresh confirmation button is missing')
+        logger.info('Skill refresh confirmed with do-not-remind checked')
+        return True
 
     @property
     def cnt_skill101(self):
@@ -140,6 +174,8 @@ class MoonSeaSkills(BaseTask, SixRealmsAssets):
             if self.in_main():
                 break
 
+            if self._handle_skill_refresh_confirm():
+                continue
             if self.appear(self.I_UI_CONFIRM):
                 self.ui_click_until_disappear(self.I_UI_CONFIRM)
 
@@ -150,7 +186,7 @@ class MoonSeaSkills(BaseTask, SixRealmsAssets):
                     logger.info('Refresh skill')
                     self.appear_then_click(self.I_SKILL_REFRESH)
                     self.wait_until_stable(self.I_UI_CONFIRM, timeout=Timer(2))
-                    self.appear_then_click(self.I_UI_CONFIRM)
+                    self._handle_skill_refresh_confirm()
                     self.wait_animate_stable(self.C_MAIN_ANIMATE_KEEP, timeout=1)
                     continue
                 if self.appear_then_click(self.selects_button[select]):

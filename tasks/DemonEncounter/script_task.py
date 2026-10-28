@@ -39,6 +39,13 @@ class LanternClass(Enum):
 class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
     conf: DemonEncounter = None
 
+    # Keep the distinctive face, excluding map/background pixels at the rim.
+    I_DE_BOSS_BEST_CORE = RuleImage(
+        roi_front=(907, 650, 30, 35), roi_back=(903, 646, 38, 43),
+        threshold=0.8, method='Template matching',
+        file='./tasks/DemonEncounter/demon/demon_de_boss_best_core.png',
+    )
+
     # Keep these settlement rules local to DemonEncounter; other battles use
     # different result pages. OCR is only needed after a confirmation appears.
     O_DE_BOSS_ESCAPED = RuleOcr(
@@ -127,21 +134,35 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
         # Preserve the upstream historical trailing-u field in old backups.
         if preset is None and key == 'best_demon_nightly_aramitama':
             preset = getattr(selected, 'best_demon_nightly_aramitamau', None)
+        position_mode = getattr(selected, 'selection_mode', 'name') == 'position'
+        if position_mode:
+            preset = getattr(selected, 'position', None)
         parts = [part.strip() for part in preset.replace('，', ',').split(',')] if isinstance(preset, str) else []
+        valid_position = (
+            len(parts) == 2 and parts[0] in tuple(map(str, range(1, 8)))
+            and parts[1] in ('1', '2', '3', '4')
+        )
         if (len(parts) != 2 or not all(parts)
-                or tuple(part.casefold() for part in parts) == ('group', 'team')):
+                or tuple(part.casefold() for part in parts) == ('group', 'team')
+                or (position_mode and not valid_position)):
             logger.warning(f'Invalid demon soul preset for {key}; keep task unfinished and recheck in 3 minutes')
             self.set_next_run(task='DemonEncounter', finish=False, success=None, server=False,
                               target=datetime.now() + timedelta(minutes=3))
             raise TaskEnd('DemonEncounter soul preset is not configured')
-        logger.info(f'Demon soul preset: {parts[0]} / {parts[1]} ({key})')
+        logger.info(f'Demon soul preset: {parts[0]} / {parts[1]} ({key}, '
+                    f'mode={"position" if position_mode else "name"})')
+        if position_mode:
+            return tuple(map(int, parts))
         return tuple(parts)
 
     def checkout_soul(self, target=None):
         """Switch only to a validated, enabled preset for today's boss."""
         target = self.resolve_soul_target() if target is None else target
         if target is not None:
-            self.run_switch_soul_by_name(*target)
+            if all(isinstance(value, int) for value in target):
+                self.run_switch_soul(target)
+            else:
+                self.run_switch_soul_by_name(*target)
 
     def _preset_selection_interrupted(self) -> bool:
         """Timed preparation can end while the preset menu is still opening."""
@@ -152,6 +173,19 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 self.I_WIN, self.I_DE_WIN, self.I_FALSE, self.I_REWARD)):
             logger.info('Demon encounter battle started during preset selection; continue battle')
             return True
+        return False
+
+    def _click_boss_search(self, search_button) -> bool:
+        """Retry fresh map frames; accept the cropped extreme face only on the map."""
+        for attempt in range(3):
+            self.screenshot()
+            if self.appear_then_click(search_button, interval=2):
+                return True
+            if (self.best_demon_enable and self.appear(self.I_DE_BOSS)
+                    and self.appear_then_click(self.I_DE_BOSS_BEST_CORE, interval=2)):
+                return True
+            if attempt < 2:
+                time.sleep(0.5)
         return False
 
     def execute_boss(self):
@@ -188,7 +222,7 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                     if self.appear(self.I_JADE_50):
                         self.ui_click_until_smt_disappear(self.I_DE_FIND, self.I_JADE_50, interval=1)
                         continue
-                    if not self.appear_then_click(search_button, interval=2):
+                    if not self._click_boss_search(search_button):
                         raise GameStuckError(f'Cannot find {boss_name} search button')
                     logger.info(
                         f'Finding {boss_name}, attempt {search_attempt}/2 '

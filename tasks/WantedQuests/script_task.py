@@ -23,9 +23,10 @@ from tasks.WantedQuests.assets import WantedQuestsAssets
 from tasks.WantedQuests.config import CooperationType, CooperationSelectMask
 from tasks.WantedQuests.explore import WQExplore, ExploreWantedBoss
 from tasks.WantedQuests.battle_auto import WantedBattleAuto
+from tasks.WantedQuests.new_ui import WantedNewUi
 
 
-class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
+class ScriptTask(WantedNewUi, WQExplore, SecretScriptTask, WantedQuestsAssets):
     want_strategy_excluding: list[list] = []  # 不需要执行的
     # 追踪界面(显示"前往"按钮的界面,左上角位置,神秘任务不好使)显示以下名称时,任务不再执行
     unwanted_boss_name_list: list = []
@@ -52,8 +53,11 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             preSuc = self.pre_work()
         if not preSuc:
             # 无法完成预处理 很有可能你已经完成了悬赏任务
-            logger.warning('Cannot pre-work')
-            logger.warning('You may have completed the reward task')
+            if getattr(self, '_wanted_home_complete', False):
+                logger.info('Wanted quests finished; schedule the next run')
+            else:
+                logger.warning('Cannot pre-work')
+                logger.warning('You may have completed the reward task')
             self.next_run()
             raise TaskEnd('WantedQuests')
 
@@ -62,9 +66,6 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         error_count = 0
         while 1:
             self.screenshot()
-            if not self.is_wq_remained():
-                logger.info("no more wq remained")
-                break
             if self.appear(self.I_WQ_BOX):
                 logger.info("get reward")
                 self.ui_get_reward(self.I_WQ_BOX)
@@ -73,13 +74,19 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                 logger.info("get treasure")
                 self.ui_get_reward(self.I_TREASURE_BOX_CLICK)
                 continue
+            # Share one OCR result for this frame; every UI action below is
+            # followed by a fresh screenshot on the next iteration.
+            list_results = self.O_WQ_WANTED.detect_and_ocr(self.device.image)
+            if not self.is_wq_remained(list_results):
+                logger.info("no more wq remained")
+                break
             if error_count > 3:
                 logger.warning('failed too many times, exit')
                 break
             if self.current_count >= 30:
                 logger.error(f'current count {self.current_count} >= 20, exit')
                 raise Exception('current count >= 20, exit')
-            cu, re, total, area = self.find_wq(self.device.image)
+            cu, re, total, area = self.find_wq(self.device.image, list_results)
             logger.info(f"find_wq result: current {cu} remain {re} total {total} area {area}")
             if re == -2:
                 logger.info("only completed wanted quests remained")
@@ -151,10 +158,18 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         前置工作，
         :return:
         """
+        # Task-local compatibility; the running management server keeps its old enum.
+        self.check_costume_main(list(dict.fromkeys([
+            *self.main_costume_candidates, MainType.COSTUME_MAIN_18])))
+        self.screenshot()
+        if self.new_wanted_home():
+            return self.prepare_new_wanted()
         self.goto_page(page_main)
         done_timer = Timer(5)
         while 1:
             self.screenshot()
+            if self.new_wanted_home():
+                return self.prepare_new_wanted()
             if self.appear(self.I_TRACE_DISABLE):
                 break
             if self.appear_then_click(self.I_WQ_SEAL, interval=1):
@@ -188,12 +203,19 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
 
     def pre_work_cooperation_only(self):
         #
+        self.check_costume_main(list(dict.fromkeys([
+            *self.main_costume_candidates, MainType.COSTUME_MAIN_18])))
+        self.screenshot()
+        if self.new_wanted_home():
+            return self.prepare_new_wanted(cooperation_only=True)
         if self.get_current_page() != page_main:
             self.goto_page(page_main)
         # 打开悬赏封印 界面
         done_timer = Timer(5)
         while 1:
             self.screenshot()
+            if self.new_wanted_home():
+                return self.prepare_new_wanted(cooperation_only=True)
             if self.appear(self.I_TRACE_ENABLE) or self.appear(self.I_TRACE_DISABLE):
                 break
             if self.appear_then_click(self.I_WQ_SEAL, interval=1):
@@ -263,9 +285,6 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         :param num_challenge: 现在有的挑战卷数量
         :return:
         """
-        OCR_WQ_TYPE = [self.O_WQ_TYPE_1, self.O_WQ_TYPE_2, self.O_WQ_TYPE_3, self.O_WQ_TYPE_4]
-        OCR_WQ_INFO = [self.O_WQ_INFO_1, self.O_WQ_INFO_2, self.O_WQ_INFO_3, self.O_WQ_INFO_4]
-        GOTO_BUTTON = [self.I_GOTO_1, self.I_GOTO_2, self.I_GOTO_3, self.I_GOTO_4]
         name_funcs: dict = {
             '式神': self.challenge,
             '探索': self.explore,
@@ -296,6 +315,9 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             # ,荒川之怒·壹，4，前往按钮，function
             result = [-1, '', -1, GOTO_BUTTON[index], self.challenge, '']
             type_wq = OCR_WQ_TYPE[index].ocr(self.device.image)
+            if type_wq not in name_funcs:
+                logger.info(f'Skip unsupported wanted route type: {type_wq}')
+                return None
             info_wq_1 = OCR_WQ_INFO[index].ocr(self.device.image)
             info_wq_1 = info_wq_1.replace('：', ':').replace('（', '(').replace('）', ')')
             info_wq_1 = info_wq_1.replace('：', ':')
@@ -322,23 +344,33 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             return tuple(result) if result[0] != -1 else None
 
         logger.hr('Start wanted quests')
-        while 1:
-            self.screenshot()
-            if self.appear(self.I_TRACE_TRUE):
-                break
-            if self.click(ocr, interval=1):
-                continue
+        self.open_wanted_detail(ocr)
+        if getattr(self, '_using_new_wanted', False):
+            own_current, own_total = self.read_own_wanted_progress()
+            num_want = own_total - own_current
+            if num_want == 0:
+                partner_progress = self.read_partner_wanted_progress()
+                if partner_progress and partner_progress[0] < partner_progress[1]:
+                    logger.info(f'Wanted waiting for partner: {partner_progress}; no additional own combat')
+                logger.info('Our wanted objective is complete; do not repeat combat for a partner')
+                self.ui_click_until_disappear(self.new_wanted_rules()['close_detail'])
+                return False
+        OCR_WQ_TYPE = [self.O_WQ_TYPE_1, self.O_WQ_TYPE_2, self.O_WQ_TYPE_3, self.O_WQ_TYPE_4]
+        OCR_WQ_INFO = [self.O_WQ_INFO_1, self.O_WQ_INFO_2, self.O_WQ_INFO_3, self.O_WQ_INFO_4]
+        GOTO_BUTTON = [self.I_GOTO_1, self.I_GOTO_2, self.I_GOTO_3, self.I_GOTO_4]
         if not self.appear(self.I_GOTO_1):
             # 如果没有出现 '前往'按钮， 那就是这个可能是神秘任务但是没有解锁
             logger.warning('This is a secret mission but not unlock')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wanted_detail()
             return False
         # 跳过不想打的
         monster_name = self.O_WQ_MONSTER_TYPE.detect_text(self.device.image)
+        if getattr(self, '_using_new_wanted', False):
+            monster_name = re.sub(r'^.*?击败\s*\d+\s*个?', '', monster_name).strip()
         if monster_name in self.unwanted_boss_name_list:
             #
             logger.warning(f'unwanted {monster_name}')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wanted_detail()
             return False
 
         info_wq_list = []
@@ -350,7 +382,7 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
                         and not (getattr(self, '_challenge_tickets_empty', False) and item[5] == '式神')]
         if not info_wq_list:
             logger.warning('No wanted quests can be challenged')
-            self.ui_click(self.I_TRACE_TRUE, self.I_TRACE_FALSE)
+            self.skip_wanted_detail()
             return False
         # sort
         info_wq_list.sort(key=lambda x: x[0])
@@ -533,7 +565,8 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         self.screenshot()
         if not self.appear(add_button):
             return False
-        self.ui_click(add_button, self.I_WQ_INVITE_ENSURE, interval=2.5)
+        if not self.ui_click(add_button, self.I_WQ_INVITE_ENSURE, interval=2.5, timeout=15):
+            raise GameStuckError('Wanted friend invitation dialog did not appear')
         logger.info('enter invite form')
         sleep(1)
         self.click(self.I_WQ_FRIEND_1)
@@ -780,16 +813,17 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
         ismatch = regex.match(res)
         return ismatch is not None
 
-    def find_wq(self, img):
+    def find_wq(self, img, res_list=None):
         def calc_xywh(box):
             rec_x, rec_y, rec_w, rec_h = box[0, 0], box[0, 1], box[1, 0] - box[0, 0], box[2, 1] - box[0, 1]
-            x = rec_x + self.O_WQ_TEXT_ALL.roi[0]
-            y = rec_y + self.O_WQ_TEXT_ALL.roi[1]
+            x = rec_x + self.O_WQ_WANTED.roi[0]
+            y = rec_y + self.O_WQ_WANTED.roi[1]
             w = rec_w
             h = rec_h
             return [x, y, w, h]
 
-        res_list = self.O_WQ_TEXT_ALL.detect_and_ocr(img)
+        if res_list is None:
+            res_list = self.O_WQ_WANTED.detect_and_ocr(img)
         import re
         reg_time = re.compile(r'^([01]?[0-9]|2[0-3]):([0-5]?[0-9]):?([0-5]?[0-9])?$')
         reg_fengyin = re.compile(r'.*[封|野]印.*')
@@ -828,18 +862,15 @@ class ScriptTask(WQExplore, SecretScriptTask, WantedQuestsAssets):
             # 例如：1414 66 1212
             if reg_XX.match(res.ocr_text):
                 continue
-            # 什么都没匹配上，判断上一个识别结果如果为悬赏封印，那么认为该识别结果错误，尝试执行一次
-            last_index = (index - 1) if index > 0 else 0
-            if reg_fengyin.match(res_list[last_index].ocr_text):
-                return 0, 1, 3, calc_xywh(res_list[last_index].box)
-
         if completed_only:
             return -2, -2, -2, [0, 0, 0, 0]
         return -1, -1, -1, [0, 0, 0, 0]
 
-    def is_wq_remained(self):
+    def is_wq_remained(self, res_list=None):
         # 检测是否还存在任务
-        return self.appear(self.O_WQ_WANTED)
+        if res_list is None:
+            res_list = self.O_WQ_WANTED.detect_and_ocr(self.device.image)
+        return bool(res_list)
 
 
 
