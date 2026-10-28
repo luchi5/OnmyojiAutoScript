@@ -124,6 +124,8 @@ class TopFourExitFlowTests(unittest.TestCase):
         task._read_surviving_player_count = Mock(return_value=4)
         task._read_chess_mode = Mock(return_value='备')
         task._read_round_number = Mock(return_value=22)
+        # Existing exit safety checks exercise a game armed in the previous round.
+        task._top_four_observed_round = 21
         task._ensure_shop_closed = Mock(return_value=True)
         def screenshot():
             task.device.image = np.zeros((720, 1280, 3), dtype=np.uint8)
@@ -146,6 +148,23 @@ class TopFourExitFlowTests(unittest.TestCase):
         self.assertEqual(task._last_game_rank, 4)
         self.assertTrue(task._top_four_exit_succeeded)
         self.assertEqual(task._save_top_four_evidence.call_count, 3)
+
+    def test_twenty_arms_and_only_next_preparation_exits(self):
+        task = self.make_task()
+        task._top_four_observed_round = None
+        task._read_round_number.return_value = 20
+        for _ in range(2):
+            self.assertFalse(self.poll(task))
+            self.assertEqual(task._top_four_observed_round, 20)
+        task.exit_chess_battle.assert_not_called()
+        task._read_round_number.return_value = 21
+        for mode in ('战', '待', None):
+            self.assertFalse(self.poll(task, mode=mode))
+        for count in (5, None):
+            self.assertFalse(self.poll(task, count=count))
+        task.exit_chess_battle.assert_not_called()
+        self.assertTrue(self.poll(task, count=3))
+        task.exit_chess_battle.assert_called_once_with(return_to_lobby=False)
 
     def test_logged_battle_candidates_never_exit(self):
         # 25号实测：战阶段识别四人后，分别结算第七、第五及未知。
@@ -279,6 +298,7 @@ class TopFourExitFlowTests(unittest.TestCase):
         task._wait_until_in_chess_game = Mock()
         task._start_chess_game()
         self.assertIsNone(task._top_four_shop_check_round)
+        self.assertIsNone(task._top_four_observed_round)
         self.assertFalse(task._top_four_exit_succeeded)
 
     def test_active_round_loop_stops_before_economy(self):

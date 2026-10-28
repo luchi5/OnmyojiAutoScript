@@ -53,7 +53,7 @@ class ChessConfig(ConfigBase):
     )
     top_four_exit: bool = Field(
         title='刷币时保住前四即退局',
-        description='仅在刷满鼬乐币开启时生效；第20回目起仅在备战阶段收起商店检查人数，同一回合连续确认存活人数不超过4人后退局。结算确认前四后才执行保段位额外退局。',
+        description='仅在刷满鼬乐币开启时生效；第20回目起在备战阶段收起商店检查人数，连续确认存活人数不超过4人后，等到下一回目备战再次确认才退局。结算确认前四后才执行保段位额外退局。',
         default=True,
     )
     continue_grigri_refresh_below_nine: bool = Field(

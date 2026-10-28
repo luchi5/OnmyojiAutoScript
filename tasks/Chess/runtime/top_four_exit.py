@@ -171,12 +171,23 @@ class ChessTopFourExitMixin:
                 return False
             candidate = count
             frames.append(self.device.image.copy())
+        observed_round = getattr(self, '_top_four_observed_round', None)
+        if observed_round is None or confirmed_round < observed_round:
+            self._top_four_observed_round = confirmed_round
+            logger.info(
+                f'Chess round {confirmed_round}: {count} survivors confirmed; '
+                f'wait until preparation round {confirmed_round + 1} before exit'
+            )
+            return False
+        if confirmed_round == observed_round:
+            return False
         self._top_four_evidence_id = str(time.time_ns())
         for index, frame in enumerate(frames, 1):
             self._save_top_four_evidence(f'before-{index}', frame)
         logger.info(
             f'Chess weekly coins: {count} survivors confirmed in preparation '
-            f'round {confirmed_round}; requesting exit, final rank pending'
+            f'round {confirmed_round} (first confirmed round {observed_round}); '
+            'requesting exit, final rank pending'
         )
         self._top_four_exit_succeeded = False
         if not self.exit_chess_battle(return_to_lobby=False):

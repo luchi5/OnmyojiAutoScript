@@ -1176,6 +1176,7 @@ class ChessLegacyScriptTask(
         self._board_special_units = {}
         self._last_game_rank = None
         self._top_four_shop_check_round = None
+        self._top_four_observed_round = None
         self._top_four_exit_succeeded = False
         self._reset_economy_state()
         strategy = self.get_lineup_strategy()
