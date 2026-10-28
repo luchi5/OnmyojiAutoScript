@@ -13,6 +13,9 @@ from module.gui.fluent_app import FluentApp
 from module.ocr.rpc import ensure_ocr_server_started
 
 if __name__ == "__main__":
+    from deploy.config import DeployConfig
+    from deploy.ocr_installer import prepare_optional
+    prepare_optional(DeployConfig())
     ensure_ocr_server_started()
     # 检查是不是以管理员身份运行，脚本启动的其他进程会继承权限
     # 但是貌似有问题的这个函数

@@ -127,6 +127,23 @@ class Updater(DeployConfig, GitManager, PipManager):
             logger.warning("Git fetch failed")
             return False
 
+        # Load the just-updated installer in a fresh interpreter.
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[2]
+        if (getattr(self, 'AutoInstallRapidOcr', True)
+                and not (root / 'config/ocr_runtime/accounts.json').exists()):
+            import os
+            if not os.environ.get('OAS_OCR_BACKEND'):
+                args = [self.python, str(root / 'deploy/ocr_installer.py')]
+                if self.PypiMirror:
+                    args += ['--index-url', self.PypiMirror]
+                try:
+                    subprocess.run(args, cwd=root, check=True, timeout=1500,
+                                   creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                except Exception as exc:
+                    logger.warning(f'代码已更新，新 OCR 未安装成功，保留旧 OCR：{exc}')
+        return True
+
 
 
 if __name__ == "__main__":

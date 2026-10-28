@@ -67,6 +67,8 @@ Deploy:
     InstallUiautomator2: true
 
   Ocr:
+    # Prepare a separate verified OCR environment automatically.
+    AutoInstallRapidOcr: true
     # Backend for newly created local models / OCR servers: legacy or rapid-small.
     # rapid-small requires requirements-rapidocr.txt in an isolated runtime.
     OcrBackend: legacy

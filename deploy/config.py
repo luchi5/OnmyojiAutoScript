@@ -34,6 +34,7 @@ class ConfigModel:
     InstallUiautomator2: bool = True
 
     # Ocr
+    AutoInstallRapidOcr: bool = True
     OcrBackend: str = "legacy"
     UseOcrServer: bool = False
     StartOcrServer: bool = False

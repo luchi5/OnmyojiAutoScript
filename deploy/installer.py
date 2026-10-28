@@ -16,6 +16,8 @@ class Installer(GitManager, PipManager, AdbManager, FluentuiManager, ProcessMana
             self.git_install()
             self.process_kill()
             self.pip_install()
+            from deploy.ocr_installer import prepare_optional
+            prepare_optional(self)
             self.adb_install()
         except ExecutionError:
             exit(1)

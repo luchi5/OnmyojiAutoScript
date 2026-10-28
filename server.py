@@ -80,6 +80,8 @@ def fun(ev: threading.Event):
     logger.attr("Port", port)
     logger.attr("Reload", ev is not None)
 
+    from deploy.ocr_installer import prepare_optional
+    prepare_optional(State.deploy_config)
     ensure_ocr_server_started()
 
     try:

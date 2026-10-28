@@ -61,6 +61,14 @@ if (!(Test-Path -LiteralPath config/deploy.yaml)) {
 
 这条命令启动后台，不运行安装器。通用模板中的 `Deploy.Webui.Run: null` 默认不自动启动账号任务；如果已有配置指定了 `Run`，后台仍会按该配置启动对应账号。OASX 连接 `127.0.0.1:22289`；网页面板的 `backend_url` 填 `http://127.0.0.1:22289`，`backend_root` 填该主脚本目录。关闭这条命令所在的终端会结束后台，因此运行任务期间保持终端打开。
 
+### 新 OCR 自动安装
+
+Windows x64 / Python 3.10 用户继续使用上面的 Easy install 包，无需另下 OCR 配套包。新版安装器和后台启动入口会自动准备独立的 RapidOCR 环境，校验固定版本依赖及 PP-OCRv6 small 模型，并完成识别自检后启用。首次安装需要联网下载约 150 MB 依赖，下载时间取决于网络。
+
+老用户更新代码后重启后台；第一次升级时，旧更新器可能仍在内存中，重启后才加载自动安装逻辑。安装成功后不重复下载，不升级原 toolkit 的依赖。安装失败会明确提示并保留旧 OCR；不会为了安装 OCR 重启运行中的账号或模拟器。
+
+需要离线制作整合包时，把离线资源放到 `deploy/rapidocr-wheels`。配套包仅供离线部署，普通联网用户无需手动下载。部署开关 `Deploy.Ocr.AutoInstallRapidOcr: false` 可关闭自动安装和自动选择；已有人工账号 OCR 选择继续保留。详见 [OCR 安装与离线打包说明](deploy/RAPIDOCR_BUNDLE.md)。
+
 ### Windows ADB 自动安装
 
 Windows 安装器在 Python 依赖安装完成后，自动下载 Google 官方 **Platform-Tools 37.0.1**，核对固定版本压缩包及四个 EXE/DLL 的 SHA-256，再安装到默认的 `toolkit/Lib/site-packages/adbutils/binaries`。`adbutils==0.11.0` 保留为 Python 接口，不再使用它附带的旧版 ADB。已安装且四个文件完全匹配时跳过下载；重新安装依赖带回旧文件后，下次执行安装器会再次校验升级。Linux/macOS 和用户自行指定的 ADB 路径不受这一步管理。

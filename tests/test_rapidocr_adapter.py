@@ -110,12 +110,12 @@ def test_process_override_takes_precedence_over_shared_config(monkeypatch):
     assert config.OcrBackend == "legacy"
 
 
-def test_old_shared_config_defaults_to_legacy(monkeypatch):
+def test_disabled_auto_install_defaults_to_legacy(monkeypatch):
     backend = load_backend()
     create = Mock()
     monkeypatch.setattr(backend, "create_text_system", create)
     monkeypatch.delenv("OAS_OCR_BACKEND", raising=False)
-    backend.configured_text_system(SimpleNamespace())
+    backend.configured_text_system(SimpleNamespace(AutoInstallRapidOcr=False))
     create.assert_called_once_with("legacy")
 
 
@@ -127,7 +127,7 @@ def test_configured_bgr_hint_is_only_forwarded_to_rapid(monkeypatch, selected):
     monkeypatch.setitem(sys.modules, "module.ocr.ppocr", SimpleNamespace(TextSystem=legacy))
     monkeypatch.setitem(sys.modules, "module.ocr.rapidocr_adapter",
                         SimpleNamespace(RapidTextSystem=rapid))
-    config = SimpleNamespace(OcrBackend=selected)
+    config = SimpleNamespace(OcrBackend=selected, AutoInstallRapidOcr=False)
     result = load_backend().configured_text_system(config, input_color="BGR", box_thresh=.7)
     if selected == "legacy":
         assert result is legacy.return_value

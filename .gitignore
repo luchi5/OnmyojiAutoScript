@@ -290,3 +290,6 @@ data/frog_oas/
 
 # Private local error-mail settings and delivery status
 /config/error_mail/
+
+/runtime/rapidocr/
+/deploy/rapidocr-wheels/
