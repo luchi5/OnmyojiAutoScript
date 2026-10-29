@@ -76,6 +76,27 @@ def verify_wheels(folder, manifest):
             raise ValueError(f'Missing or damaged OCR wheel: {name}')
 
 
+def python_identity(executable):
+    """Console/windowed launchers from the same installation share a runtime."""
+    path = Path(executable).resolve()
+    if path.name.lower() == 'pythonw.exe':
+        path = path.with_name('python.exe').resolve()
+    return os.path.normcase(str(path))
+
+
+def cached_wheels(parent, manifest):
+    # Include download folders made by earlier releases. Never trust their name.
+    for folder in sorted(parent.glob('download-*')):
+        if not folder.is_dir() or folder.is_symlink():
+            continue
+        try:
+            verify_wheels(folder, manifest)
+        except (OSError, ValueError):
+            continue
+        return folder
+    return None
+
+
 def ready(root, manifest_hash):
     """A relocated installation must recreate its venv, not reuse absolute paths."""
     try:
@@ -83,7 +104,7 @@ def ready(root, manifest_hash):
         python = (root / data['python']).resolve()
         python.relative_to((root / 'runtime/rapidocr').resolve())
         if (data['manifest'] != manifest_hash or data['root'] != str(root.resolve())
-                or data['base_python'] != str(Path(sys.executable).resolve())
+                or python_identity(data['base_python']) != python_identity(sys.executable)
                 or not python.is_file()):
             return None
         for name, expected in data['models'].items():
@@ -110,8 +131,13 @@ def ensure_runtime(root=ROOT, wheelhouse=None, index_url=None):
         if existing:
             print('RapidOCR already verified; skip installation', flush=True)
             return existing
-        print('[OCR] 首次准备新 OCR：下载 → 校验 → 创建环境 → 安装 → 识别自检。', flush=True)
+        print('[OCR] 准备或修复新 OCR：依赖 → 校验 → 创建环境 → 安装 → 识别自检。', flush=True)
         wheels = Path(wheelhouse) if wheelhouse else root / 'deploy/rapidocr-wheels'
+        if not wheels.is_dir() and wheelhouse is None:
+            cached = cached_wheels(parent, manifest)
+            if cached is not None:
+                print('[OCR] 复用已下载且校验通过的依赖包，无需重新下载。', flush=True)
+                wheels = cached
         if wheels.is_dir():
             print('[OCR 1/5] 使用本地离线依赖包。', flush=True)
             print('[OCR 2/5] 校验依赖包完整性。', flush=True)
@@ -120,7 +146,7 @@ def ensure_runtime(root=ROOT, wheelhouse=None, index_url=None):
             print('[OCR 1/5] 正在下载依赖，下面显示各文件下载进度（不是总进度）。', flush=True)
             wheels = parent / ('download-' + uuid.uuid4().hex)
             wheels.mkdir()
-            args = [sys.executable, '-m', 'pip', 'download', '--only-binary=:all:',
+            args = [python_identity(sys.executable), '-m', 'pip', 'download', '--only-binary=:all:',
                     '--require-hashes', '--disable-pip-version-check', '--progress-bar', 'on', '--dest', wheels,
                     '-r', root / 'deploy/requirements-rapidocr-lock.txt']
             if index_url:
@@ -131,7 +157,7 @@ def ensure_runtime(root=ROOT, wheelhouse=None, index_url=None):
         # Use the final directory name from the start: venv launchers embed paths.
         target = parent / (manifest_hash[:12] + '-' + uuid.uuid4().hex[:8])
         print('[OCR 3/5] 正在创建独立 Python 环境。', flush=True)
-        run([sys.executable, '-m', 'venv', '--system-site-packages', target], root)
+        run([python_identity(sys.executable), '-m', 'venv', '--system-site-packages', target], root)
         python = target / 'Scripts/python.exe'
         print('[OCR 4/5] 正在安装依赖包。', flush=True)
         run([python, '-m', 'pip', 'install', '--no-index', '--no-deps',
@@ -143,7 +169,7 @@ def ensure_runtime(root=ROOT, wheelhouse=None, index_url=None):
                 raise ValueError(f'OCR model checksum mismatch: {name}')
         run([python, root / 'deploy/ocr_installer.py', '--self-test', '--root', root], root)
         data = {'schema': 1, 'manifest': manifest_hash, 'root': str(root),
-                'base_python': str(Path(sys.executable).resolve()),
+                'base_python': python_identity(sys.executable),
                 'python': python.relative_to(root).as_posix(), 'models': manifest['models'],
                 'installed_at': time.time()}
         temporary = parent / ('active-' + uuid.uuid4().hex + '.json')

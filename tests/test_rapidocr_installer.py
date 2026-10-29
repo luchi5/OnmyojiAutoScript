@@ -94,9 +94,22 @@ def test_ready_rejects_relocation_tampering_and_external_path(tmp_path):
     active = parent / 'active.json'
     active.write_text(json.dumps(record))
     assert rapidocr.ready(tmp_path, 'v1') == str(python.resolve())
+    # Existing records remain valid across console/windowed launcher switches.
+    base = Path(sys.executable).resolve()
+    if base.name.lower() == 'python.exe':
+        monkey_base = str(base.with_name('pythonw.exe'))
+        record['base_python'] = monkey_base
+        active.write_text(json.dumps(record))
+        assert rapidocr.ready(tmp_path, 'v1') == str(python.resolve())
+        record['base_python'] = str(base.parent / 'other/python.exe')
+        active.write_text(json.dumps(record))
+        assert rapidocr.ready(tmp_path, 'v1') is None
+        record['base_python'] = str(base)
+        active.write_text(json.dumps(record))
     assert rapidocr.ready(tmp_path, 'v2') is None
     model.write_bytes(b'corrupt')
     assert rapidocr.ready(tmp_path, 'v1') is None
+
     record['root'] = str(tmp_path / 'old-location')
     active.write_text(json.dumps(record))
     assert rapidocr.ready(tmp_path, 'v1') is None
@@ -104,6 +117,21 @@ def test_ready_rejects_relocation_tampering_and_external_path(tmp_path):
     record['python'] = '../../outside/python.exe'
     active.write_text(json.dumps(record))
     assert rapidocr.ready(tmp_path, 'v1') is None
+
+
+def test_cache_reuses_only_complete_verified_downloads(tmp_path):
+    incomplete = tmp_path / 'download-a'
+    incomplete.mkdir()
+    damaged = tmp_path / 'download-b'
+    damaged.mkdir()
+    (damaged / 'test.whl').write_bytes(b'bad')
+    good = tmp_path / 'download-c'
+    good.mkdir()
+    (good / 'test.whl').write_bytes(b'good')
+    manifest = {'wheels': [{'name': 'test.whl', 'sha256': rapidocr.digest(good / 'test.whl')}]}
+    assert rapidocr.cached_wheels(tmp_path, manifest) == good
+    (good / 'test.whl').write_bytes(b'bad')
+    assert rapidocr.cached_wheels(tmp_path, manifest) is None
 
 
 def test_failed_self_test_preserves_previous_active_record(tmp_path, monkeypatch):
