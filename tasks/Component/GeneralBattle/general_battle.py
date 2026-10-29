@@ -6,6 +6,7 @@ import random
 from time import sleep
 
 import cv2
+from module.atom.image import RuleImage
 from module.base.timer import Timer
 
 from module.base.utils import get_color, color_similar
@@ -22,6 +23,18 @@ from module.exception import GameStuckError
 
 
 class GeneralBattle(BattleWait, GeneralBuff):
+    # Blue/gold team theme observed in Coin Monster; independent of our skin.
+    I_TEAMMATE_BATTLE_INFO_BLUE = RuleImage(
+        roi_front=(232, 17, 34, 34), roi_back=(222, 7, 54, 54),
+        threshold=0.8, method='Template matching',
+        file='./tasks/Component/GeneralBattle/gb/gb_teammate_battle_info_blue.png',
+    )
+    # A teammate can supply this battle UI regardless of our configured skin.
+    I_TEAMMATE_BATTLE_INFO = RuleImage(
+        roi_front=(234, 17, 32, 32), roi_back=(215, 0, 142, 58),
+        threshold=0.8, method='Template matching',
+        file='./tasks/Component/CostumeBattle/battle15/battle15_battle_info_15.png',
+    )
     """
     使用这个通用的战斗必须要求这个任务的config有config_general_battle
     """
@@ -541,7 +554,7 @@ class GeneralBattle(BattleWait, GeneralBuff):
         """
         if is_screenshot:
             self.screenshot()
-        if self.appear(self.I_BATTLE_INFO) or \
+        if self.is_in_real_battle(False) or \
                 self.appear(self.I_FRIENDS) or \
                 self.appear(self.I_WIN) or \
                 self.appear(self.I_FALSE) or \
@@ -558,7 +571,9 @@ class GeneralBattle(BattleWait, GeneralBuff):
         """
         if is_screenshot:
             self.screenshot()
-        return self.appear(self.I_BATTLE_INFO)
+        return (self.appear(self.I_BATTLE_INFO)
+                or self.appear(self.I_TEAMMATE_BATTLE_INFO)
+                or self.appear(self.I_TEAMMATE_BATTLE_INFO_BLUE))
 
     def is_in_prepare(self, is_screenshot: bool = True) -> bool:
         """

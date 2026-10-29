@@ -21,7 +21,7 @@
     "itemName": "de_boss",
     "imageName": "demon_de_boss.png",
     "roiFront": "1001,645,45,45",
-    "roiBack": "1001,645,45,45",
+    "roiBack": "998,642,51,51",
     "method": "Template matching",
     "threshold": 0.8,
     "description": "点击首领"
