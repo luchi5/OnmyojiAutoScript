@@ -5,8 +5,10 @@ import json
 import os
 from pathlib import Path
 import platform
+import queue
 import subprocess
 import sys
+import threading
 import time
 import uuid
 
@@ -17,13 +19,51 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def run(args, root):
-    result = subprocess.run([str(a) for a in args], cwd=root, timeout=1200,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            encoding='utf-8', errors='replace',
-                            creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
-    print(result.stdout, flush=True)
-    result.check_returncode()
+def run(args, root, timeout=1200, heartbeat=15):
+    """Stream pip output while retaining a timeout even when the child is silent."""
+    command = [str(a) for a in args]
+    env = dict(os.environ, PYTHONUNBUFFERED='1', PYTHONIOENCODING='utf-8')
+    started = time.monotonic()
+    with subprocess.Popen(command, cwd=root, env=env,
+                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          encoding='utf-8', errors='replace', bufsize=1,
+                          creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0)) as process:
+        output = queue.Queue()
+
+        def read_output():
+            try:
+                for line in process.stdout:
+                    output.put(line)
+            finally:
+                output.put(None)
+
+        reader = threading.Thread(target=read_output, daemon=True)
+        reader.start()
+        next_notice = started + heartbeat
+        try:
+            while True:
+                now = time.monotonic()
+                if now - started >= timeout:
+                    raise subprocess.TimeoutExpired(command, timeout)
+                try:
+                    line = output.get(timeout=min(0.5, timeout - (now - started)))
+                except queue.Empty:
+                    if now >= next_notice:
+                        print(f'[OCR] 当前步骤仍在进行，已用时 {int(now - started)} 秒，请勿关闭窗口。', flush=True)
+                        next_notice = now + heartbeat
+                    continue
+                if line is None:
+                    break
+                print(line, end='', flush=True)
+                next_notice = time.monotonic() + heartbeat
+            code = process.wait(timeout=max(0.01, timeout - (time.monotonic() - started)))
+            if code:
+                raise subprocess.CalledProcessError(code, command)
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.wait()
+            reader.join(timeout=2)
 
 
 def verify_wheels(folder, manifest):
@@ -64,32 +104,40 @@ def ensure_runtime(root=ROOT, wheelhouse=None, index_url=None):
     parent = root / 'runtime/rapidocr'
     parent.mkdir(parents=True, exist_ok=True)
     from filelock import FileLock
+    print('[OCR] 正在检查环境；若其他窗口正在安装，将等待其完成。', flush=True)
     with FileLock(str(parent / 'install.lock'), timeout=1500):
         existing = ready(root, manifest_hash)
         if existing:
             print('RapidOCR already verified; skip installation', flush=True)
             return existing
-        print('Preparing isolated RapidOCR environment...', flush=True)
+        print('[OCR] 首次准备新 OCR：下载 → 校验 → 创建环境 → 安装 → 识别自检。', flush=True)
         wheels = Path(wheelhouse) if wheelhouse else root / 'deploy/rapidocr-wheels'
         if wheels.is_dir():
+            print('[OCR 1/5] 使用本地离线依赖包。', flush=True)
+            print('[OCR 2/5] 校验依赖包完整性。', flush=True)
             verify_wheels(wheels, manifest)
         else:
+            print('[OCR 1/5] 正在下载依赖，下面显示各文件下载进度（不是总进度）。', flush=True)
             wheels = parent / ('download-' + uuid.uuid4().hex)
             wheels.mkdir()
             args = [sys.executable, '-m', 'pip', 'download', '--only-binary=:all:',
-                    '--require-hashes', '--disable-pip-version-check', '--dest', wheels,
+                    '--require-hashes', '--disable-pip-version-check', '--progress-bar', 'on', '--dest', wheels,
                     '-r', root / 'deploy/requirements-rapidocr-lock.txt']
             if index_url:
                 args += ['--index-url', index_url]
             run(args, root)
+            print('[OCR 2/5] 下载完成，校验依赖包完整性。', flush=True)
             verify_wheels(wheels, manifest)
         # Use the final directory name from the start: venv launchers embed paths.
         target = parent / (manifest_hash[:12] + '-' + uuid.uuid4().hex[:8])
+        print('[OCR 3/5] 正在创建独立 Python 环境。', flush=True)
         run([sys.executable, '-m', 'venv', '--system-site-packages', target], root)
         python = target / 'Scripts/python.exe'
+        print('[OCR 4/5] 正在安装依赖包。', flush=True)
         run([python, '-m', 'pip', 'install', '--no-index', '--no-deps',
              '--ignore-installed', '--disable-pip-version-check', '--require-hashes',
              '--find-links', wheels, '-r', root / 'deploy/requirements-rapidocr-lock.txt'], root)
+        print('[OCR 5/5] 正在校验模型并运行识别自检。', flush=True)
         for name, expected in manifest['models'].items():
             if digest(target / 'Lib/site-packages/rapidocr/models' / name) != expected:
                 raise ValueError(f'OCR model checksum mismatch: {name}')

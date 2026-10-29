@@ -2,7 +2,7 @@
 # copy from alas https://github.com/LmeSzinc/AzurLaneAutoScript
 import logging
 
-from deploy.config import DeployConfig
+from deploy.config import DeployConfig, ExecutionError
 from deploy.emulator import EmulatorConnect
 from deploy.logger import logger
 from deploy.utils import *

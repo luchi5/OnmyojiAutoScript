@@ -9,6 +9,41 @@ import pytest
 from deploy import ocr_installer as rapidocr
 
 
+def test_run_streams_before_child_exits(tmp_path, monkeypatch, capsys):
+    import builtins
+    signal = tmp_path / 'continue'
+    original = builtins.print
+
+    def observe(*args, **kwargs):
+        original(*args, **kwargs)
+        if args and 'READY' in str(args[0]):
+            signal.touch()
+
+    monkeypatch.setattr(builtins, 'print', observe)
+    code = ("from pathlib import Path; import time; print('READY', flush=True); "
+            "p=Path('continue'); deadline=time.monotonic()+3\n"
+            "while not p.exists() and time.monotonic()<deadline: time.sleep(.02)\n"
+            "assert p.exists(), 'output was buffered'; print('DONE')")
+    rapidocr.run([sys.executable, '-c', code], tmp_path, timeout=5)
+    assert 'DONE' in capsys.readouterr().out
+
+
+def test_run_reports_silent_wait_and_times_out(tmp_path, capsys):
+    import subprocess
+    with pytest.raises(subprocess.TimeoutExpired):
+        rapidocr.run([sys.executable, '-c', 'import time; time.sleep(30)'],
+                     tmp_path, timeout=1.5, heartbeat=.1)
+    assert '当前步骤仍在进行' in capsys.readouterr().out
+
+
+def test_run_preserves_failure_and_output(tmp_path, capsys):
+    import subprocess
+    with pytest.raises(subprocess.CalledProcessError) as failure:
+        rapidocr.run([sys.executable, '-c', "import sys; print('failure detail'); sys.exit(7)"], tmp_path)
+    assert failure.value.returncode == 7
+    assert 'failure detail' in capsys.readouterr().out
+
+
 def test_wheel_integrity_and_missing_file(tmp_path):
     wheel = tmp_path / 'example.whl'
     wheel.write_bytes(b'wheel')
