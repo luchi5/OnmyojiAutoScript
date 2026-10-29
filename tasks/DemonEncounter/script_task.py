@@ -39,6 +39,13 @@ class LanternClass(Enum):
 class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
     conf: DemonEncounter = None
 
+    # Match only the coin at the rating reward position; amounts vary.
+    I_DE_SETTLEMENT_COIN = RuleImage(
+        roi_front=(873, 578, 36, 40), roi_back=(865, 570, 52, 56),
+        threshold=0.8, method='Template matching',
+        file='./tasks/DemonEncounter/demon/demon_settlement_coin.png',
+    )
+
     # Keep the distinctive face, excluding map/background pixels at the rim.
     I_DE_BOSS_BEST_CORE = RuleImage(
         roi_front=(907, 650, 30, 35), roi_back=(903, 646, 38, 43),
@@ -818,6 +825,12 @@ class ScriptTask(GameUi, GeneralBattle, DemonEncounterAssets, SwitchSoul):
                 self.ui_click_until_disappear(self.I_FALSE)
                 self._finish_failed_settlement()
                 return False
+            if (not self.is_in_real_battle(False)
+                    and self.appear(self.I_DE_SETTLEMENT_COIN)):
+                logger.info('Demon encounter coin settlement; continue')
+                self.ui_click_until_disappear(self.I_DE_SETTLEMENT_COIN)
+                check_timer = Timer(3).start()
+                continue
             # 时间到
             if check_timer and check_timer.reached():
                 logger.warning('Obtain battle timeout')

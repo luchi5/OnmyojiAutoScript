@@ -490,15 +490,16 @@ class BaseTask(GlobalGameAssets, CostumeBase):
                 logger.info(f'Wait_animate_stable({rule}) timeout')
                 break
 
-    def swipe(self, swipe: RuleSwipe, interval: float = None) -> None:
+    def swipe(self, swipe: RuleSwipe, interval: float = None) -> bool:
         """
 
         :param interval:
         :param swipe:
-        :return:
+        :return: True if the swipe command returned normally, False if skipped.
+                 This does not assert that the game screen moved.
         """
         if not isinstance(swipe, RuleSwipe):
-            return
+            return False
 
         if interval:
             if swipe.name in self.interval_timer:
@@ -510,7 +511,7 @@ class BaseTask(GlobalGameAssets, CostumeBase):
                 self.interval_timer[swipe.name] = Timer(interval)
             # 如果时间还没到达，则不执行
             if not self.interval_timer[swipe.name].reached():
-                return
+                return False
 
         x1, y1, x2, y2 = swipe.coord()
         self.device.swipe(p1=(x1, y1), p2=(x2, y2), control_name=swipe.name)
@@ -519,6 +520,8 @@ class BaseTask(GlobalGameAssets, CostumeBase):
         if interval:
             # logger.info(f'Swipe {swipe.name}')
             self.interval_timer[swipe.name].reset()
+
+        return True
 
     def click(self, click: Union[RuleClick, RuleLongClick, RuleImage, RuleOcr] = None, interval: float = None) -> bool:
         """
